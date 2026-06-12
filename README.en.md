@@ -24,14 +24,14 @@ PORT=3000 node server.js  # Custom port
 
 Open your browser at http://localhost:8080. **Zero dependencies** — no `npm install` needed, just Node.js 18+ (with built-in fetch).
 
-## Deployment / Email Verification / Security (v3.2)
+## Deployment / Email Verification / Security
 
 - Step-by-step VPS deployment guide (reverse proxy + auto HTTPS + backup + Cloudflare): see **DEPLOY.md**.
 - **Email verification**: Set `SMTP_HOST / SMTP_PORT(465) / SMTP_USER / SMTP_PASS / SMTP_FROM` to enable — sends a 6-digit code on registration (15min expiry, 60s resend throttle, 5-fail lockout); account created only after verification. Without SMTP set, no verification is required (self-hosted personal use).
 - **Traffic optimization**: API JSON and text static files >1KB are automatically gzip-compressed (historical sequences shrink 8–12×, homepage 3×).
 - **Resilience**: Concurrent request coalescing (1 upstream call per symbol), 240 requests/min per IP rate limit, 30s slow-request timeout, 7-day auto-eviction for short-lived cache. For DDoS protection, place Cloudflare in front (see DEPLOY.md Step 8).
 
-## Accounting Model (V3.1 Final: Raw Price + Internal Cash Transfer)
+## Accounting Model (Raw Price + Internal Cash Transfer)
 
 - **Pricing**: Personal portfolio NAV/TWR/MWR/candlestick charts always use **raw price** (split-adjusted, dividend-unadjusted). Benchmark comparison uniquely uses **adjusted price** (representing total return).
 - **Auto dividends**: On ex-dividend date, the system auto-creates a DIVIDEND transaction per holding: `after-tax = shares × DPS × (1 − withholding rate)`. Withholding rate: per-tx override → global setting → 0%. Auto entries marked ⚡; editing converts to manual; deletion adds to skip list; deduplication within ±14 days for the same symbol.
@@ -40,7 +40,7 @@ Open your browser at http://localhost:8080. **Zero dependencies** — no `npm in
 - **FEE / LIABILITY**: Internal expenses — reduce cash, not counted as external flows, naturally suppress return rate. TWR formula: V₁/(V₀+C); fees are not double-counted.
 - **Event annotations**: Gold dots (Div) / blue squares (Split) on the asset value chart. Crosshair hover shows detail tooltips.
 
-## Data Architecture (v3.1)
+## Data Architecture
 
 Inspired by Ghostfolio and Portfolio Performance:
 

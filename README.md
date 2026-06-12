@@ -107,6 +107,14 @@ pm2 start server.js --name wealthlens
 (Polygon、Twelve Data、EODHD 等)——只需改寫 `server.js` 中
 `getHistory / getFx / searchSymbols / getNews` 四個函式,前端無需更動。
 
+## 授權
+
+本項目採用 [MIT License](LICENSE) 開源授權。
+
+本項目為獨立實作，設計思路參考了以下開源項目：
+- [Ghostfolio](https://github.com/ghostfolio/ghostfolio) (AGPL-3.0)
+- [Portfolio Performance](https://github.com/portfolio-performance/portfolio) (EPL-1.0)
+
 ## 其他
 
 - 限流:每 IP 每分鐘 240 個 API 請求

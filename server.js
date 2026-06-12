@@ -326,8 +326,18 @@ async function coingeckoHistory(symbol) {
   return { symbol: symbol.toUpperCase(), name: coin.name || symbol, ccy: "USD", market: "CRYPTO", last: raw[raw.length - 1], dates, raw, adj: raw.slice(), dividends: [], splits: [], source: "coingecko", adjusted: true };
 }
 
+/* 同鍵並發合併:1000 人同時請求同一代碼,僅對外發出 1 次上游請求 */
+const INFLIGHT = new Map();
+function coalesce(key, fn) {
+  if (INFLIGHT.has(key)) return INFLIGHT.get(key);
+  const p = fn().finally(() => INFLIGHT.delete(key));
+  INFLIGHT.set(key, p);
+  return p;
+}
+
 /* ====================== 智慧歷史價:持久庫 + 增量 + 備援鏈 ====================== */
-async function smartHistory(symbol) {
+function smartHistory(symbol) { return coalesce("h:" + symbol, () => smartHistoryInner(symbol)) }
+async function smartHistoryInner(symbol) {
   const store = loadStore("hist", symbol);
   if (store && Date.now() - store.fetchedAt < FRESH_MS) return { ...store, stale: false };
 
@@ -373,7 +383,8 @@ async function smartHistory(symbol) {
 }
 
 /* ====================== 智慧匯率:同上 ====================== */
-async function smartFx(ccy) {
+function smartFx(ccy) { return coalesce("fx:" + ccy, () => smartFxInner(ccy)) }
+async function smartFxInner(ccy) {
   const store = loadStore("fx", ccy);
   if (store && Date.now() - store.fetchedAt < FRESH_MS) return { ...store, stale: false };
   try {
@@ -429,6 +440,72 @@ async function getNews(symbols) {
   return out;
 }
 
+/* ====================== 郵箱驗證(零依賴 SMTP,465 隱式 TLS) ======================
+   設定環境變數即啟用:SMTP_HOST / SMTP_PORT(預設465) / SMTP_USER / SMTP_PASS / SMTP_FROM
+   未設定時退回「免驗證直接註冊」模式(自架個人用)。 */
+const SMTP = {
+  host: process.env.SMTP_HOST, port: +(process.env.SMTP_PORT || 465),
+  user: process.env.SMTP_USER, pass: process.env.SMTP_PASS,
+  from: process.env.SMTP_FROM || process.env.SMTP_USER
+};
+const MAIL_ENABLED = !!(SMTP.host && SMTP.user && SMTP.pass);
+const mailer = {
+  send({ to, subject, text }) {
+    return new Promise((resolve, reject) => {
+      const tlsMod = require("tls");
+      const sock = tlsMod.connect({ host: SMTP.host, port: SMTP.port, servername: SMTP.host });
+      const tm = setTimeout(() => { sock.destroy(); reject(new Error("smtp_timeout")) }, 15000);
+      let buf = "", step = 0;
+      const b64 = s => Buffer.from(s).toString("base64");
+      const msg = [
+        `From: WealthLens <${SMTP.from}>`, `To: <${to}>`,
+        `Subject: =?UTF-8?B?${b64(subject)}?=`,
+        `MIME-Version: 1.0`, `Content-Type: text/plain; charset=utf-8`, ``,
+        text, ``
+      ].join("\r\n");
+      const steps = [
+        { expect: 220, cmd: `EHLO wealthlens` },
+        { expect: 250, cmd: `AUTH LOGIN` },
+        { expect: 334, cmd: b64(SMTP.user) },
+        { expect: 334, cmd: b64(SMTP.pass) },
+        { expect: 235, cmd: `MAIL FROM:<${SMTP.from}>` },
+        { expect: 250, cmd: `RCPT TO:<${to}>` },
+        { expect: 250, cmd: `DATA` },
+        { expect: 354, cmd: msg + "\r\n." },
+        { expect: 250, cmd: `QUIT`, done: true }
+      ];
+      sock.on("data", d => {
+        buf += d.toString();
+        // 取最後一行完整回應(處理 250-xxx 多行)
+        const lines = buf.split("\r\n").filter(Boolean);
+        const lastLine = lines[lines.length - 1] || "";
+        if (!/^\d{3} /.test(lastLine)) return; // 等待結尾行(代碼後接空格)
+        const code = +lastLine.slice(0, 3);
+        buf = "";
+        const st = steps[step];
+        if (!st) return;
+        if (code !== st.expect) { clearTimeout(tm); sock.destroy(); return reject(new Error("smtp_" + code)) }
+        sock.write(st.cmd + "\r\n");
+        if (st.done) { clearTimeout(tm); sock.end(); return resolve(true) }
+        step++;
+      });
+      sock.on("error", e => { clearTimeout(tm); reject(e) });
+    });
+  }
+};
+/* 待驗證註冊:email -> {name,salt,hash,code,exp,tries,lastSent} */
+const PENDING_F = path.join(DATA, "pending.json");
+let PENDING = readJSON(PENDING_F, {});
+function savePending() { writeJSON(PENDING_F, PENDING) }
+const genCode = () => String(crypto.randomInt(100000, 1000000));
+async function sendVerifyCode(email, code) {
+  await mailer.send({
+    to: email,
+    subject: "WealthLens 註冊驗證碼 / Verification Code",
+    text: `您的 WealthLens 註冊驗證碼為:${code}\n15 分鐘內有效。若非本人操作請忽略本郵件。\n\nYour WealthLens verification code is: ${code}\nIt expires in 15 minutes.`
+  });
+}
+
 /* ---------------------- 帳號系統 ---------------------- */
 const USERS_F = path.join(DATA, "users.json");
 let USERS = readJSON(USERS_F, {});
@@ -446,15 +523,23 @@ function userByToken(req) {
 function portfolioPath(uid) { return path.join(PORT_DIR, uid + ".json") }
 
 /* ---------------------- HTTP 工具 ---------------------- */
-function send(res, code, obj) {
-  res.writeHead(code, {
+const zlib = require("zlib");
+function send(req, res, code, obj) {
+  let body = Buffer.from(JSON.stringify(obj));
+  const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
     "Cache-Control": "no-store"
-  });
-  res.end(JSON.stringify(obj));
+  };
+  // 流量優化:>1KB 的 JSON 以 gzip 壓縮(歷史序列可省 75–85% 出網流量)
+  if (body.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+    body = zlib.gzipSync(body); headers["Content-Encoding"] = "gzip";
+  }
+  headers["Content-Length"] = body.length;
+  res.writeHead(code, headers);
+  res.end(body);
 }
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -470,7 +555,8 @@ function serveStatic(req, res, urlPath) {
   if (p === "/") p = "/index.html";
   const file = path.normalize(path.join(PUB, p));
   if (!file.startsWith(PUB)) { res.writeHead(403); return res.end("forbidden") }
-  fs.readFile(file, (err, buf) => {
+  fs.readFile(file, (err, buf0) => {
+    let buf = buf0;
     if (err) {
       if (!p.startsWith("/api")) return fs.readFile(path.join(PUB, "index.html"), (e2, b2) => {
         if (e2) { res.writeHead(404); return res.end("not found") }
@@ -478,7 +564,13 @@ function serveStatic(req, res, urlPath) {
       });
       res.writeHead(404); return res.end("not found");
     }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+    const mime = MIME[path.extname(file)] || "application/octet-stream";
+    const headers = { "Content-Type": mime };
+    if (/^(text\/|application\/json|image\/svg)/.test(mime) && buf.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+      buf = zlib.gzipSync(buf); headers["Content-Encoding"] = "gzip";
+    }
+    headers["Content-Length"] = buf.length;
+    res.writeHead(200, headers);
     res.end(buf);
   });
 }
@@ -498,81 +590,81 @@ const server = http.createServer(async (req, res) => {
   const ip = req.socket.remoteAddress || "?";
   const u = new URL(req.url, "http://x");
   const p = u.pathname;
-  if (req.method === "OPTIONS") return send(res, 204, {});
+  if (req.method === "OPTIONS") return send(req, res, 204, {});
   if (!p.startsWith("/api")) return serveStatic(req, res, req.url);
-  if (!rateOk(ip)) return send(res, 429, { error: "rate_limited" });
+  if (!rateOk(ip)) return send(req, res, 429, { error: "rate_limited" });
   try {
-    if (p === "/api/ping") return send(res, 200, { ok: true, t: Date.now() });
+    if (p === "/api/ping") return send(req, res, 200, { ok: true, t: Date.now() });
 
     /* ---- 市場數據 ---- */
     if (p === "/api/search") {
       const q = (u.searchParams.get("q") || "").trim();
-      if (!q) return send(res, 200, { results: [] });
-      try { return send(res, 200, await searchSymbols(q)) }
-      catch (e) { return send(res, 502, { error: "no_data" }) }
+      if (!q) return send(req, res, 200, { results: [] });
+      try { return send(req, res, 200, await searchSymbols(q)) }
+      catch (e) { return send(req, res, 502, { error: "no_data" }) }
     }
     if (p === "/api/history") {
       const sym = (u.searchParams.get("symbol") || "").trim();
-      if (!sym) return send(res, 400, { error: "missing_symbol" });
-      try { return send(res, 200, await smartHistory(sym)) }
-      catch (e) { return send(res, 502, { error: "no_data", detail: String(e.message || e) }) }
+      if (!sym) return send(req, res, 400, { error: "missing_symbol" });
+      try { return send(req, res, 200, await smartHistory(sym)) }
+      catch (e) { return send(req, res, 502, { error: "no_data", detail: String(e.message || e) }) }
     }
     if (p === "/api/fx") {
       const ccys = (u.searchParams.get("ccys") || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 12);
       const out = {};
       await Promise.all(ccys.map(async c => { try { out[c] = await smartFx(c) } catch (e) {} }));
-      return send(res, 200, out);
+      return send(req, res, 200, out);
     }
     if (p === "/api/news") {
       const syms = (u.searchParams.get("symbols") || "").split(",").map(s => s.trim()).filter(Boolean);
-      try { return send(res, 200, await getNews(syms)) }
-      catch (e) { return send(res, 200, { mine: [], hot: [] }) }
+      try { return send(req, res, 200, await getNews(syms)) }
+      catch (e) { return send(req, res, 200, { mine: [], hot: [] }) }
     }
 
     /* ---- #5 自訂數據源管理(需登入) ---- */
     if (p === "/api/custom-sources") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       if (req.method === "POST") {
         const b = await readBody(req);
         const sym = String(b.symbol || "").trim().toUpperCase();
-        if (!/^[A-Z0-9._\-]{1,24}$/.test(sym)) return send(res, 400, { error: "bad_symbol" });
-        if (!isSafeUrl(String(b.url || ""))) return send(res, 400, { error: "bad_url" });
+        if (!/^[A-Z0-9._\-]{1,24}$/.test(sym)) return send(req, res, 400, { error: "bad_symbol" });
+        if (!isSafeUrl(String(b.url || ""))) return send(req, res, 400, { error: "bad_url" });
         try { jsonPathTokens(String(b.datePath || "")); jsonPathTokens(String(b.pricePath || "")) }
-        catch (e) { return send(res, 400, { error: "bad_path", detail: String(e.message || e) }) }
+        catch (e) { return send(req, res, 400, { error: "bad_path", detail: String(e.message || e) }) }
         CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60) };
         saveCustom();
         try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {} // 清庫存,下次請求即用新設定重抓
-        return send(res, 200, { ok: true, symbol: sym });
+        return send(req, res, 200, { ok: true, symbol: sym });
       }
-      return send(res, 200, { sources: Object.entries(CUSTOM).map(([s, c]) => ({ symbol: s, ...c })) });
+      return send(req, res, 200, { sources: Object.entries(CUSTOM).map(([s, c]) => ({ symbol: s, ...c })) });
     }
     if (p === "/api/custom-sources/delete" && req.method === "POST") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
       const sym = String(b.symbol || "").trim().toUpperCase();
       delete CUSTOM[sym]; saveCustom();
       try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {}
-      return send(res, 200, { ok: true });
+      return send(req, res, 200, { ok: true });
     }
     if (p === "/api/custom-sources/test" && req.method === "POST") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
       try {
         const doc = await customHistory("TEST", { url: String(b.url || ""), datePath: String(b.datePath || ""), pricePath: String(b.pricePath || ""), ccy: b.ccy, name: b.name });
         const rows = doc.dates.map((d, i) => [d, doc.raw[i]]);
-        return send(res, 200, { ok: true, count: rows.length, first: rows.slice(0, 3), lastRows: rows.slice(-3) });
-      } catch (e) { return send(res, 400, { error: "test_failed", detail: String(e.message || e) }) }
+        return send(req, res, 200, { ok: true, count: rows.length, first: rows.slice(0, 3), lastRows: rows.slice(-3) });
+      } catch (e) { return send(req, res, 400, { error: "test_failed", detail: String(e.message || e) }) }
     }
 
     if (p === "/api/alerts") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       let lines = [];
       try { lines = fs.readFileSync(ALERTS_F, "utf8").trim().split("\n").slice(-100) } catch (e) {}
-      return send(res, 200, { alerts: lines });
+      return send(req, res, 200, { alerts: lines });
     }
 
     /* ---- 帳號 ---- */
@@ -580,57 +672,92 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
       const pwd = String(b.pwd || "");
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "bad_email" });
-      if (pwd.length < 4) return send(res, 400, { error: "weak_pwd" });
-      if (USERS[email]) return send(res, 409, { error: "exists" });
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(req, res, 400, { error: "bad_email" });
+      if (pwd.length < 4) return send(req, res, 400, { error: "weak_pwd" });
+      if (USERS[email]) return send(req, res, 409, { error: "exists" });
       const salt = crypto.randomBytes(16).toString("hex");
-      const usr = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [] };
+      const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [] };
+      if (MAIL_ENABLED) { // 郵箱驗證:先入待驗證區,寄送 6 位驗證碼
+        const code = genCode();
+        PENDING[email] = { ...rec, code, exp: Date.now() + 15 * 60e3, tries: 0, lastSent: Date.now() };
+        savePending();
+        try { await sendVerifyCode(email, code) }
+        catch (e) { delete PENDING[email]; savePending(); log("smtp fail", String(e.message || e)); return send(req, res, 502, { error: "mail_failed" }) }
+        return send(req, res, 200, { pending: true });
+      }
+      const token = newToken(rec);
+      USERS[email] = rec; saveUsers();
+      return send(req, res, 200, { token, user: pubUser(rec, email) });
+    }
+    if (p === "/api/auth/verify" && req.method === "POST") {
+      const b = await readBody(req);
+      const email = String(b.email || "").trim().toLowerCase();
+      const pd = PENDING[email];
+      if (!pd) return send(req, res, 404, { error: "no_pending" });
+      if (Date.now() > pd.exp) { delete PENDING[email]; savePending(); return send(req, res, 400, { error: "code_expired" }) }
+      pd.tries = (pd.tries || 0) + 1;
+      if (pd.tries > 5) { delete PENDING[email]; savePending(); return send(req, res, 429, { error: "too_many_tries" }) }
+      if (String(b.code || "").trim() !== pd.code) { savePending(); return send(req, res, 401, { error: "bad_code" }) }
+      const usr = { id: pd.id, name: pd.name, avatar: pd.avatar, salt: pd.salt, hash: pd.hash, tokens: [] };
       const token = newToken(usr);
       USERS[email] = usr; saveUsers();
-      return send(res, 200, { token, user: pubUser(usr, email) });
+      delete PENDING[email]; savePending();
+      return send(req, res, 200, { token, user: pubUser(usr, email) });
+    }
+    if (p === "/api/auth/resend" && req.method === "POST") {
+      const b = await readBody(req);
+      const email = String(b.email || "").trim().toLowerCase();
+      const pd = PENDING[email];
+      if (!pd) return send(req, res, 404, { error: "no_pending" });
+      if (Date.now() - (pd.lastSent || 0) < 60e3) return send(req, res, 429, { error: "resend_too_fast" });
+      pd.code = genCode(); pd.exp = Date.now() + 15 * 60e3; pd.tries = 0; pd.lastSent = Date.now();
+      savePending();
+      try { await sendVerifyCode(email, pd.code) }
+      catch (e) { return send(req, res, 502, { error: "mail_failed" }) }
+      return send(req, res, 200, { ok: true });
     }
     if (p === "/api/auth/login" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
       const usr = USERS[email];
-      if (!usr) return send(res, 404, { error: "no_user" });
-      if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(res, 401, { error: "bad_pwd" });
+      if (!usr) return send(req, res, 404, { error: "no_user" });
+      if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });
       const token = newToken(usr); saveUsers();
-      return send(res, 200, { token, user: pubUser(usr, email) });
+      return send(req, res, 200, { token, user: pubUser(usr, email) });
     }
     if (p === "/api/auth/logout" && req.method === "POST") {
       const a = userByToken(req);
       if (a) { a.u.tokens = a.u.tokens.filter(t => t !== a.token); saveUsers() }
-      return send(res, 200, { ok: true });
+      return send(req, res, 200, { ok: true });
     }
     if (p === "/api/auth/password" && req.method === "POST") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
-      if (hashPwd(String(b.oldPwd || ""), a.u.salt) !== a.u.hash) return send(res, 401, { error: "bad_pwd" });
-      if (String(b.newPwd || "").length < 4) return send(res, 400, { error: "weak_pwd" });
+      if (hashPwd(String(b.oldPwd || ""), a.u.salt) !== a.u.hash) return send(req, res, 401, { error: "bad_pwd" });
+      if (String(b.newPwd || "").length < 4) return send(req, res, 400, { error: "weak_pwd" });
       a.u.salt = crypto.randomBytes(16).toString("hex");
       a.u.hash = hashPwd(String(b.newPwd), a.u.salt);
       a.u.tokens = [a.token];
       saveUsers();
-      return send(res, 200, { ok: true });
+      return send(req, res, 200, { ok: true });
     }
     if (p === "/api/me") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       if (req.method === "POST") {
         const b = await readBody(req);
         if (b.name) a.u.name = String(b.name).slice(0, 40);
         if (b.avatar) a.u.avatar = String(b.avatar).slice(0, 8);
         saveUsers();
       }
-      return send(res, 200, { user: pubUser(a.u, a.email) });
+      return send(req, res, 200, { user: pubUser(a.u, a.email) });
     }
 
     /* ---- 投資組合同步 ---- */
     if (p === "/api/portfolio") {
       const a = userByToken(req);
-      if (!a) return send(res, 401, { error: "unauthorized" });
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
       const f = portfolioPath(a.u.id);
       if (req.method === "PUT") {
         const b = await readBody(req);
@@ -640,15 +767,15 @@ const server = http.createServer(async (req, res) => {
           updatedAt: Date.now()
         };
         writeJSON(f, doc);
-        return send(res, 200, { ok: true, updatedAt: doc.updatedAt });
+        return send(req, res, 200, { ok: true, updatedAt: doc.updatedAt });
       }
-      return send(res, 200, readJSON(f, { txns: [], settings: null, updatedAt: 0 }));
+      return send(req, res, 200, readJSON(f, { txns: [], settings: null, updatedAt: 0 }));
     }
 
-    return send(res, 404, { error: "not_found" });
+    return send(req, res, 404, { error: "not_found" });
   } catch (e) {
     log("ERR", p, e.message);
-    return send(res, 500, { error: "server_error", detail: String(e.message || e) });
+    return send(req, res, 500, { error: "server_error", detail: String(e.message || e) });
   }
 });
 
@@ -681,9 +808,20 @@ async function prefetchAll() {
       try { await smartFx(c) } catch (e) {}
       await sleep(500);
     }
+    // 快取 GC:清除 7 天未更新之短效快取檔
+    try {
+      const cut = Date.now() - 7 * 864e5;
+      for (const f of fs.readdirSync(CACHE_DIR)) {
+        const fp = path.join(CACHE_DIR, f);
+        if (fs.statSync(fp).mtimeMs < cut) fs.unlinkSync(fp);
+      }
+    } catch (e) {}
     log(`prefetch done: ok=${ok} fail=${fail}`);
   } finally { prefetchRunning = false }
 }
+
+server.requestTimeout = 30000;   // 慢速請求(slowloris)防護
+server.headersTimeout = 35000;
 
 if (require.main === module) {
   server.listen(PORT, () => log(`WealthLens server v3.1 listening on http://localhost:${PORT}`));
@@ -695,5 +833,5 @@ if (require.main === module) {
     }
   }, 10 * 60e3);
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, get PENDING(){return PENDING} };
 }

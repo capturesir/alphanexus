@@ -1,6 +1,6 @@
 {
   "name": "wealthlens",
-  "version": "2.0.0",
+  "version": "3.2.0",
   "description": "Mobile-first portfolio tracker with live market data, TWR/MWR, multi-currency and cloud sync",
   "main": "server.js",
   "scripts": { "start": "node server.js" },

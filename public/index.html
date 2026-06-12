@@ -166,6 +166,15 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
         <button class="btn btn-primary" style="width:100%" id="btnLogin" data-i18n="login">登入 / 註冊</button>
         <div style="height:8px"></div>
         <button class="btn" style="width:100%" id="btnGuest" data-i18n="guest">以訪客身份使用</button>
+        <div id="verifyBox" style="display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div class="tiny" style="margin-bottom:6px">📨 <span data-i18n="verifyTitle">驗證碼已寄至您的信箱,請於 15 分鐘內輸入</span></div>
+          <input id="verifyCode" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;letter-spacing:6px;font-size:18px">
+          <div style="height:8px"></div>
+          <div class="row">
+            <button class="btn" id="btnResend" data-i18n="resendBtn">重寄</button>
+            <button class="btn btn-primary grow" id="btnVerify" data-i18n="verifyBtn">驗證並完成註冊</button>
+          </div>
+        </div>
         <div class="tiny" style="text-align:center;margin-top:10px" data-i18n="demoNote">訪客模式會載入示範組合，可隨時清除</div>
       </div>
       <div class="row" style="justify-content:center;gap:6px">
@@ -447,7 +456,7 @@ cash:"現金",unrealPL:"未實現損益",costBasis:"成本",mktVal:"市值",qty:
 noHoldings:"尚未有持倉，點擊右上「＋新增」輸入第一筆交易",noTxn:"尚無交易記錄",noNews:"暫無相關資訊",
 confirmDel:"確定刪除此交易？",saved:"已儲存",deleted:"已刪除",cleared:"已清除所有數據",seeded:"已載入示範組合",
 profile:"個人資訊",nickname:"暱稱",avatar:"頭像",oldPwd:"舊密碼",newPwd:"新密碼",pwdChanged:"密碼已更新",pwdWrong:"舊密碼不正確",
-guestMode:"訪客模式（數據僅保存在本機）",memberMode:"已登入會員",fillEmail:"請輸入電郵及密碼",liveData:"即時數據",simData:"模擬數據",loading:"載入中…",pwdTooShort:"密碼至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手續費",customSrc:"自訂數據源",tFee:"費用",tLiability:"負債",expHint:"費用/負債支出將自現金扣除,自然反映於回報率(不視為外部資金流)",autoDivNote:"系統自動入帳之預估股息;修改後將視為手動紀錄",grossLbl:"稅前",autoDivLbl:"自動股息入帳",autoDivHint:"除淨日按持股自動入帳(可逐筆修改)",divTaxLbl:"股息預扣稅率",divTaxHint:"自動股息以稅後金額入帳;預設 0%",divTaxApplied:"已更新自動股息筆數:",customSrcWarn:"此為自訂第三方數據源,若目標網站結構變更可能導致數據失效。",exclOpt:"曲線不含期權現值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累計費用/負債支出",customSrcHint:"以 JSONPath 接入任意 API 的歷史價格",customSrcDesc:"提供 API 網址與 JSONPath(日期/價格路徑),即可為任意基金、債券或理財產品接入歷史價。儲存後在交易中直接使用該代碼。",manage:"管理",csvLbl:"交易紀錄 CSV",csvHint:"匯出備份,或自券商/其他平台匯入",exportCsv:"匯出",importCsv:"匯入",exported:"已匯出",importedN:"已匯入",importReplaceQ:"按「確定」取代現有全部交易;按「取消」則合併加入。",importBad:"CSV 格式無法解析",needLive:"此功能需要即時數據模式(經伺服器開啟頁面)",srcUrl:"API 網址",datePath:"日期路徑(JSONPath)",pricePath:"價格路徑(JSONPath)",testBtn:"測試",testOk:"解析成功",rowsLbl:"筆",noCustomSrc:"尚未設定任何自訂數據源",feeOpt:"手續費(選填)",optional:"選填",incomeReceived:"已收",divTTM:"近一年股息約",incomeTotalLbl:"累計股息/利息收入",divHint:"股息/利息將計入現金,並反映在 TWR/MWR 報酬率中(不視為外部資金流)",
+guestMode:"訪客模式（數據僅保存在本機）",memberMode:"已登入會員",fillEmail:"請輸入電郵及密碼",liveData:"即時數據",simData:"模擬數據",loading:"載入中…",pwdTooShort:"密碼至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手續費",customSrc:"自訂數據源",tFee:"費用",verifyTitle:"驗證碼已寄至您的信箱,請於 15 分鐘內輸入",verifyBtn:"驗證並完成註冊",resendBtn:"重寄",resendOk:"已重寄驗證碼",resendWait:"請稍候 60 秒再重寄",codeWrong:"驗證碼錯誤",codeExpired:"驗證碼已過期,請重寄",codeTooMany:"嘗試次數過多,請重新註冊",mailFailed:"郵件寄送失敗,請稍後再試",tLiability:"負債",expHint:"費用/負債支出將自現金扣除,自然反映於回報率(不視為外部資金流)",autoDivNote:"系統自動入帳之預估股息;修改後將視為手動紀錄",grossLbl:"稅前",autoDivLbl:"自動股息入帳",autoDivHint:"除淨日按持股自動入帳(可逐筆修改)",divTaxLbl:"股息預扣稅率",divTaxHint:"自動股息以稅後金額入帳;預設 0%",divTaxApplied:"已更新自動股息筆數:",customSrcWarn:"此為自訂第三方數據源,若目標網站結構變更可能導致數據失效。",exclOpt:"曲線不含期權現值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累計費用/負債支出",customSrcHint:"以 JSONPath 接入任意 API 的歷史價格",customSrcDesc:"提供 API 網址與 JSONPath(日期/價格路徑),即可為任意基金、債券或理財產品接入歷史價。儲存後在交易中直接使用該代碼。",manage:"管理",csvLbl:"交易紀錄 CSV",csvHint:"匯出備份,或自券商/其他平台匯入",exportCsv:"匯出",importCsv:"匯入",exported:"已匯出",importedN:"已匯入",importReplaceQ:"按「確定」取代現有全部交易;按「取消」則合併加入。",importBad:"CSV 格式無法解析",needLive:"此功能需要即時數據模式(經伺服器開啟頁面)",srcUrl:"API 網址",datePath:"日期路徑(JSONPath)",pricePath:"價格路徑(JSONPath)",testBtn:"測試",testOk:"解析成功",rowsLbl:"筆",noCustomSrc:"尚未設定任何自訂數據源",feeOpt:"手續費(選填)",optional:"選填",incomeReceived:"已收",divTTM:"近一年股息約",incomeTotalLbl:"累計股息/利息收入",divHint:"股息/利息將計入現金,並反映在 TWR/MWR 報酬率中(不視為外部資金流)",
 twrIdx:"TWR 累積回報",mwrIdx:"MWR（年化·滾動）",portfolio:"我的組合",netFlowNote:"外部資金流",
 newsJustNow:"剛剛",hAgo:"小時前",dAgo:"天前",searchNoRes:"找不到符合的代碼",
 optHint:"美股期權格式：代碼+到期+C/P+行使價",ccyConvNote:"以當日匯率折算為",
@@ -469,7 +478,7 @@ cash:"现金",unrealPL:"未实现损益",costBasis:"成本",mktVal:"市值",qty:
 noHoldings:"尚未有持仓，点击右上「＋新增」输入第一笔交易",noTxn:"暂无交易记录",noNews:"暂无相关资讯",
 confirmDel:"确定删除此交易？",saved:"已保存",deleted:"已删除",cleared:"已清除所有数据",seeded:"已载入示范组合",
 profile:"个人资料",nickname:"昵称",avatar:"头像",oldPwd:"旧密码",newPwd:"新密码",pwdChanged:"密码已更新",pwdWrong:"旧密码不正确",
-guestMode:"访客模式（数据仅保存在本机）",memberMode:"已登录会员",fillEmail:"请输入邮箱及密码",liveData:"实时数据",simData:"模拟数据",loading:"加载中…",pwdTooShort:"密码至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手续费",customSrc:"自定义数据源",tFee:"费用",tLiability:"负债",expHint:"费用/负债支出将自现金扣除,自然反映于回报率(不视为外部资金流)",autoDivNote:"系统自动入账之预估股息;修改后将视为手动记录",grossLbl:"税前",autoDivLbl:"自动股息入账",autoDivHint:"除净日按持股自动入账(可逐笔修改)",divTaxLbl:"股息预扣税率",divTaxHint:"自动股息以税后金额入账;默认 0%",divTaxApplied:"已更新自动股息笔数:",customSrcWarn:"此为自定义第三方数据源,若目标网站结构变更可能导致数据失效。",exclOpt:"曲线不含期权现值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累计费用/负债支出",customSrcHint:"以 JSONPath 接入任意 API 的历史价格",customSrcDesc:"提供 API 网址与 JSONPath(日期/价格路径),即可为任意基金、债券或理财产品接入历史价。保存后在交易中直接使用该代码。",manage:"管理",csvLbl:"交易记录 CSV",csvHint:"导出备份,或自券商/其他平台导入",exportCsv:"导出",importCsv:"导入",exported:"已导出",importedN:"已导入",importReplaceQ:"按「确定」替换现有全部交易;按「取消」则合并加入。",importBad:"CSV 格式无法解析",needLive:"此功能需要实时数据模式(经服务器打开页面)",srcUrl:"API 网址",datePath:"日期路径(JSONPath)",pricePath:"价格路径(JSONPath)",testBtn:"测试",testOk:"解析成功",rowsLbl:"条",noCustomSrc:"尚未设置任何自定义数据源",feeOpt:"手续费(选填)",optional:"选填",incomeReceived:"已收",divTTM:"近一年股息约",incomeTotalLbl:"累计股息/利息收入",divHint:"股息/利息将计入现金,并反映在 TWR/MWR 回报率中(不视为外部资金流)",
+guestMode:"访客模式（数据仅保存在本机）",memberMode:"已登录会员",fillEmail:"请输入邮箱及密码",liveData:"实时数据",simData:"模拟数据",loading:"加载中…",pwdTooShort:"密码至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手续费",customSrc:"自定义数据源",tFee:"费用",verifyTitle:"验证码已发送至您的邮箱,请于 15 分钟内输入",verifyBtn:"验证并完成注册",resendBtn:"重发",resendOk:"已重发验证码",resendWait:"请稍候 60 秒再重发",codeWrong:"验证码错误",codeExpired:"验证码已过期,请重发",codeTooMany:"尝试次数过多,请重新注册",mailFailed:"邮件发送失败,请稍后再试",tLiability:"负债",expHint:"费用/负债支出将自现金扣除,自然反映于回报率(不视为外部资金流)",autoDivNote:"系统自动入账之预估股息;修改后将视为手动记录",grossLbl:"税前",autoDivLbl:"自动股息入账",autoDivHint:"除净日按持股自动入账(可逐笔修改)",divTaxLbl:"股息预扣税率",divTaxHint:"自动股息以税后金额入账;默认 0%",divTaxApplied:"已更新自动股息笔数:",customSrcWarn:"此为自定义第三方数据源,若目标网站结构变更可能导致数据失效。",exclOpt:"曲线不含期权现值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累计费用/负债支出",customSrcHint:"以 JSONPath 接入任意 API 的历史价格",customSrcDesc:"提供 API 网址与 JSONPath(日期/价格路径),即可为任意基金、债券或理财产品接入历史价。保存后在交易中直接使用该代码。",manage:"管理",csvLbl:"交易记录 CSV",csvHint:"导出备份,或自券商/其他平台导入",exportCsv:"导出",importCsv:"导入",exported:"已导出",importedN:"已导入",importReplaceQ:"按「确定」替换现有全部交易;按「取消」则合并加入。",importBad:"CSV 格式无法解析",needLive:"此功能需要实时数据模式(经服务器打开页面)",srcUrl:"API 网址",datePath:"日期路径(JSONPath)",pricePath:"价格路径(JSONPath)",testBtn:"测试",testOk:"解析成功",rowsLbl:"条",noCustomSrc:"尚未设置任何自定义数据源",feeOpt:"手续费(选填)",optional:"选填",incomeReceived:"已收",divTTM:"近一年股息约",incomeTotalLbl:"累计股息/利息收入",divHint:"股息/利息将计入现金,并反映在 TWR/MWR 回报率中(不视为外部资金流)",
 twrIdx:"TWR 累计回报",mwrIdx:"MWR（年化·滚动）",portfolio:"我的组合",netFlowNote:"外部资金流",
 newsJustNow:"刚刚",hAgo:"小时前",dAgo:"天前",searchNoRes:"找不到符合的代码",
 optHint:"美股期权格式：代码+到期+C/P+行权价",ccyConvNote:"按当日汇率折算为",
@@ -491,7 +500,7 @@ cash:"Cash",unrealPL:"Unrealized P/L",costBasis:"Cost",mktVal:"Market value",qty
 noHoldings:"No holdings yet. Tap “＋ Add” to enter your first trade.",noTxn:"No transactions yet",noNews:"No related news",
 confirmDel:"Delete this transaction?",saved:"Saved",deleted:"Deleted",cleared:"All data cleared",seeded:"Demo portfolio loaded",
 profile:"Profile",nickname:"Nickname",avatar:"Avatar",oldPwd:"Old password",newPwd:"New password",pwdChanged:"Password updated",pwdWrong:"Old password incorrect",
-guestMode:"Guest mode (data stays on this device)",memberMode:"Signed in",fillEmail:"Please enter email and password",liveData:"Live data",simData:"Simulated data",loading:"Loading…",pwdTooShort:"Password too short (min 4)",tDividend:"Dividend",tInterest:"Interest",fee:"Fee",customSrc:"Custom data sources",tFee:"Fee",tLiability:"Liability",expHint:"Fees/liabilities are deducted from cash and naturally reduce returns (not external flows)",autoDivNote:"Estimated dividend auto-booked by the system; editing converts it to a manual record",grossLbl:"Gross",autoDivLbl:"Auto dividend booking",autoDivHint:"Booked on ex-date based on holdings (editable per entry)",divTaxLbl:"Dividend withholding tax",divTaxHint:"Auto dividends are booked net of tax; default 0%",divTaxApplied:"Auto dividends updated:",customSrcWarn:"This is a custom third-party source; data may break if the target site changes.",exclOpt:"Curve excludes options value",evDiv:"dividend",evSplit:"split",perShare:"sh",expenseTotalLbl:"Total fees/liabilities",customSrcHint:"Feed any API via JSONPath",customSrcDesc:"Provide an API URL plus JSONPath for dates/prices to track any fund, bond or product. After saving, use the symbol directly in transactions.",manage:"Manage",csvLbl:"Transactions CSV",csvHint:"Export a backup, or import from brokers/other apps",exportCsv:"Export",importCsv:"Import",exported:"Exported",importedN:"Imported",importReplaceQ:"OK = replace all existing transactions; Cancel = merge.",importBad:"Could not parse CSV",needLive:"Requires live-data mode (open via the server)",srcUrl:"API URL",datePath:"Date path (JSONPath)",pricePath:"Price path (JSONPath)",testBtn:"Test",testOk:"Parsed",rowsLbl:"rows",noCustomSrc:"No custom sources yet",feeOpt:"Fee (optional)",optional:"optional",incomeReceived:"Received",divTTM:"TTM div ≈",incomeTotalLbl:"Total dividend/interest income",divHint:"Dividends/interest are added to cash and reflected in TWR/MWR (not treated as external flows)",
+guestMode:"Guest mode (data stays on this device)",memberMode:"Signed in",fillEmail:"Please enter email and password",liveData:"Live data",simData:"Simulated data",loading:"Loading…",pwdTooShort:"Password too short (min 4)",tDividend:"Dividend",tInterest:"Interest",fee:"Fee",customSrc:"Custom data sources",tFee:"Fee",verifyTitle:"A verification code was sent to your email; enter it within 15 minutes",verifyBtn:"Verify & register",resendBtn:"Resend",resendOk:"Code resent",resendWait:"Please wait 60s before resending",codeWrong:"Incorrect code",codeExpired:"Code expired, please resend",codeTooMany:"Too many attempts, please register again",mailFailed:"Failed to send email, try again later",tLiability:"Liability",expHint:"Fees/liabilities are deducted from cash and naturally reduce returns (not external flows)",autoDivNote:"Estimated dividend auto-booked by the system; editing converts it to a manual record",grossLbl:"Gross",autoDivLbl:"Auto dividend booking",autoDivHint:"Booked on ex-date based on holdings (editable per entry)",divTaxLbl:"Dividend withholding tax",divTaxHint:"Auto dividends are booked net of tax; default 0%",divTaxApplied:"Auto dividends updated:",customSrcWarn:"This is a custom third-party source; data may break if the target site changes.",exclOpt:"Curve excludes options value",evDiv:"dividend",evSplit:"split",perShare:"sh",expenseTotalLbl:"Total fees/liabilities",customSrcHint:"Feed any API via JSONPath",customSrcDesc:"Provide an API URL plus JSONPath for dates/prices to track any fund, bond or product. After saving, use the symbol directly in transactions.",manage:"Manage",csvLbl:"Transactions CSV",csvHint:"Export a backup, or import from brokers/other apps",exportCsv:"Export",importCsv:"Import",exported:"Exported",importedN:"Imported",importReplaceQ:"OK = replace all existing transactions; Cancel = merge.",importBad:"Could not parse CSV",needLive:"Requires live-data mode (open via the server)",srcUrl:"API URL",datePath:"Date path (JSONPath)",pricePath:"Price path (JSONPath)",testBtn:"Test",testOk:"Parsed",rowsLbl:"rows",noCustomSrc:"No custom sources yet",feeOpt:"Fee (optional)",optional:"optional",incomeReceived:"Received",divTTM:"TTM div ≈",incomeTotalLbl:"Total dividend/interest income",divHint:"Dividends/interest are added to cash and reflected in TWR/MWR (not treated as external flows)",
 twrIdx:"TWR cumulative return",mwrIdx:"MWR (annualized, rolling)",portfolio:"My portfolio",netFlowNote:"external cash flow",
 newsJustNow:"just now",hAgo:"h ago",dAgo:"d ago",searchNoRes:"No matching tickers",
 optHint:"US option format: ticker+expiry+C/P+strike",ccyConvNote:"converted at daily FX into",
@@ -1934,6 +1943,16 @@ async function init(){
   Chart.init();bindChartUI();bindMe();syncChartType();renderCmpTags();
   // 登入
   $$("#authScreen [data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.setlang;applyI18n()});
+  async function finishAuth(r){
+    state.token=r.token; state.user={...r.user,guest:false};
+    await kvSet("wl_token",r.token);
+    try{
+      const p=await api("/api/portfolio");
+      if(p&&Array.isArray(p.txns)&&p.txns.length){ state.txns=p.txns; if(p.settings)state.settings={...state.settings,...p.settings} }
+      else if(state.txns.length){ await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}) }
+    }catch(e){}
+    await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
+  }
   $("#btnLogin").onclick=async()=>{
     const em=$("#loginEmail").value.trim(),pw=$("#loginPwd").value;
     if(!em||!pw)return toast(T("fillEmail"));
@@ -1945,20 +1964,28 @@ async function init(){
           if(String(e.message)==="no_user") r=await apiPost("/api/auth/register",{email:em,pwd:pw,name:em.split("@")[0]});
           else throw e;
         }
-        state.token=r.token; state.user={...r.user,guest:false};
-        await kvSet("wl_token",r.token);
-        try{
-          const p=await api("/api/portfolio");
-          if(p&&Array.isArray(p.txns)&&p.txns.length){ state.txns=p.txns; if(p.settings)state.settings={...state.settings,...p.settings} }
-          else if(state.txns.length){ await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}) }
-        }catch(e){}
+        if(r.pending){ $("#verifyBox").style.display="block";$("#verifyCode").focus();return } // 郵箱驗證模式
+        return await finishAuth(r);
       }catch(e){
-        return toast(String(e.message)==="bad_pwd"?T("pwdWrong"):String(e.message)==="weak_pwd"?T("pwdTooShort"):(e.message||"Error"));
+        const m=String(e.message);
+        return toast(m==="bad_pwd"?T("pwdWrong"):m==="weak_pwd"?T("pwdTooShort"):m==="mail_failed"?T("mailFailed"):(e.message||"Error"));
       }
-    }else{
-      state.user={name:em.split("@")[0],email:em,avatar:"🙂",guest:false,pwd:pw};
     }
+    state.user={name:em.split("@")[0],email:em,avatar:"🙂",guest:false,pwd:pw};
     await persist();$("#authScreen").style.display="none";refreshAll();
+  };
+  $("#btnVerify").onclick=async()=>{
+    const em=$("#loginEmail").value.trim(),code=$("#verifyCode").value.trim();
+    if(code.length!==6)return toast(T("codeWrong"));
+    try{ await finishAuth(await apiPost("/api/auth/verify",{email:em,code})) }
+    catch(e){
+      const m=String(e.message);
+      toast(m==="bad_code"?T("codeWrong"):m==="code_expired"||m==="no_pending"?T("codeExpired"):m==="too_many_tries"?T("codeTooMany"):(e.message||"Error"));
+    }
+  };
+  $("#btnResend").onclick=async()=>{
+    try{ await apiPost("/api/auth/resend",{email:$("#loginEmail").value.trim()});toast("📨 "+T("resendOk")) }
+    catch(e){ toast(String(e.message)==="resend_too_fast"?T("resendWait"):T("mailFailed")) }
   };
   $("#btnGuest").onclick=async()=>{
     state.user={name:"Guest",email:"",avatar:"🦊",guest:true};

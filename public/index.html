@@ -351,7 +351,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
       </div>
       <div class="setting-row">
         <div><b data-i18n="autoDivLbl">自動股息入帳</b><div class="tiny" data-i18n="autoDivHint">除淨日按持股自動入帳(可逐筆修改)</div></div>
-        <label class="switch"><input type="checkbox" id="autoDivToggle"><span class="knob"></span></label>
+        <button class="switch" id="autoDivToggle"></button>
       </div>
       <div class="setting-row">
         <div><b data-i18n="divTaxLbl">股息預扣稅率</b><div class="tiny" data-i18n="divTaxHint">自動股息以稅後金額入帳;預設 0%</div></div>
@@ -1825,10 +1825,9 @@ function bindMe(){
   };
   $("#btnSeed").onclick=async()=>{seedDemo();await persist();refreshAll();toast(T("seeded"))};
   const adt=$("#autoDivToggle");
-  const adtLabel=adt.closest(".switch");
-  adt.checked=state.settings.autoDiv!==false;
-  adtLabel.classList.toggle("on",adt.checked);
-  adt.onchange=async()=>{state.settings.autoDiv=adt.checked;adtLabel.classList.toggle("on",adt.checked);await persist();if(adt.checked)scheduleLive()};
+  let autoDivOn=state.settings.autoDiv!==false;
+  adt.classList.toggle("on",autoDivOn);
+  adt.onclick=async()=>{autoDivOn=!autoDivOn;state.settings.autoDiv=autoDivOn;adt.classList.toggle("on",autoDivOn);await persist();if(autoDivOn)scheduleLive()};
   const dti=$("#divTaxInput");
   dti.value=isFinite(parseFloat(state.settings.divTax))?state.settings.divTax:0;
   dti.onchange=async()=>{

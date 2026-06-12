@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* =========================================================================
-   WealthLens Server v3.1 — 零依賴 Node.js (>=18) 後端
+   WealthLens Server v0.1 — 零依賴 Node.js (>=18) 後端
    本版升級(借鏡 Ghostfolio / Portfolio Performance 架構):
    1. 數據源抽象層 + 備援鏈:
         歷史價  : Yahoo Finance(主) → Stooq(備,美/港/日股)→ 過期庫存
@@ -824,7 +824,7 @@ server.requestTimeout = 30000;   // 慢速請求(slowloris)防護
 server.headersTimeout = 35000;
 
 if (require.main === module) {
-  server.listen(PORT, () => log(`WealthLens server v3.1 listening on http://localhost:${PORT}`));
+  server.listen(PORT, () => log(`WealthLens server v0.1 listening on http://localhost:${PORT}`));
   if (PREFETCH_HOUR >= 0) setInterval(() => {
     const now = new Date(), day = now.toISOString().slice(0, 10);
     if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {

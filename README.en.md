@@ -4,6 +4,16 @@
 
 A mobile-first, multi-language (Traditional Chinese / Simplified Chinese / English) portfolio tracking platform with live and historical market data, TWR/MWR performance metrics, multi-currency conversion, gesture-enabled charts (pinch-to-zoom / drag), ETF comparison, user authentication, and cloud sync.
 
+## Screenshots
+
+| Asset List | Performance Chart |
+|:---:|:---:|
+| ![Asset List](docs/screenshots/asset-list.jpeg) | ![Performance Chart](docs/screenshots/performance-chart.jpeg) |
+
+| News | Settings |
+|:---:|:---:|
+| ![News](docs/screenshots/news.jpeg) | ![Settings](docs/screenshots/settings.jpeg) |
+
 ## Project Structure
 
 ```

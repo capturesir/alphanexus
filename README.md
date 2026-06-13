@@ -5,6 +5,16 @@
 手機優先的多語言(繁/簡/英)投資組合追蹤平台,支援即時與歷史市場數據、TWR/MWR 績效、
 多貨幣換算、手勢圖表(捏合縮放/拖動)、ETF 比較、真實帳號系統與雲端同步。
 
+## 截圖
+
+| 資產列表 | 變化圖 |
+|:---:|:---:|
+| ![資產列表](docs/screenshots/asset-list.jpeg) | ![變化圖](docs/screenshots/performance-chart.jpeg) |
+
+| 資訊 | 我的 |
+|:---:|:---:|
+| ![資訊](docs/screenshots/news.jpeg) | ![我的](docs/screenshots/settings.jpeg) |
+
 ## 專案結構
 
 ```

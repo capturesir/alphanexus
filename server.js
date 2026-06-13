@@ -423,9 +423,35 @@ async function getNews(symbols) {
     title: n.title, src: n.publisher || "", url: n.link || "",
     agoH: Math.max(0.1, (nowS - (n.providerPublishTime || nowS)) / 3600), sym: sym || null
   })).filter(n => n.title && n.url);
+
+  // 將代碼解析為查詢詞:優先用公司/基金名稱(本地庫存的 history meta 已有 name);
+  // 非美股額外用「去後綴代碼 + 名稱」組合,避開 Yahoo 對 .HK/.SS/.T 後綴新聞索引不佳的問題
+  async function queryFor(sym) {
+    const queries = [];
+    const store = loadStore("hist", sym);
+    const name = store && store.name && store.name !== sym ? store.name : null;
+    const mkt = mktOf(sym);
+    if (mkt === "US") {
+      queries.push(sym);                          // 美股:代碼本身索引良好
+      if (name) queries.push(name);
+    } else {
+      if (name) queries.push(name);               // 港/A/日股:優先用名稱
+      queries.push(sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, "")); // 去後綴的純數字/代碼
+      queries.push(sym);
+    }
+    return [...new Set(queries)].slice(0, 2);
+  }
+
   const mine = []; let hot = [];
   const jobs = symbols.slice(0, 8).map(async s => {
-    try { const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(s)}&quotesCount=0&newsCount=4`)); mine.push(...mapNews(j.news, s)) } catch (e) {}
+    try {
+      const qs = await queryFor(s);
+      for (const q of qs) {
+        const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=4`));
+        const got = mapNews(j.news, s);
+        if (got.length) { mine.push(...got); break; } // 第一個有結果的查詢詞即採用
+      }
+    } catch (e) {}
   });
   jobs.push((async () => {
     for (const q of ["stock market", "federal reserve"]) {
@@ -436,7 +462,7 @@ async function getNews(symbols) {
   const seen = new Set();
   const dedupe = arr => arr.filter(n => !seen.has(n.url) && seen.add(n.url)).sort((a, b) => a.agoH - b.agoH);
   const out = { mine: dedupe(mine).slice(0, 30), hot: dedupe(hot).slice(0, 20) };
-  if (out.mine.length || out.hot.length) cacheSet(key, out); // 全空(離線)不入快取
+  if (out.mine.length || out.hot.length) cacheSet(key, out);
   return out;
 }
 

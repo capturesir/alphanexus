@@ -1,0 +1,122 @@
+/* 後端測試 —— node test/server.test.js
+   涵蓋:provider 備援鏈、增量合併、事件觸發全量、JSONPath 自訂源、CoinGecko、
+   並發請求合併、郵箱驗證流程。全程以 stub fetch / stub mailer 離線執行。 */
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const DATA = path.join(__dirname, "../data");
+function clean() { try { fs.rmSync(DATA, { recursive: true, force: true }) } catch (e) {} }
+
+let pass = 0;
+const ok = (c, m) => { if (!c) { console.error("✗", m); process.exit(1) } console.log("✓", m); pass++ };
+
+const EPOCH = Math.floor(new Date("2020-12-28T00:00:00Z") / 1000);
+const mkChart = o => ({ chart: { result: [{
+  meta: { currency: o.ccy || "USD", shortName: o.name || "T" },
+  timestamp: o.dates.map(d => Math.floor(new Date(d + "T00:00:00Z") / 1000)),
+  indicators: { quote: [{ close: o.close }], adjclose: [{ adjclose: o.adj || o.close }] },
+  events: o.events || {} }] } });
+
+async function run() {
+  // ---- A. provider 備援鏈 + 增量合併 + 事件觸發 ----
+  clean();
+  process.env.SMTP_HOST = ""; // A 段不啟用郵件
+  let MODE = "full", CALLS = [];
+  global.fetch = async (url) => {
+    CALLS.push(url);
+    const okr = j => ({ ok: true, json: async () => j, text: async () => j });
+    if (MODE === "fail") throw new Error("net down");
+    if (url.includes("/v8/finance/chart/VT")) {
+      const p1 = +new URL(url).searchParams.get("period1");
+      if (p1 === EPOCH) return okr(mkChart({ dates: ["2021-01-04","2021-01-05","2021-01-06"], close: [100,101,102],
+        events: { dividends: { a: { date: Math.floor(new Date("2021-01-05T00:00:00Z")/1000), amount: 0.5 } } } }));
+      if (MODE === "inc-newdiv") return okr(mkChart({ dates: ["2021-01-07","2021-01-08"], close: [103,104],
+        events: { dividends: { b: { date: Math.floor(new Date("2021-01-08T00:00:00Z")/1000), amount: 0.6 } } } }));
+      return okr(mkChart({ dates: ["2021-01-06","2021-01-07"], close: [102.5,103] }));
+    }
+    if (url.includes("stooq.com")) return okr("Date,Open,High,Low,Close,Volume\n2021-01-04,1,1,1,99.5,100\n2021-01-05,1,1,1,100.5,100");
+    if (url.includes("frankfurter")) return okr({ rates: { "2021-01-04": { HKD: 7.75 }, "2021-01-05": { HKD: 7.76 } } });
+    throw new Error("unexpected " + url);
+  };
+  delete require.cache[require.resolve("../server.js")];
+  const S = require("../server.js");
+  const expire = () => { const f = path.join(DATA, "market", fs.readdirSync(path.join(DATA,"market")).find(x => x.startsWith("hist_")));
+    const d = JSON.parse(fs.readFileSync(f)); d.fetchedAt = Date.now() - 3*3600e3; fs.writeFileSync(f, JSON.stringify(d)) };
+
+  let h = await S.smartHistory("VT");
+  ok(h.dividends[0].amount === 0.5 && h.adjusted === true, "A1 全量抓取 + 事件解析");
+  expire(); CALLS = [];
+  h = await S.smartHistory("VT");
+  ok(h.dates.length === 4 && h.raw[2] === 102.5 && CALLS.length === 1, "A2 增量合併 + 重疊修復(僅 1 請求)");
+  expire(); MODE = "inc-newdiv"; CALLS = [];
+  h = await S.smartHistory("VT");
+  ok(CALLS.length === 2, "A3 新股息觸發全量重抓");
+  expire(); MODE = "fail";
+  h = await S.smartHistory("VT");
+  ok(h.stale === true, "A4 上游全掛 → 過期庫存兜底");
+
+  // ---- B. JSONPath / CoinGecko / SSRF ----
+  clean();
+  global.fetch = async (url) => {
+    const okr = j => ({ ok: true, json: async () => j, text: async () => j });
+    if (url.startsWith("https://myfund.example.com")) return okr({ data: { series: [
+      { day: "2024-01-02", nav: "10.51" }, { day: 1704326400, nav: 10.62 }, { day: "01/08/2024", nav: 10.70 }, { day: "bad", nav: "x" }] } });
+    if (url.includes("coingecko.com/api/v3/search")) return okr({ coins: [{ id: "bitcoin", symbol: "btc", name: "Bitcoin" }] });
+    if (url.includes("coingecko.com/api/v3/coins/bitcoin")) return okr({ prices: [[1704153600000,42000.5],[1704240000000,43100.2],[1704240005000,43150.0]] });
+    throw new Error("unexpected " + url);
+  };
+  delete require.cache[require.resolve("../server.js")];
+  const S2 = require("../server.js");
+  ok(JSON.stringify(S2.jsonPathEval({ a:{ list:[{ d:"x", p:1 }] } }, "$.a.list[*].p")) === "[1]", "B1 JSONPath 求值");
+  ok(S2.normDate(1704326400) === "2024-01-04" && S2.normDate("01/08/2024") === "2024-01-08", "B2 日期自動偵測");
+  ok(S2.isSafeUrl("https://api.example.com") && !S2.isSafeUrl("http://127.0.0.1"), "B3 SSRF 防護");
+  S2.CUSTOM["MYFUND"] = { url:"https://myfund.example.com/api", datePath:"$.data.series[*].day", pricePath:"$.data.series[*].nav", ccy:"CNY", name:"基金" };
+  const cf = await S2.smartHistory("MYFUND");
+  ok(cf.source === "custom" && JSON.stringify(cf.raw) === "[10.51,10.62,10.7]", "B4 自訂源端到端 + 壞列剔除");
+  const cg = await S2.coingeckoHistory("BTC-USD");
+  ok(cg.source === "coingecko" && cg.raw[1] === 43150, "B5 CoinGecko 同日取尾值");
+
+  // ---- C. 並發請求合併 ----
+  clean();
+  let cnt = 0;
+  global.fetch = async () => { cnt++; await new Promise(r => setTimeout(r, 120));
+    return { ok: true, json: async () => mkChart({ dates: ["2021-01-04"], close: [100] }), text: async () => "" } };
+  delete require.cache[require.resolve("../server.js")];
+  const S3 = require("../server.js");
+  await Promise.all(Array.from({ length: 10 }, () => S3.smartHistory("AAA")));
+  ok(cnt === 1, "C1 10 並發合併為 1 次上游呼叫");
+
+  // ---- D. 郵箱驗證流程 ----
+  clean();
+  process.env.SMTP_HOST = "smtp.example.com"; process.env.SMTP_USER = "bot@x.com"; process.env.SMTP_PASS = "x";
+  global.fetch = async () => { throw new Error("offline") };
+  delete require.cache[require.resolve("../server.js")];
+  const S4 = require("../server.js");
+  const SENT = [];
+  S4.mailer.send = async m => { SENT.push(m); return true };
+  const http = require("http");
+  await new Promise(r => S4.server.listen(0, r));
+  const port = S4.server.address().port;
+  const call = (p, body) => new Promise((res, rej) => {
+    const rq = http.request({ host: "localhost", port, path: p, method: body ? "POST" : "GET", headers: { "Content-Type": "application/json" } },
+      x => { let b = ""; x.on("data", c => b += c); x.on("end", () => res({ code: x.statusCode, j: JSON.parse(b || "{}") })) });
+    rq.on("error", rej); if (body) rq.write(JSON.stringify(body)); rq.end();
+  });
+  let r = await call("/api/auth/register", { email: "u@x.com", pwd: "pass1234" });
+  ok(r.j.pending === true && SENT.length === 1, "D1 註冊 → 待驗證 + 寄碼");
+  const code = SENT[0].text.match(/\d{6}/)[0];
+  r = await call("/api/auth/verify", { email: "u@x.com", code: "000000" });
+  ok(r.j.error === "bad_code", "D2 錯誤驗證碼被拒");
+  r = await call("/api/auth/verify", { email: "u@x.com", code });
+  ok(!!r.j.token, "D3 正確驗證碼 → 簽發 token");
+  r = await call("/api/auth/login", { email: "u@x.com", pwd: "pass1234" });
+  ok(!!r.j.token, "D4 驗證後可正常登入");
+  await new Promise(r => S4.server.close(r));
+
+  clean();
+  console.log(`\n後端測試:${pass} 項全部通過 ✓`);
+}
+
+run().catch(e => { console.error("FAIL:", e.message); clean(); process.exit(1) });

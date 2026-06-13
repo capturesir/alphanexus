@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>WealthLens · 投資組合管理</title>
 <style>
 :root{
@@ -22,6 +22,7 @@ html[data-theme="dark"]{
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+body{min-height:100dvh}
 body{
   font-family:"IBM Plex Sans","PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;
@@ -208,7 +209,17 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     <div class="card" id="holdingsCard">
       <div class="row between" style="margin-bottom:6px">
         <h2 data-i18n="holdings">持倉</h2>
-        <span class="tiny" id="holdingCount"></span>
+        <div class="row" style="gap:6px;align-items:center">
+          <select id="holdSort" class="tiny" style="min-height:30px;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)">
+            <option value="mv-desc" data-i18n="sortMvDesc">市值↓</option>
+            <option value="mv-asc" data-i18n="sortMvAsc">市值↑</option>
+            <option value="day-desc" data-i18n="sortDayDesc">當日漲↓</option>
+            <option value="day-asc" data-i18n="sortDayAsc">當日跌↑</option>
+            <option value="pl-desc" data-i18n="sortPlDesc">報酬↓</option>
+            <option value="pl-asc" data-i18n="sortPlAsc">報酬↑</option>
+          </select>
+          <span class="tiny" id="holdingCount"></span>
+        </div>
       </div>
       <div id="holdingList"></div>
     </div>
@@ -219,7 +230,10 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     <div class="card">
       <div class="row between" style="margin-bottom:6px">
         <h2 data-i18n="txnHistory">交易記錄</h2>
-        <span class="tiny" id="txnCount"></span>
+        <div class="row" style="gap:6px;align-items:center">
+          <select id="txnSymFilter" class="tiny" style="min-height:30px;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);max-width:140px"></select>
+          <span class="tiny" id="txnCount"></span>
+        </div>
       </div>
       <div id="txnList"></div>
     </div>
@@ -419,7 +433,10 @@ const state={
   settings:{lang:"zh-TW",theme:"light",color:"greenUp",ctype:"line",baseCcy:"HKD"},
   chart:{metric:"value",ctype:"line",agg:"D",period:"1Y",view:null,comps:[],locFilter:null},
   assetsLocFilter:null, // null = 全部
-  newsTab:"mine"
+  newsTab:"mine",
+  holdSort:"mv-desc",   // 持倉排序
+  amountMode:0,         // 0=最新市值 1=最新價(單日%) 2=單日市值變動
+  txnSymFilter:""       // 交易記錄代碼篩選("" = 全部)
 };
 
 /* ====================== 後端 API 適配層(即時數據) ====================== */
@@ -454,11 +471,11 @@ symbol:"金融資產代碼",assetName:"資產名稱",currency:"貨幣",location:
 side:"方向",buy:"買入",sell:"賣出",deposit:"存入 / 提取資金（負數為提取）",price:"價格（每單位）",units:"單位數",amount:"金額（可為負數）",
 date:"交易日期",save:"儲存",cancel:"取消",delete:"刪除",defaultLoc:"預設",
 cash:"現金",unrealPL:"未實現損益",costBasis:"成本",mktVal:"市值",qty:"數量",
-noHoldings:"尚未有持倉，點擊右上「＋新增」輸入第一筆交易",emptyWelcome:"歡迎使用 WealthLens！新增第一筆交易,或載入示範組合開始體驗",loadDemo:"載入示範",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"損益",noPositionNow:"目前無持倉(歷史交易已平倉)",dataSrcLbl:"數據源",txnHistory:"交易歷史",delAllOfSym:"刪除此資產全部交易",confirmDelAll:"確定刪除 {sym} 的全部交易?此動作無法復原",close:"關閉",noTxn:"尚無交易記錄",noNews:"暫無相關資訊",
+noHoldings:"尚未有持倉，點擊右上「＋新增」輸入第一筆交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"當日漲↓",sortDayAsc:"當日跌↑",sortPlDesc:"報酬↓",sortPlAsc:"報酬↑",allSymbols:"全部代碼",pickLoc:"選取已有位置",emptyWelcome:"歡迎使用 WealthLens！新增第一筆交易,或載入示範組合開始體驗",loadDemo:"載入示範",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"損益",noPositionNow:"目前無持倉(歷史交易已平倉)",dataSrcLbl:"數據源",txnHistory:"交易歷史",delAllOfSym:"刪除此資產全部交易",confirmDelAll:"確定刪除 {sym} 的全部交易?此動作無法復原",close:"關閉",noTxn:"尚無交易記錄",noNews:"暫無相關資訊",
 confirmDel:"確定刪除此交易？",saved:"已儲存",deleted:"已刪除",cleared:"已清除所有數據",seeded:"已載入示範組合",
 profile:"個人資訊",nickname:"暱稱",avatar:"頭像",oldPwd:"舊密碼",newPwd:"新密碼",pwdChanged:"密碼已更新",pwdWrong:"舊密碼不正確",
 guestMode:"訪客模式（數據僅保存在本機）",memberMode:"已登入會員",fillEmail:"請輸入電郵及密碼",liveData:"即時數據",simData:"模擬數據",loading:"載入中…",pwdTooShort:"密碼至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手續費",customSrc:"自訂數據源",tFee:"費用",verifyTitle:"驗證碼已寄至您的信箱,請於 15 分鐘內輸入",verifyBtn:"驗證並完成註冊",resendBtn:"重寄",resendOk:"已重寄驗證碼",resendWait:"請稍候 60 秒再重寄",codeWrong:"驗證碼錯誤",codeExpired:"驗證碼已過期,請重寄",codeTooMany:"嘗試次數過多,請重新註冊",mailFailed:"郵件寄送失敗,請稍後再試",tLiability:"負債",expHint:"費用/負債支出將自現金扣除,自然反映於回報率(不視為外部資金流)",autoDivNote:"系統自動入帳之預估股息;修改後將視為手動紀錄",grossLbl:"稅前",autoDivLbl:"自動股息入帳",autoDivHint:"除淨日按持股自動入帳(可逐筆修改)",divTaxLbl:"股息預扣稅率",divTaxHint:"自動股息以稅後金額入帳;預設 0%",divTaxApplied:"已更新自動股息筆數:",customSrcWarn:"此為自訂第三方數據源,若目標網站結構變更可能導致數據失效。",exclOpt:"曲線不含期權現值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累計費用/負債支出",customSrcHint:"以 JSONPath 接入任意 API 的歷史價格",customSrcDesc:"提供 API 網址與 JSONPath(日期/價格路徑),即可為任意基金、債券或理財產品接入歷史價。儲存後在交易中直接使用該代碼。",manage:"管理",csvLbl:"交易紀錄 CSV",csvHint:"匯出備份,或自券商/其他平台匯入",exportCsv:"匯出",importCsv:"匯入",exported:"已匯出",importedN:"已匯入",importReplaceQ:"按「確定」取代現有全部交易;按「取消」則合併加入。",importBad:"CSV 格式無法解析",needLive:"此功能需要即時數據模式(經伺服器開啟頁面)",srcUrl:"API 網址",datePath:"日期路徑(JSONPath)",pricePath:"價格路徑(JSONPath)",testBtn:"測試",testOk:"解析成功",rowsLbl:"筆",noCustomSrc:"尚未設定任何自訂數據源",feeOpt:"手續費(選填)",optional:"選填",incomeReceived:"已收",divTTM:"近一年股息約",incomeTotalLbl:"累計股息/利息收入",divHint:"股息/利息將計入現金,並反映在 TWR/MWR 報酬率中(不視為外部資金流)",
-twrIdx:"TWR 累積回報",mwrIdx:"MWR（年化·滾動）",portfolio:"我的組合",netFlowNote:"外部資金流",
+twrIdx:"TWR 累積回報",mwrIdx:"MWR 累積回報",portfolio:"我的組合",netFlowNote:"外部資金流",
 newsJustNow:"剛剛",hAgo:"小時前",dAgo:"天前",searchNoRes:"找不到符合的代碼",
 optHint:"美股期權格式：代碼+到期+C/P+行使價",ccyConvNote:"以當日匯率折算為",
 periodHigh:"期間最高",periodLow:"期間最低",chg:"變動"},
@@ -476,11 +493,11 @@ symbol:"金融资产代码",assetName:"资产名称",currency:"货币",location:
 side:"方向",buy:"买入",sell:"卖出",deposit:"存入 / 提取资金（负数为提取）",price:"价格（每单位）",units:"单位数",amount:"金额（可为负数）",
 date:"交易日期",save:"保存",cancel:"取消",delete:"删除",defaultLoc:"默认",
 cash:"现金",unrealPL:"未实现损益",costBasis:"成本",mktVal:"市值",qty:"数量",
-noHoldings:"尚未有持仓，点击右上「＋新增」输入第一笔交易",emptyWelcome:"欢迎使用 WealthLens！添加第一笔交易,或载入示范组合开始体验",loadDemo:"载入示范",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"损益",noPositionNow:"目前无持仓(历史交易已平仓)",dataSrcLbl:"数据源",txnHistory:"交易历史",delAllOfSym:"删除此资产全部交易",confirmDelAll:"确定删除 {sym} 的全部交易?此操作无法复原",close:"关闭",noTxn:"暂无交易记录",noNews:"暂无相关资讯",
+noHoldings:"尚未有持仓，点击右上「＋新增」输入第一笔交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"当日涨↓",sortDayAsc:"当日跌↑",sortPlDesc:"回报↓",sortPlAsc:"回报↑",allSymbols:"全部代码",pickLoc:"选取已有位置",emptyWelcome:"欢迎使用 WealthLens！添加第一笔交易,或载入示范组合开始体验",loadDemo:"载入示范",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"损益",noPositionNow:"目前无持仓(历史交易已平仓)",dataSrcLbl:"数据源",txnHistory:"交易历史",delAllOfSym:"删除此资产全部交易",confirmDelAll:"确定删除 {sym} 的全部交易?此操作无法复原",close:"关闭",noTxn:"暂无交易记录",noNews:"暂无相关资讯",
 confirmDel:"确定删除此交易？",saved:"已保存",deleted:"已删除",cleared:"已清除所有数据",seeded:"已载入示范组合",
 profile:"个人资料",nickname:"昵称",avatar:"头像",oldPwd:"旧密码",newPwd:"新密码",pwdChanged:"密码已更新",pwdWrong:"旧密码不正确",
 guestMode:"访客模式（数据仅保存在本机）",memberMode:"已登录会员",fillEmail:"请输入邮箱及密码",liveData:"实时数据",simData:"模拟数据",loading:"加载中…",pwdTooShort:"密码至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手续费",customSrc:"自定义数据源",tFee:"费用",verifyTitle:"验证码已发送至您的邮箱,请于 15 分钟内输入",verifyBtn:"验证并完成注册",resendBtn:"重发",resendOk:"已重发验证码",resendWait:"请稍候 60 秒再重发",codeWrong:"验证码错误",codeExpired:"验证码已过期,请重发",codeTooMany:"尝试次数过多,请重新注册",mailFailed:"邮件发送失败,请稍后再试",tLiability:"负债",expHint:"费用/负债支出将自现金扣除,自然反映于回报率(不视为外部资金流)",autoDivNote:"系统自动入账之预估股息;修改后将视为手动记录",grossLbl:"税前",autoDivLbl:"自动股息入账",autoDivHint:"除净日按持股自动入账(可逐笔修改)",divTaxLbl:"股息预扣税率",divTaxHint:"自动股息以税后金额入账;默认 0%",divTaxApplied:"已更新自动股息笔数:",customSrcWarn:"此为自定义第三方数据源,若目标网站结构变更可能导致数据失效。",exclOpt:"曲线不含期权现值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累计费用/负债支出",customSrcHint:"以 JSONPath 接入任意 API 的历史价格",customSrcDesc:"提供 API 网址与 JSONPath(日期/价格路径),即可为任意基金、债券或理财产品接入历史价。保存后在交易中直接使用该代码。",manage:"管理",csvLbl:"交易记录 CSV",csvHint:"导出备份,或自券商/其他平台导入",exportCsv:"导出",importCsv:"导入",exported:"已导出",importedN:"已导入",importReplaceQ:"按「确定」替换现有全部交易;按「取消」则合并加入。",importBad:"CSV 格式无法解析",needLive:"此功能需要实时数据模式(经服务器打开页面)",srcUrl:"API 网址",datePath:"日期路径(JSONPath)",pricePath:"价格路径(JSONPath)",testBtn:"测试",testOk:"解析成功",rowsLbl:"条",noCustomSrc:"尚未设置任何自定义数据源",feeOpt:"手续费(选填)",optional:"选填",incomeReceived:"已收",divTTM:"近一年股息约",incomeTotalLbl:"累计股息/利息收入",divHint:"股息/利息将计入现金,并反映在 TWR/MWR 回报率中(不视为外部资金流)",
-twrIdx:"TWR 累计回报",mwrIdx:"MWR（年化·滚动）",portfolio:"我的组合",netFlowNote:"外部资金流",
+twrIdx:"TWR 累计回报",mwrIdx:"MWR 累计回报",portfolio:"我的组合",netFlowNote:"外部资金流",
 newsJustNow:"刚刚",hAgo:"小时前",dAgo:"天前",searchNoRes:"找不到符合的代码",
 optHint:"美股期权格式：代码+到期+C/P+行权价",ccyConvNote:"按当日汇率折算为",
 periodHigh:"期间最高",periodLow:"期间最低",chg:"变动"},
@@ -498,11 +515,11 @@ symbol:"Ticker",assetName:"Asset name",currency:"Currency",location:"Account loc
 side:"Side",buy:"Buy",sell:"Sell",deposit:"Deposit / withdraw funds (negative = withdraw)",price:"Price (per unit)",units:"Units",amount:"Amount (can be negative)",
 date:"Trade date",save:"Save",cancel:"Cancel",delete:"Delete",defaultLoc:"Default",
 cash:"Cash",unrealPL:"Unrealized P/L",costBasis:"Cost",mktVal:"Market value",qty:"Qty",
-noHoldings:"No holdings yet. Tap “＋ Add” to enter your first trade.",emptyWelcome:"Welcome to WealthLens! Add your first transaction, or load the demo portfolio to explore.",loadDemo:"Load demo",today:"today",mktValue:"Market value",avgCost:"Avg cost",plLbl:"P/L",noPositionNow:"No current position (history closed)",dataSrcLbl:"Source",txnHistory:"Transaction history",delAllOfSym:"Delete all txns of this asset",confirmDelAll:"Delete ALL transactions of {sym}? This cannot be undone",close:"Close",noTxn:"No transactions yet",noNews:"No related news",
+noHoldings:"No holdings yet. Tap “＋ Add” to enter your first trade.",sortMvDesc:"Value ↓",sortMvAsc:"Value ↑",sortDayDesc:"Day % ↓",sortDayAsc:"Day % ↑",sortPlDesc:"Return ↓",sortPlAsc:"Return ↑",allSymbols:"All symbols",pickLoc:"Pick existing location",emptyWelcome:"Welcome to WealthLens! Add your first transaction, or load the demo portfolio to explore.",loadDemo:"Load demo",today:"today",mktValue:"Market value",avgCost:"Avg cost",plLbl:"P/L",noPositionNow:"No current position (history closed)",dataSrcLbl:"Source",txnHistory:"Transaction history",delAllOfSym:"Delete all txns of this asset",confirmDelAll:"Delete ALL transactions of {sym}? This cannot be undone",close:"Close",noTxn:"No transactions yet",noNews:"No related news",
 confirmDel:"Delete this transaction?",saved:"Saved",deleted:"Deleted",cleared:"All data cleared",seeded:"Demo portfolio loaded",
 profile:"Profile",nickname:"Nickname",avatar:"Avatar",oldPwd:"Old password",newPwd:"New password",pwdChanged:"Password updated",pwdWrong:"Old password incorrect",
 guestMode:"Guest mode (data stays on this device)",memberMode:"Signed in",fillEmail:"Please enter email and password",liveData:"Live data",simData:"Simulated data",loading:"Loading…",pwdTooShort:"Password too short (min 4)",tDividend:"Dividend",tInterest:"Interest",fee:"Fee",customSrc:"Custom data sources",tFee:"Fee",verifyTitle:"A verification code was sent to your email; enter it within 15 minutes",verifyBtn:"Verify & register",resendBtn:"Resend",resendOk:"Code resent",resendWait:"Please wait 60s before resending",codeWrong:"Incorrect code",codeExpired:"Code expired, please resend",codeTooMany:"Too many attempts, please register again",mailFailed:"Failed to send email, try again later",tLiability:"Liability",expHint:"Fees/liabilities are deducted from cash and naturally reduce returns (not external flows)",autoDivNote:"Estimated dividend auto-booked by the system; editing converts it to a manual record",grossLbl:"Gross",autoDivLbl:"Auto dividend booking",autoDivHint:"Booked on ex-date based on holdings (editable per entry)",divTaxLbl:"Dividend withholding tax",divTaxHint:"Auto dividends are booked net of tax; default 0%",divTaxApplied:"Auto dividends updated:",customSrcWarn:"This is a custom third-party source; data may break if the target site changes.",exclOpt:"Curve excludes options value",evDiv:"dividend",evSplit:"split",perShare:"sh",expenseTotalLbl:"Total fees/liabilities",customSrcHint:"Feed any API via JSONPath",customSrcDesc:"Provide an API URL plus JSONPath for dates/prices to track any fund, bond or product. After saving, use the symbol directly in transactions.",manage:"Manage",csvLbl:"Transactions CSV",csvHint:"Export a backup, or import from brokers/other apps",exportCsv:"Export",importCsv:"Import",exported:"Exported",importedN:"Imported",importReplaceQ:"OK = replace all existing transactions; Cancel = merge.",importBad:"Could not parse CSV",needLive:"Requires live-data mode (open via the server)",srcUrl:"API URL",datePath:"Date path (JSONPath)",pricePath:"Price path (JSONPath)",testBtn:"Test",testOk:"Parsed",rowsLbl:"rows",noCustomSrc:"No custom sources yet",feeOpt:"Fee (optional)",optional:"optional",incomeReceived:"Received",divTTM:"TTM div ≈",incomeTotalLbl:"Total dividend/interest income",divHint:"Dividends/interest are added to cash and reflected in TWR/MWR (not treated as external flows)",
-twrIdx:"TWR cumulative return",mwrIdx:"MWR (annualized, rolling)",portfolio:"My portfolio",netFlowNote:"external cash flow",
+twrIdx:"TWR cumulative return",mwrIdx:"MWR cumulative return",portfolio:"My portfolio",netFlowNote:"external cash flow",
 newsJustNow:"just now",hAgo:"h ago",dAgo:"d ago",searchNoRes:"No matching tickers",
 optHint:"US option format: ticker+expiry+C/P+strike",ccyConvNote:"converted at daily FX into",
 periodHigh:"Period high",periodLow:"Period low",chg:"Change"}
@@ -757,6 +774,8 @@ const pct=v=>(v>=0?"+":"")+(v*100).toFixed(2)+"%";
 */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function locsOf(){const s=new Set(state.txns.map(t=>t.loc||T("defaultLoc")));return [...s]}
+/* #9 供選取的資產位置:只取用戶真正填過的(非空)位置,排除留空而被歸為「預設」的情形 */
+function locsForPick(){const s=new Set(state.txns.map(t=>(t.loc||"").trim()).filter(Boolean));return [...s].sort()}
 function filteredTxns(locSet){ // locSet: null=全部 | Set
   const out=state.txns.filter(t=>!locSet||locSet.has(t.loc||T("defaultLoc")));
   return out.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
@@ -842,21 +861,35 @@ function xirr(cfs){
   for(let i=0;i<80;i++){const mid=(lo+hi)/2,fm=f(mid); if(Math.abs(fm)<1e-7)return mid; if(flo*fm<0){hi=mid;fhi=fm}else{lo=mid;flo=fm}}
   return (lo+hi)/2;
 }
-/* 期間MWR：視期初市值為投入，期內外部流，期末市值為回收 */
+/* 期間MWR(年化 IRR):視期初市值為投入,期內外部流,期末市值為回收 */
 function mwrOf(D,k0,k1){
-  const cfs=[];
-  const t0=k0;
-  if(D.values[k0]-D.flows[k0]>1e-9)cfs.push({t:0,amt:-(D.values[k0]-D.flows[k0])});
-  for(let k=k0;k<=k1;k++){ if(Math.abs(D.flows[k])>1e-9)cfs.push({t:(k-t0)/365,amt:-D.flows[k]}) }
-  cfs.push({t:(k1-t0)/365,amt:D.values[k1]});
-  return xirr(cfs);
+  const cfs=mwrCashflows(D,k0,k1,true);
+  return cfs?xirr(cfs):null;
 }
-/* MWR 滾動曲線（自期初起算的年化MWR，抽樣計算） */
+/* 建構期間現金流:期初市值(不含當天現金流,當天現金流另列)→ 期內外部流 → 期末市值
+   annualYears=true 時 t 以年為單位(年化);false 時 t 以「佔總期間的比例」為單位(供累積口徑) */
+function mwrCashflows(D,k0,k1,annualYears){
+  if(k1<=k0)return null;
+  const span=(k1-k0)/365;
+  const unit=annualYears?1:(span>0?1/span:0); // 累積口徑:把總期間視為 1,解出的 r 即「整段累積報酬」
+  const cfs=[];
+  const v0=D.values[k0];
+  if(Math.abs(v0)>1e-9)cfs.push({t:0,amt:-v0});
+  for(let k=k0+1;k<=k1;k++){ if(Math.abs(D.flows[k])>1e-9)cfs.push({t:(k-k0)/365*unit,amt:-D.flows[k]}) }
+  cfs.push({t:(k1-k0)/365*unit,amt:D.values[k1]});
+  return cfs.length>=2?cfs:null;
+}
+/* 期間累積 MWR(與 TWR 同口徑:整段累積報酬率,無外部現金流時等於 V[k1]/V[k0]-1) */
+function mwrCumOf(D,k0,k1){
+  const cfs=mwrCashflows(D,k0,k1,false);
+  return cfs?xirr(cfs):null;
+}
+/* MWR 累積曲線(供圖表;與 TWR 同口徑可疊合對比) */
 function mwrCurve(D,k0,k1){
   const n=k1-k0+1, step=Math.max(1,Math.floor(n/110));
   const pts=[];
-  for(let k=k0;k<=k1;k+=step){ if(k-k0<14){pts.push({k,v:null});continue} pts.push({k,v:mwrOf(D,k0,k)}) }
-  if(pts[pts.length-1].k!==k1)pts.push({k:k1,v:mwrOf(D,k0,k1)});
+  for(let k=k0;k<=k1;k+=step){ if(k<=k0){pts.push({k,v:0});continue} pts.push({k,v:mwrCumOf(D,k0,k)}) }
+  if(pts[pts.length-1].k!==k1)pts.push({k:k1,v:mwrCumOf(D,k0,k1)});
   return pts;
 }
 
@@ -953,7 +986,26 @@ function renderAssets(){
       const d=hl.querySelector("#emptyDemo"); if(d)d.onclick=async()=>{seedDemo();await persist();refreshAll();toast(T("seeded"))};
     }
   }
-  else hl.innerHTML=H.list.map(h=>{
+  else {
+    // #6/#7 計算每檔當日數據,套用排序
+    const enriched=H.list.map(h=>{
+      const s=getSeries(h.sym);
+      const lastP=s?s.raw[N_DAYS-1]:h.px, prevP=s?s.raw[N_DAYS-2]:h.px;
+      const dayPct=prevP?lastP/prevP-1:0;
+      // 當日市值變動(基準貨幣)= 持有單位 × (今價−昨價) × 匯率
+      const dayVal=s?h.units*(lastP-prevP)*fx(1,h.ccy,base,N_DAYS-1):0;
+      return {...h,lastP,dayPct,dayVal};
+    });
+    const sort=state.holdSort||"mv-desc";
+    const cmp={
+      "mv-desc":(a,b)=>b.mv-a.mv, "mv-asc":(a,b)=>a.mv-b.mv,
+      "day-desc":(a,b)=>b.dayPct-a.dayPct, "day-asc":(a,b)=>a.dayPct-b.dayPct,
+      "pl-desc":(a,b)=>(b.cost>0?b.pl/b.cost:0)-(a.cost>0?a.pl/a.cost:0),
+      "pl-asc":(a,b)=>(a.cost>0?a.pl/a.cost:0)-(b.cost>0?b.pl/b.cost:0),
+    }[sort]||((a,b)=>b.mv-a.mv);
+    enriched.sort(cmp);
+    const mode=state.amountMode||0;
+    hl.innerHTML=enriched.map(h=>{
     const plc=h.pl>=0?"pl-pos":"pl-neg";
     const extra=[];
     if(H.incomeBySym[h.sym]>0)extra.push(`${T("incomeReceived")} +${fmtMoney(H.incomeBySym[h.sym],base,true)}`);
@@ -963,10 +1015,19 @@ function renderAssets(){
       const ttm=ev.dividends.filter(d=>d.date>=cut).reduce((s,d)=>s+d.amount,0)*h.units;
       if(ttm>0)extra.push(`${T("divTTM")} ${fmtMoney(ttm,h.ccy,true)}`);
     }
+    // #7 金額欄三模式
+    let amtHtml;
+    if(mode===1){ // 最新價(單日%)
+      amtHtml=`<b class="num">${fmtMoney(h.lastP,h.ccy)}</b> <span class="num ${h.dayPct>=0?"pl-pos":"pl-neg"}" style="font-size:11px">(${h.dayPct>=0?"+":""}${(h.dayPct*100).toFixed(2)}%)</span>`;
+    }else if(mode===2){ // 單日市值變動(基準貨幣)
+      amtHtml=`<b class="num ${h.dayVal>=0?"pl-pos":"pl-neg"}">${h.dayVal>=0?"+":""}${fmtMoney(h.dayVal,base,true)}</b>`;
+    }else{ // 最新市值
+      amtHtml=`<b class="num">${fmtMoney(h.mv,base,true)}</b>`;
+    }
     return `<div class="holding" data-sym="${h.sym}" style="cursor:pointer">
       <div class="sym-badge">${h.sym.split(".")[0].slice(0,5)}</div>
       <div class="grow">
-        <div class="row between"><b style="font-size:13.5px">${h.sym}</b><b class="num">${fmtMoney(h.mv,base,true)}</b></div>
+        <div class="row between"><b style="font-size:13.5px">${h.sym}</b><span class="hold-amt" data-amt="${h.sym}" style="cursor:pointer">${amtHtml}</span></div>
         <div class="row between">
           <span class="tiny">${h.name||""} ${h.m?`<span class="mkt-tag">${h.m}</span>`:""}</span>
           <span class="tiny num ${plc}">${fmtMoney(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</span>
@@ -974,6 +1035,13 @@ function renderAssets(){
         <div class="tiny num">${T("qty")} ${(+h.units.toFixed(4)).toLocaleString()} · ${fmtMoney(h.px,h.ccy)}${extra.length?" · 💰 "+extra.join(" · "):""}</div>
       </div>
     </div>`}).join("");
+    // #7 點金額循環切換顯示模式(攔截,不觸發進入詳情)
+    hl.querySelectorAll(".hold-amt").forEach(el=>el.onclick=ev=>{
+      ev.stopPropagation();
+      state.amountMode=((state.amountMode||0)+1)%3;
+      renderAssets();
+    });
+  }
   // 現金匯總
   const cs=$("#cashSummary"); const keys=Object.keys(H.cashByCcy);
   if(!keys.length)cs.innerHTML=`<div class="tiny">--</div>`;
@@ -988,7 +1056,9 @@ function renderAssets(){
     +(H.expenseTotal>0?`<div class="cash-pill"><div><b>🧾 ${T("expenseTotalLbl")}</b></div><div style="text-align:right"><b class="num pl-neg">−${fmtMoney(H.expenseTotal,base,true)}</b></div></div>`:"")
     +`<div class="tiny" style="margin-top:6px">${T("ccyConvNote")} ${base}</div>`;
   // 交易記錄
-  const txns=filteredTxns(locSet).slice().reverse();
+  let txns=filteredTxns(locSet).slice().reverse();
+  const symFilter=state.txnSymFilter||"";
+  if(symFilter)txns=txns.filter(t=>t.sym===symFilter);
   $("#txnCount").textContent=txns.length||"";
   $("#txnList").innerHTML=!txns.length?`<div class="empty"><div class="ico">🧾</div>${T("noTxn")}</div>`:
    txns.map(t=>{
@@ -1009,6 +1079,16 @@ function renderAssets(){
   }).join("");
   $$("#txnList [data-txn]").forEach(el=>el.onclick=()=>openTxnModal(state.txns.find(t=>t.id===el.dataset.txn)));
   $$("#holdingList [data-sym]").forEach(el=>el.onclick=()=>openHoldingDetail(el.dataset.sym));
+  const hs=$("#holdSort"); if(hs){hs.value=state.holdSort||"mv-desc";hs.onchange=()=>{state.holdSort=hs.value;renderAssets()}}
+  // #8 交易代碼篩選下拉
+  const tsf=$("#txnSymFilter");
+  if(tsf){
+    const syms=[...new Set(filteredTxns(locSet).filter(t=>t.sym).map(t=>t.sym))].sort();
+    if(symFilter&&!syms.includes(symFilter))state.txnSymFilter=""; // 篩選的代碼已不存在則重置
+    tsf.innerHTML=`<option value="">${T("allSymbols")}</option>`+syms.map(s=>`<option value="${s}">${s}</option>`).join("");
+    tsf.value=state.txnSymFilter||"";
+    tsf.onchange=()=>{state.txnSymFilter=tsf.value;renderAssets()};
+  }
 }
 </script>
 <script>
@@ -1193,8 +1273,13 @@ function openTxnModal(txn){
       <div class="tiny" id="incHint" style="margin-top:4px">${T("divHint")}</div>
     </div>
     <div class="field2">
-      <div><label>${T("location")}</label><input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" list="locList">
-        <datalist id="locList">${locsOf().map(l=>`<option value="${l}">`).join("")}</datalist></div>
+      <div><label>${T("location")}</label>
+        <div class="loc-wrap" style="position:relative">
+          <input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:34px"':""}>
+          ${locsForPick().length?`<button type="button" id="fLocPick" title="${T("pickLoc")}" style="position:absolute;right:1px;top:1px;bottom:1px;width:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px">▾</button>
+          <div id="fLocMenu" class="ac-list" style="display:none"></div>`:""}
+        </div>
+      </div>
       <div><label>${T("date")}</label><input id="fDate" type="date" value="${t.date}" min="${fmtD(START_DATE)}" max="${fmtD(TODAY)}"></div>
     </div>
     <div style="height:16px"></div>
@@ -1230,6 +1315,19 @@ function openTxnModal(txn){
     m.querySelector("#fCcyI").value=o.c;
   });
   m.querySelector("#fCancel").onclick=closeModal;
+  // #9 資產位置選取圖示
+  const locPick=m.querySelector("#fLocPick"), locMenu=m.querySelector("#fLocMenu"), locInput=m.querySelector("#fLoc");
+  if(locPick&&locMenu){
+    locPick.onclick=()=>{
+      const open=locMenu.style.display==="block";
+      if(open){locMenu.style.display="none";return}
+      const locs=locsForPick();
+      locMenu.innerHTML=locs.map(l=>`<div class="ac-item" data-loc="${l.replace(/"/g,"&quot;")}" style="padding:9px 12px;cursor:pointer">${l}</div>`).join("");
+      locMenu.style.display="block";
+      locMenu.querySelectorAll("[data-loc]").forEach(el=>el.onclick=()=>{locInput.value=el.dataset.loc;locMenu.style.display="none"});
+    };
+    document.addEventListener("click",e=>{if(locMenu&&!locMenu.contains(e.target)&&e.target!==locPick)locMenu.style.display="none"},{once:true});
+  }
   if(isEdit)m.querySelector("#fDel").onclick=async()=>{
     if(!confirm(T("confirmDel")))return;
     if(txn.auto&&txn.sym){ // §3.2 刪除的自動股息列入跳過清單
@@ -1463,7 +1561,7 @@ const Chart={
       }
     }
     // 事件標記(Div=金點 / Split=藍方)
-    if(this.events&&state.chart.metric==="value"){
+    if(this.events){
       for(const ks in this.events){
         const k=+ks; if(k<k0||k>k1)continue;
         const hasSplit=this.events[ks].some(e=>e.t==="split");
@@ -1472,33 +1570,47 @@ const Chart={
         else{ctx.fillStyle=col.gold;ctx.arc(X(k),padT+h-4,3,0,7);ctx.fill()}
       }
     }
-    // 十字線
-    if(this.cross!=null){
-      const k=Math.round(k0+this.cross*(k1-k0));
-      let near=main[0];for(const p of main)if(Math.abs(p.k-k)<Math.abs(near.k-k))near=p;
+    // 十字線 / 掃描查值(#3:顯示組合與所有比較線數值;#2:事件明細)
+    if(this.scrubK!=null){
+      const near=main.reduce((a,p)=>Math.abs(p.k-this.scrubK)<Math.abs(a.k-this.scrubK)?p:a,main[0]);
       if(near){
+        const k=near.k;
         ctx.strokeStyle=col.ink3;ctx.setLineDash([4,4]);ctx.beginPath();
-        ctx.moveTo(X(near.k),padT);ctx.lineTo(X(near.k),padT+h);ctx.stroke();ctx.setLineDash([]);
-        ctx.fillStyle=col.gold;ctx.beginPath();ctx.arc(X(near.k),Y(near.v),4,0,7);ctx.fill();
-        const d=DATES[this.D.i0+near.k];
-        const label=`${fmtD(d)}  ${isPct?near.v.toFixed(2)+"%":fmtMoney(near.v,state.settings.baseCcy,true)}`;
-        ctx.font="11px sans-serif";const tw=ctx.measureText(label).width+14;
-        const bx=Math.min(Math.max(X(near.k)-tw/2,padL),padL+w-tw);
-        ctx.fillStyle=col.ink;ctx.beginPath();ctx.roundRect(bx,2,tw,18,6);ctx.fill();
-        ctx.fillStyle=css.getPropertyValue("--bg").trim();ctx.textAlign="center";ctx.fillText(label,bx+tw/2,15);
-        // 事件氣泡(§模組三:點擊/停留事件日顯示明細)
-        const evs=this.events&&this.events[near.k];
-        if(evs&&evs.length){
-          const lines=evs.slice(0,3).map(e=>(e.t==="div"?"💰 ":"✂️ ")+e.txt);
-          if(evs.length>3)lines.push("+"+(evs.length-3));
-          ctx.font="10.5px sans-serif";
-          const bw=Math.max(...lines.map(l=>ctx.measureText(l).width))+14;
-          const bx2=Math.min(Math.max(X(near.k)-bw/2,padL),padL+w-bw);
-          const bh=lines.length*14+8;
-          ctx.fillStyle=col.ink;ctx.globalAlpha=.92;ctx.beginPath();ctx.roundRect(bx2,24,bw,bh,6);ctx.fill();ctx.globalAlpha=1;
-          ctx.fillStyle=css.getPropertyValue("--bg").trim();ctx.textAlign="left";
-          lines.forEach((l,i)=>ctx.fillText(l,bx2+7,38+i*14));
+        ctx.moveTo(X(k),padT);ctx.lineTo(X(k),padT+h);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle=col.gold;ctx.beginPath();ctx.arc(X(k),Y(near.v),4,0,7);ctx.fill();
+        // 多序列數值讀數
+        const d=DATES[this.D.i0+k];
+        const rows=[];
+        if(isPct){
+          rows.push({c:col.gold,t:`${T("portfolio")} ${near.v>=0?"+":""}${near.v.toFixed(2)}%`});
+          this.comps.forEach(cp=>{const g=(cp.vals[k]/cp.vals[k0]-1)*100;rows.push({c:cp.color,t:`${cp.sym} ${g>=0?"+":""}${g.toFixed(2)}%`})});
+        }else{
+          rows.push({c:col.gold,t:`${T("portfolio")} ${fmtMoney(near.v,state.settings.baseCcy,true)}`});
+          this.comps.forEach(cp=>{
+            const o=SYM_MAP[cp.sym], s=getSeries(cp.sym);
+            const px=s?s.raw[this.D.i0+k]:null;
+            rows.push({c:cp.color,t:`${cp.sym}${px!=null?" "+fmtMoney(px,(o&&o.c)||"USD"):""}`});
+          });
         }
+        // 事件明細(#2)
+        const evs=this.events&&this.events[k];
+        if(evs)for(const e of evs.slice(0,3))rows.push({c:e.t==="div"?col.gold:"#5b8def",t:(e.t==="div"?"💰 ":"✂️ ")+e.txt});
+        // 繪製讀數框
+        ctx.font="10.5px sans-serif";
+        const head=fmtD(d);
+        const bw=Math.max(ctx.measureText(head).width,...rows.map(r=>ctx.measureText(r.t).width+10))+14;
+        const bh=16+rows.length*14+6;
+        const bx=Math.min(Math.max(X(k)-bw/2,padL),padL+w-bw);
+        const by=padT+4;
+        ctx.fillStyle=col.ink;ctx.globalAlpha=.94;ctx.beginPath();ctx.roundRect(bx,by,bw,bh,7);ctx.fill();ctx.globalAlpha=1;
+        const bg=css.getPropertyValue("--bg").trim();
+        ctx.fillStyle=bg;ctx.textAlign="left";ctx.font="bold 10.5px sans-serif";ctx.fillText(head,bx+7,by+12);
+        ctx.font="10.5px sans-serif";
+        rows.forEach((r,i)=>{
+          const yy=by+26+i*14;
+          ctx.fillStyle=r.c;ctx.beginPath();ctx.arc(bx+10,yy-3,3,0,7);ctx.fill();
+          ctx.fillStyle=bg;ctx.fillText(r.t,bx+17,yy);
+        });
       }
     }
     ctx.restore();
@@ -1514,19 +1626,39 @@ const Chart={
       if(a<0){b-=a;a=0} if(b>maxN){a-=b-maxN;b=maxN} if(a<0)a=0;
       this.view=[Math.round(a),Math.round(b)];
     };
+    const xToK=clientX=>{
+      const rect=el.getBoundingClientRect();
+      const padL=8,padR=52;
+      const w=rect.width-padL-padR;
+      const f=Math.max(0,Math.min(1,(clientX-rect.left-padL)/(w||1)));
+      const [a,b]=this.view; return Math.round(a+f*(b-a));
+    };
+    let lpTimer=null,scrubbing=false,clearTimer=null;
+    const startScrub=clientX=>{scrubbing=true;panStart=null;clearTimeout(clearTimer);this.scrubK=xToK(clientX);this.draw()};
     el.addEventListener("touchstart",e=>{
       for(const t of e.changedTouches)touches[t.identifier]=[t.clientX,t.clientY];
       const ids=Object.keys(touches);
       if(ids.length===2){
         const [a,b]=ids.map(i=>touches[i]);
         pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),view:[...this.view],cx:(a[0]+b[0])/2};panStart=null;
-      }else if(ids.length===1){panStart={x:e.touches[0].clientX,view:[...this.view]};moved=false}
+        clearTimeout(lpTimer);scrubbing=false;
+      }else if(ids.length===1){
+        panStart={x:e.touches[0].clientX,view:[...this.view]};moved=false;
+        const cx=e.touches[0].clientX;
+        clearTimeout(lpTimer);
+        lpTimer=setTimeout(()=>{if(!moved)startScrub(cx)},320); // 長按 320ms 進入掃描
+      }
     },{passive:true});
     el.addEventListener("touchmove",e=>{
-      e.preventDefault();
       for(const t of e.changedTouches)if(touches[t.identifier])touches[t.identifier]=[t.clientX,t.clientY];
       const ids=Object.keys(touches);
+      if(scrubbing&&ids.length===1){
+        e.preventDefault();
+        this.scrubK=xToK(e.touches[0].clientX);this.draw();
+        return;
+      }
       if(pinch&&ids.length>=2){
+        e.preventDefault();
         const [a,b]=ids.slice(0,2).map(i=>touches[i]);
         const d=Math.hypot(a[0]-b[0],a[1]-b[1]);
         const scale=pinch.d/Math.max(20,d);
@@ -1537,21 +1669,27 @@ const Chart={
         this.view=[c-ns*fx,c+ns*(1-fx)];clampView();this.draw();updateStats();
       }else if(panStart&&ids.length===1){
         const dx=e.touches[0].clientX-panStart.x;
-        if(Math.abs(dx)>4)moved=true;
+        if(Math.abs(dx)>4){moved=true;clearTimeout(lpTimer)}
+        e.preventDefault();
         const rect=el.getBoundingClientRect();
         const shift=-dx/rect.width*(panStart.view[1]-panStart.view[0]);
         this.view=[panStart.view[0]+shift,panStart.view[1]+shift];clampView();this.draw();updateStats();
       }
     },{passive:false});
     el.addEventListener("touchend",e=>{
+      clearTimeout(lpTimer);
+      const wasScrub=scrubbing;
       for(const t of e.changedTouches){
-        if(!moved&&panStart&&Object.keys(touches).length===1){
-          const rect=el.getBoundingClientRect();
-          this.cross=(t.clientX-rect.left-8)/(rect.width-60);
-          this.cross=Math.max(0,Math.min(1,this.cross));this.draw();
-          setTimeout(()=>{this.cross=null;this.draw()},2600);
+        // 短按(非掃描、非平移)→ 點按該點顯示十字線
+        if(!wasScrub&&!moved&&panStart&&Object.keys(touches).length===1){
+          this.scrubK=xToK(t.clientX);this.draw();
+          clearTimeout(clearTimer);clearTimer=setTimeout(()=>{this.scrubK=null;this.draw()},2800);
         }
         delete touches[t.identifier];
+      }
+      if(wasScrub&&!Object.keys(touches).length){
+        scrubbing=false;
+        clearTimeout(clearTimer);clearTimer=setTimeout(()=>{this.scrubK=null;this.draw()},2800); // 放開後停留 2.8 秒
       }
       if(Object.keys(touches).length<2)pinch=null;
       if(!Object.keys(touches).length)panStart=null;
@@ -1567,11 +1705,18 @@ const Chart={
     let mdown=null;
     el.addEventListener("mousedown",e=>mdown={x:e.clientX,view:[...this.view]});
     window.addEventListener("mousemove",e=>{
-      if(!mdown)return;
+      if(!mdown){ // 懸停查值
+        const rect=el.getBoundingClientRect();
+        if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){
+          this.scrubK=xToK(e.clientX);this.draw();
+        }
+        return;
+      }
       const rect=el.getBoundingClientRect();
       const shift=-(e.clientX-mdown.x)/rect.width*(mdown.view[1]-mdown.view[0]);
       this.view=[mdown.view[0]+shift,mdown.view[1]+shift];clampView();this.draw();updateStats();
     });
+    el.addEventListener("mouseleave",()=>{if(!mdown&&this.scrubK!=null){this.scrubK=null;this.draw()}});
     window.addEventListener("mouseup",()=>mdown=null);
   }
 };
@@ -1588,11 +1733,11 @@ function updateStats(){
   const [k0,k1]=Chart.view;
   const tw=Chart._twr||(Chart._twr=twrCurve(Chart.D));
   const twr=tw[k1]/tw[k0]-1;
-  const mwr=mwrOf(Chart.D,k0,k1);
+  const mwrAnn=mwrOf(Chart.D,k0,k1);       // 年化(統計卡標示「年化」)
   let flow=0;for(let k=k0+1;k<=k1;k++)flow+=Chart.D.flows[k];
   const set=(id,v,isP)=>{const e=$(id);e.textContent=v;e.className="v num "+(isP===null?"":(isP>=0?"pl-pos":"pl-neg"))};
   set("#statTWR",pct(twr),twr);
-  set("#statMWR",mwr===null?"--":pct(mwr),mwr===null?null:mwr);
+  set("#statMWR",mwrAnn===null?"--":pct(mwrAnn),mwrAnn===null?null:mwrAnn);
   $("#statFlow").textContent=fmtMoney(flow,state.settings.baseCcy,true);$("#statFlow").className="v num";
   // §3.4 期權排除註記
   const H=holdingsDetail(state.chart.locFilter);

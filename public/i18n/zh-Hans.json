@@ -112,7 +112,7 @@
  "positions": "只持股",
  "guruFail": "暂时无法取得申报资料",
  "privacyLbl": "隐私模式",
- "privacyHint": "隐藏所有资产金额(显示为 •••);点总资产可快速开关",
+ "privacyHint": "开启后每次登入默认隐藏所有金额(显示为 •••);任何时候点总资产净值可临时切换显示/隐藏",
  "plModeLbl": "盈亏显示",
  "plModeHint": "总资产卡片下方盈亏的默认显示",
  "plModeTotal": "总盈亏",

@@ -112,7 +112,7 @@
  "positions": "檔持股",
  "guruFail": "暫時無法取得申報資料",
  "privacyLbl": "私隱模式",
- "privacyHint": "隱藏所有資產金額(顯示為 •••);點總資產可快速開關",
+ "privacyHint": "開啟後每次登入預設隱藏所有金額(顯示為 •••);任何時候點總資產淨值可臨時切換顯示/隱藏",
  "plModeLbl": "盈虧顯示",
  "plModeHint": "總資產卡片下方盈虧的預設顯示",
  "plModeTotal": "總盈虧",

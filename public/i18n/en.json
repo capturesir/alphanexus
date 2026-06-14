@@ -112,7 +112,7 @@
  "positions": "positions",
  "guruFail": "Filing data temporarily unavailable",
  "privacyLbl": "Privacy mode",
- "privacyHint": "Hide all amounts (shown as •••); tap total to toggle quickly",
+ "privacyHint": "When on, amounts are hidden by default after each login; tap the total net assets anytime to toggle show/hide",
  "plModeLbl": "P/L display",
  "plModeHint": "Default P/L shown under the total card",
  "plModeTotal": "Total P/L",

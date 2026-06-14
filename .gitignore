@@ -21,3 +21,6 @@ Thumbs.db
 *.tmp
 *.log
 .~lock.*
+
+# Snapshots / backups
+wealthlens_v*/

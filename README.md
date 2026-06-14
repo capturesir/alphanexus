@@ -156,8 +156,6 @@ npm test                  # 引擎回歸(15)+ 後端(14),共 29 項
 - Email:_(capturesir@gmail.com)_
 - 問題回報與建議:歡迎透過上述 email,或在程式碼倉庫開 issue。
 
-> 本欄位的聯絡資訊為佔位,請自行替換為實際資料後再公開發佈。
-
 ## 授權
 
 MIT License — 詳見 [LICENSE](LICENSE)。

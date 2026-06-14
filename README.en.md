@@ -156,8 +156,6 @@ Architecture inspired by two excellent open-source projects (concepts only, no c
 - Email: _(capturesir@gmail.com)_
 - Issues & suggestions: reach out via the email above, or open an issue in the repository.
 
-> The contact details above are placeholders — replace them with your real information before publishing.
-
 ## License
 
 MIT License — see [LICENSE](LICENSE).

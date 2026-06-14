@@ -24,3 +24,9 @@ Thumbs.db
 
 # Snapshots / backups
 wealthlens_v*/
+
+# Private deployment guide
+DEPLOY.md
+
+# Private notes
+problems.md

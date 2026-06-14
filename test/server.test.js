@@ -147,7 +147,15 @@ async function run() {
   await new Promise(r => S5.server.close(r));
   delete process.env.NEWS_PROVIDER; delete process.env.NEWS_API_KEY;
 
-  // ---- F. 13F 投資大師解析 ----
+  // ---- E2. Google News RSS 解析(標題/來源/連結;不取內文)----
+  const rssItems = S5.parseRssItems(`<rss><channel>
+    <item><title>盈富基金單日吸金 - 香港經濟日報</title><link>https://hket.com/a1</link><pubDate>Wed, 18 Mar 2026 10:00:00 GMT</pubDate></item>
+    <item><title><![CDATA[恒指反彈 - 明報]]></title><link>https://mingpao.com/b2</link><source>明報</source></item>
+  </channel></rss>`);
+  ok(rssItems.length === 2 && rssItems[0].src === "香港經濟日報" && rssItems[0].title === "盈富基金單日吸金" && rssItems[1].url === "https://mingpao.com/b2",
+    "E2 RSS 解析正確(標題/來源/連結分離)");
+  ok(!("content" in rssItems[0]) && !("description" in rssItems[0]), "E3 RSS 不含內文(僅索引導流)");
+
   ok(S5.parseInfoTable(`<infoTable><nameOfIssuer>APPLE INC</nameOfIssuer><value>50000</value><shrsOrPrnAmt><sshPrnamt>250</sshPrnamt></shrsOrPrnAmt></infoTable>`).length === 1, "F1 parseInfoTable 解析單筆");
   const multi = S5.parseInfoTable(`<infoTable><nameOfIssuer>A</nameOfIssuer><value>100</value></infoTable><infoTable><nameOfIssuer>B</nameOfIssuer><value>200</value></infoTable>`);
   ok(multi.length === 2 && multi[1].value === 200, "F2 parseInfoTable 解析多筆");

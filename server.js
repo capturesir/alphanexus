@@ -512,6 +512,8 @@ async function searchSymbols(q) {
 const NEWS_PROVIDER = (process.env.NEWS_PROVIDER || "").toLowerCase();
 const NEWS_API_KEY = process.env.NEWS_API_KEY || "";
 const NEWS_ENABLED_EXT = !!(NEWS_PROVIDER && NEWS_API_KEY);
+// NEWS_PROVIDER=rss → 使用 Google News RSS(中文市場可取港/台/A 股新聞;個人/非商業用途,保留出處)
+const USE_RSS = NEWS_PROVIDER === "rss";
 
 const newsProviders = {
   /* NewsAPI.org:everything 端點,依關鍵詞查詢,只取標題/來源/URL */
@@ -539,75 +541,119 @@ const newsProviders = {
   }
 };
 
-async function getNews(symbols) {
-  const key = "news:" + (NEWS_ENABLED_EXT ? NEWS_PROVIDER + ":" : "") + symbols.slice(0, 8).join(",");
-  const c = cacheGet(key, TTL.news);
-  if (c) return c;
-  const nowS = Date.now() / 1000;
-  const mapNews = (arr, sym) => (arr || []).map(n => ({
-    title: n.title, src: n.publisher || "", url: n.link || "",
-    agoH: Math.max(0.1, (nowS - (n.providerPublishTime || nowS)) / 3600), sym: sym || null
-  })).filter(n => n.title && n.url);
-
-  // 將代碼解析為查詢詞:優先用公司/基金名稱(本地庫存的 history meta 已有 name);
-  // 非美股額外用「去後綴代碼 + 名稱」組合,避開 Yahoo 對 .HK/.SS/.T 後綴新聞索引不佳的問題
-  async function queryFor(sym) {
-    const queries = [];
-    const store = loadStore("hist", sym);
-    const name = store && store.name && store.name !== sym ? store.name : null;
-    const mkt = mktOf(sym);
-    if (mkt === "US") {
-      queries.push(sym);
-      if (name) queries.push(name);
-    } else {
-      if (name) queries.push(name);
-      queries.push(sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, ""));
-      queries.push(sym);
-    }
-    return [...new Set(queries)].slice(0, 2);
+/* 解析 RSS/Atom 的 item(只取標題/連結/來源/時間,不取內文,符合著作權與 RSS 聚合用途) */
+function parseRssItems(xml) {
+  const items = [];
+  const blocks = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || [];
+  const pick = (b, tag) => {
+    const m = b.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    if (!m) return "";
+    return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").trim();
+  };
+  for (const b of blocks) {
+    let title = pick(b, "title");
+    const link = pick(b, "link");
+    const pub = pick(b, "pubDate");
+    let src = pick(b, "source");
+    // Google News 標題常為「標題 - 來源」:拆出來源(若無 source 標籤)並一律從標題移除尾綴
+    const m = title.match(/^(.*) - ([^-]+)$/);
+    if (m) { if (!src) src = m[2].trim(); title = m[1].trim(); }
+    if (title && link) items.push({ title, url: link, src, pub });
   }
+  return items;
+}
 
-  const mine = []; let hot = [];
+/* Google News RSS:公開、媒體聚合性質,支援中文關鍵字 + 地區/語言。
+   個人/非商業用途使用,僅取標題+來源+連結並導流原站,保留出處。 */
+async function googleNewsRss(query, region) {
+  // region: 'HK'(港,繁中)/ 'TW'(台,繁中)/ 'CN'(陸,簡中)/ 'US'(英文)
+  const cfg = {
+    HK: "hl=zh-HK&gl=HK&ceid=HK:zh-Hant",
+    TW: "hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+    CN: "hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+    US: "hl=en-US&gl=US&ceid=US:en"
+  }[region] || "hl=en-US&gl=US&ceid=US:en";
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&${cfg}`;
+  const xml = await fetchAny([url], true);
+  const now = Date.now();
+  return parseRssItems(xml).map(it => ({
+    title: it.title, src: it.src || "Google News", url: it.url,
+    agoH: Math.max(0.1, (now - (it.pub ? Date.parse(it.pub) : now)) / 3600)
+  })).filter(x => x.title && x.url);
+}
 
-  if (NEWS_ENABLED_EXT) {
-    // ---- 正規授權 API 路徑 ----
-    const prov = newsProviders[NEWS_PROVIDER];
-    const jobs = symbols.slice(0, 8).map(async s => {
-      try {
-        const qs = await queryFor(s);
-        const got = await prov(qs[0] || s, 4, s);
-        mine.push(...got.map(x => ({ ...x, sym: s })));
-      } catch (e) {}
-    });
-    jobs.push((async () => {
-      try { hot.push(...(await prov("stock market", 8, null)).map(x => ({ ...x, sym: null }))) } catch (e) {}
-    })());
-    await Promise.all(jobs);
-  } else {
-    // ---- 預設:Yahoo 聚合(僅標題+來源+連結)----
-    const jobs = symbols.slice(0, 8).map(async s => {
-      try {
-        const qs = await queryFor(s);
-        for (const q of qs) {
+/* 把代碼解析為查詢詞 + 對應地區(供 RSS) */
+function newsQueryInfo(sym) {
+  const store = loadStore("hist", sym);
+  const name = store && store.name && store.name !== sym ? store.name : null;
+  const mkt = mktOf(sym);
+  const region = mkt === "HK" ? "HK" : mkt === "TW" ? "TW" : mkt === "CN" ? "CN" : "US";
+  const bare = sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, "");
+  // 中文市場優先用名稱(英文索引對 .HK 等後綴差);美股用代碼
+  const queries = region === "US" ? [sym, name].filter(Boolean) : [name, bare, sym].filter(Boolean);
+  return { region, name, bare, queries: [...new Set(queries)].slice(0, 2) };
+}
+
+/* 單支股票的新聞(按單支快取 + 同鍵合併;與用戶數無關,全站每支每 TTL 週期最多抓一次) */
+function newsForSymbol(sym) {
+  return coalesce("news1:" + sym, async () => {
+    const ck = "news1:" + (NEWS_ENABLED_EXT ? NEWS_PROVIDER + ":" : USE_RSS ? "rss:" : "yh:") + sym;
+    const cached = cacheGet(ck, TTL.news);
+    if (cached) return cached;
+    const info = newsQueryInfo(sym);
+    let got = [];
+    try {
+      if (NEWS_ENABLED_EXT) {
+        got = (await newsProviders[NEWS_PROVIDER](info.queries[0] || sym, 4, sym));
+      } else if (USE_RSS) {
+        for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; }
+      } else {
+        const nowS = Date.now() / 1000;
+        for (const q of info.queries) {
           const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=4`));
-          const got = mapNews(j.news, s);
-          if (got.length) { mine.push(...got); break; }
+          got = (j.news || []).map(n => ({ title: n.title, src: n.publisher || "", url: n.link || "", agoH: Math.max(0.1, (nowS - (n.providerPublishTime || nowS)) / 3600) })).filter(n => n.title && n.url);
+          if (got.length) break;
         }
-      } catch (e) {}
-    });
-    jobs.push((async () => {
-      for (const q of ["stock market", "federal reserve"]) {
-        try { const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=6`)); hot.push(...mapNews(j.news, null)) } catch (e) {}
       }
-    })());
-    await Promise.all(jobs);
-  }
+    } catch (e) {}
+    got = got.map(x => ({ ...x, sym })).slice(0, 6);
+    if (got.length) cacheSet(ck, got);
+    return got;
+  });
+}
 
+/* 熱門財經(全站共用一份快取,與用戶無關) */
+function hotNews() {
+  return coalesce("newsHot", async () => {
+    const ck = "newsHot:" + (NEWS_ENABLED_EXT ? NEWS_PROVIDER : USE_RSS ? "rss" : "yh");
+    const cached = cacheGet(ck, TTL.news);
+    if (cached) return cached;
+    let hot = [];
+    try {
+      if (NEWS_ENABLED_EXT) hot = (await newsProviders[NEWS_PROVIDER]("stock market", 8, null)).map(x => ({ ...x, sym: null }));
+      else if (USE_RSS) hot = (await googleNewsRss("財經 股市", "HK")).map(x => ({ ...x, sym: null }));
+      else {
+        const nowS = Date.now() / 1000;
+        for (const q of ["stock market", "federal reserve"]) {
+          const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=6`));
+          hot.push(...(j.news || []).map(n => ({ title: n.title, src: n.publisher || "", url: n.link || "", agoH: Math.max(0.1, (nowS - (n.providerPublishTime || nowS)) / 3600), sym: null })).filter(n => n.title && n.url));
+        }
+      }
+    } catch (e) {}
+    hot = hot.slice(0, 20);
+    if (hot.length) cacheSet(ck, hot);
+    return hot;
+  });
+}
+
+async function getNews(symbols) {
+  const syms = symbols.slice(0, 8);
+  // 按單支股票各自取(各自快取/合併),再彙整 —— 不再按「整組持倉」快取
+  const results = await Promise.all(syms.map(s => newsForSymbol(s).catch(() => [])));
+  const hot = await hotNews().catch(() => []);
   const seen = new Set();
   const dedupe = arr => arr.filter(n => !seen.has(n.url) && seen.add(n.url)).sort((a, b) => a.agoH - b.agoH);
-  const out = { mine: dedupe(mine).slice(0, 30), hot: dedupe(hot).slice(0, 20) };
-  if (out.mine.length || out.hot.length) cacheSet(key, out);
-  return out;
+  return { mine: dedupe([].concat(...results)).slice(0, 30), hot: dedupe(hot).slice(0, 20) };
 }
 
 /* ====================== 郵箱驗證(零依賴 SMTP,465 隱式 TLS) ======================
@@ -1047,5 +1093,5 @@ if (require.main === module) {
     }
   }, 10 * 60e3);
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, parseRssItems, newsForSymbol, USE_RSS };
 }

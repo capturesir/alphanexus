@@ -84,7 +84,7 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Persistence + incremental updates**: history stored in `data/market/`, served from store within 30 min, otherwise only the gap is fetched; full refetch only when a new split is detected.
 - **Post-market prefetch**: daily at 05:00 Taipei (`PREFETCH_HOUR`), refreshing all holdings and custom sources.
 - **Custom data sources**: feed any API via JSONPath (auto date detection, SSRF protection, repeated-failure alerts).
-- **Pluggable news layer**: defaults to Yahoo aggregation; set `NEWS_PROVIDER` + `NEWS_API_KEY` to switch to licensed providers like NewsAPI / Marketaux (no architecture change).
+- **Pluggable news layer**: defaults to Yahoo aggregation; set `NEWS_PROVIDER=rss` to use **Google News RSS** (Chinese-market news for HK/TW/CN tickers; personal/non-commercial, attribution kept), or `NEWS_PROVIDER=newsapi|marketaux` + `NEWS_API_KEY` for licensed sources. News is cached **per symbol** with request coalescing — each symbol is fetched at most once per cycle site-wide, regardless of user count.
 
 ## Project Structure
 
@@ -120,7 +120,8 @@ Open `http://localhost:8080`. On first run, choose Guest mode and load the demo 
 | `PORT` | server port | 8080 |
 | `PREFETCH_HOUR` | daily prefetch hour (local time, -1 to disable) | 5 |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | enable email-verified signup (465 implicit TLS) | unset = no verification |
-| `NEWS_PROVIDER` / `NEWS_API_KEY` | switch to a licensed news API (`newsapi` or `marketaux`) | unset = Yahoo aggregation |
+| `NEWS_PROVIDER` | news source: `rss` (Google News RSS, Chinese markets) / `newsapi` / `marketaux` | unset = Yahoo aggregation |
+| `NEWS_API_KEY` | key for newsapi / marketaux (not needed for rss) | none |
 | `MARKET_FRESH_MS` | freshness window for market data | 30 min |
 | `SEC_UA` | SEC User-Agent for guru 13F lookups (use a real email) | built-in placeholder |
 

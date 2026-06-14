@@ -597,15 +597,21 @@ function newsQueryInfo(sym) {
 /* 單支股票的新聞(按單支快取 + 同鍵合併;與用戶數無關,全站每支每 TTL 週期最多抓一次) */
 function newsForSymbol(sym) {
   return coalesce("news1:" + sym, async () => {
-    const ck = "news1:" + (NEWS_ENABLED_EXT ? NEWS_PROVIDER + ":" : USE_RSS ? "rss:" : "yh:") + sym;
+    const info = newsQueryInfo(sym);
+    // 按市場自動選來源:中文市場(港/台/A 股)優先用 Google News 中文 RSS,
+    // 不需設任何環境變數;美股維持原本來源(授權 API 或 Yahoo)。
+    const isCN = info.region !== "US";
+    const srcTag = NEWS_ENABLED_EXT ? NEWS_PROVIDER : (isCN || USE_RSS) ? "rss" : "yh";
+    const ck = "news1:" + srcTag + ":" + sym;
     const cached = cacheGet(ck, TTL.news);
     if (cached) return cached;
-    const info = newsQueryInfo(sym);
     let got = [];
     try {
       if (NEWS_ENABLED_EXT) {
-        got = (await newsProviders[NEWS_PROVIDER](info.queries[0] || sym, 4, sym));
-      } else if (USE_RSS) {
+        // 已設定授權 API:美股用之;中文市場仍優先 Google News(授權 API 對港股中文新聞通常也弱)
+        if (isCN) { for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; } }
+        if (!got.length) got = await newsProviders[NEWS_PROVIDER](info.queries[0] || sym, 4, sym);
+      } else if (isCN || USE_RSS) {
         for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; }
       } else {
         const nowS = Date.now() / 1000;

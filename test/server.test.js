@@ -115,6 +115,31 @@ async function run() {
   ok(!!r.j.token, "D4 驗證後可正常登入");
   await new Promise(r => S4.server.close(r));
 
+  // ---- E. 可插拔新聞層:設定 NEWS_PROVIDER 時走授權 API、不打 Yahoo ----
+  clean();
+  process.env.SMTP_HOST = ""; process.env.NEWS_PROVIDER = "newsapi"; process.env.NEWS_API_KEY = "testkey";
+  let newsCalls = [];
+  global.fetch = async (url) => {
+    newsCalls.push(url);
+    if (url.includes("newsapi.org")) return { ok: true, json: async () => ({ articles: [{ title: "NVDA hits high", source: { name: "Reuters" }, url: "https://x.com/a", publishedAt: new Date().toISOString() }] }), text: async () => "" };
+    throw new Error("unexpected " + url);
+  };
+  delete require.cache[require.resolve("../server.js")];
+  const S5 = require("../server.js");
+  await new Promise(r => S5.server.listen(0, r));
+  const port5 = S5.server.address().port;
+  const r5 = await new Promise((res, rej) => { http.get({ port: port5, path: "/api/news?symbols=NVDA" }, x => { let b = ""; x.on("data", c => b += c); x.on("end", () => res(JSON.parse(b))) }).on("error", rej) });
+  ok(newsCalls.some(u => u.includes("newsapi.org")) && !newsCalls.some(u => u.includes("finance.yahoo")) && r5.mine.length > 0,
+    "E1 NEWS_PROVIDER=newsapi → 走授權 API、未打 Yahoo");
+  await new Promise(r => S5.server.close(r));
+  delete process.env.NEWS_PROVIDER; delete process.env.NEWS_API_KEY;
+
+  // ---- F. 13F 投資大師解析 ----
+  ok(S5.parseInfoTable(`<infoTable><nameOfIssuer>APPLE INC</nameOfIssuer><value>50000</value><shrsOrPrnAmt><sshPrnamt>250</sshPrnamt></shrsOrPrnAmt></infoTable>`).length === 1, "F1 parseInfoTable 解析單筆");
+  const multi = S5.parseInfoTable(`<infoTable><nameOfIssuer>A</nameOfIssuer><value>100</value></infoTable><infoTable><nameOfIssuer>B</nameOfIssuer><value>200</value></infoTable>`);
+  ok(multi.length === 2 && multi[1].value === 200, "F2 parseInfoTable 解析多筆");
+  ok(Array.isArray(S5.GURUS) && S5.GURUS.some(g => g.who === "Warren Buffett"), "F3 大師清單含巴菲特");
+
   clean();
   console.log(`\n後端測試:${pass} 項全部通過 ✓`);
 }

@@ -308,6 +308,95 @@ async function customHistory(symbol, cfg) {
 }
 
 /* ====================== #7 CoinGecko 加密貨幣 provider ====================== */
+/* ====================== SEC EDGAR 13F:投資大師季度持倉 ======================
+   公開資訊(美國政府資料,免費可引用)。限制:① 季末後最多 45 天才公布,故有延遲;
+   ② 僅美股多頭,不含現金/債券/海外/做空。我們解析最近一期 13F-HR 的 information table。
+   數據源需 User-Agent(SEC 規定),禮貌性快取 24 小時。 */
+const GURUS = [
+  { id: "berkshire", name: "Berkshire Hathaway", who: "Warren Buffett", cik: "0001067983" },
+  { id: "scion", name: "Scion Asset Mgmt", who: "Michael Burry", cik: "0001649339" },
+  { id: "pershing", name: "Pershing Square", who: "Bill Ackman", cik: "0001336528" },
+  { id: "bridgewater", name: "Bridgewater", who: "Ray Dalio", cik: "0001350694" },
+  { id: "appaloosa", name: "Appaloosa", who: "David Tepper", cik: "0001656456" },
+  { id: "duquesne", name: "Duquesne Family Office", who: "Stanley Druckenmiller", cik: "0001536411" }
+];
+const SEC_UA = process.env.SEC_UA || "WealthLens portfolio-tracker contact@example.com";
+async function secFetch(url, asText) {
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 12000);
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": SEC_UA, "Accept-Encoding": "gzip, deflate" }, signal: ctl.signal });
+    if (!r.ok) throw new Error("sec_" + r.status);
+    return asText ? await r.text() : await r.json();
+  } finally { clearTimeout(tm) }
+}
+function parseInfoTable(xml) {
+  // 解析 13F information table XML,逐個 <infoTable> 取 nameOfIssuer/cusip/value/sshPrnamt
+  const rows = [];
+  const re = /<(?:\w+:)?infoTable>([\s\S]*?)<\/(?:\w+:)?infoTable>/g;
+  const pick = (block, tag) => {
+    const m = block.match(new RegExp(`<(?:\\w+:)?${tag}>([^<]*)<`, "i"));
+    return m ? m[1].trim() : "";
+  };
+  let m;
+  while ((m = re.exec(xml))) {
+    const b = m[1];
+    const name = pick(b, "nameOfIssuer");
+    const value = parseFloat(pick(b, "value").replace(/,/g, ""));
+    const sh = parseFloat(pick(b, "sshPrnamt").replace(/,/g, ""));
+    const cl = pick(b, "titleOfClass");
+    if (name && isFinite(value)) rows.push({ name, value, shares: isFinite(sh) ? sh : null, cls: cl });
+  }
+  return rows;
+}
+async function getGuru(id) {
+  const guru = GURUS.find(g => g.id === id);
+  if (!guru) throw new Error("unknown_guru");
+  const key = "guru:" + id;
+  const c = cacheGet(key, 24 * 3600e3);
+  if (c) return c;
+  // 1) 找最近一期 13F-HR
+  const subs = await secFetch(`https://data.sec.gov/submissions/CIK${guru.cik}.json`);
+  const recent = subs.filings && subs.filings.recent;
+  if (!recent) throw new Error("no_filings");
+  let idx = -1;
+  for (let i = 0; i < recent.form.length; i++) {
+    if (recent.form[i] === "13F-HR") { idx = i; break }
+  }
+  if (idx < 0) throw new Error("no_13f");
+  const accession = recent.accessionNumber[idx].replace(/-/g, "");
+  const reportDate = recent.reportDate ? recent.reportDate[idx] : (recent.filingDate ? recent.filingDate[idx] : "");
+  // 2) 取該 filing 目錄,找 information table XML
+  const dir = `https://www.sec.gov/Archives/edgar/data/${parseInt(guru.cik, 10)}/${accession}`;
+  const listing = await secFetch(dir + "/", true).catch(() => "");
+  let xmlFile = null;
+  const fm = [...listing.matchAll(/href="[^"]*?\/([^"\/]+\.xml)"/gi)].map(x => x[1]);
+  // 優先選含 infoTable/form13f 的 xml,排除 primary_doc
+  xmlFile = fm.find(f => /info|table|13f/i.test(f) && !/primary_doc/i.test(f)) || fm.find(f => !/primary_doc/i.test(f));
+  if (!xmlFile) throw new Error("no_table");
+  const xml = await secFetch(dir + "/" + xmlFile, true);
+  let rows = parseInfoTable(xml);
+  // 合併同一發行人(同名)持倉
+  const merged = {};
+  for (const r of rows) {
+    const k = r.name + "|" + (r.cls || "");
+    if (!merged[k]) merged[k] = { name: r.name, value: 0, shares: 0, cls: r.cls };
+    merged[k].value += r.value;
+    if (r.shares) merged[k].shares += r.shares;
+  }
+  rows = Object.values(merged).sort((a, b) => b.value - a.value);
+  // SEC 13F value 欄位:2023 年後為「美元」,之前為「千美元」。以總額啟發式判斷單位。
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  const top = rows.slice(0, 10).map(r => ({ name: r.name, value: r.value, shares: r.shares, pct: total > 0 ? r.value / total : 0 }));
+  const out = {
+    id, name: guru.name, who: guru.who, reportDate,
+    totalValue: total, holdings: rows.length, top,
+    note: "僅美股多頭,不含現金/債券/海外/做空;季末後最多 45 天公布"
+  };
+  cacheSet(key, out);
+  return out;
+}
+
 async function coingeckoHistory(symbol) {
   const m = String(symbol).match(/^([A-Z0-9]{2,10})-USD$/i);
   if (!m) throw new Error("cg_unsupported");
@@ -414,8 +503,44 @@ async function searchSymbols(q) {
   cacheSet(key, out);
   return out;
 }
+/* ====================== 新聞數據層(可插拔) ======================
+   預設:Yahoo Finance 非公開接口聚合(僅標題+來源+連結,不轉載內文;個人/示範用)。
+   設定環境變數即切換為「有授權的正規新聞 API」(商業上線建議),架構不變:
+     NEWS_PROVIDER = newsapi | marketaux        (擇一)
+     NEWS_API_KEY  = <你的金鑰>
+   兩者皆只取標題/來源/連結並導流原站,符合其服務條款的聚合用途。 */
+const NEWS_PROVIDER = (process.env.NEWS_PROVIDER || "").toLowerCase();
+const NEWS_API_KEY = process.env.NEWS_API_KEY || "";
+const NEWS_ENABLED_EXT = !!(NEWS_PROVIDER && NEWS_API_KEY);
+
+const newsProviders = {
+  /* NewsAPI.org:everything 端點,依關鍵詞查詢,只取標題/來源/URL */
+  async newsapi(query, n) {
+    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&sortBy=publishedAt&language=en&pageSize=${n}&apiKey=${NEWS_API_KEY}`;
+    const j = await fetchAny([url]);
+    const now = Date.now() / 1000;
+    return (j.articles || []).map(a => ({
+      title: a.title, src: (a.source && a.source.name) || "", url: a.url,
+      agoH: Math.max(0.1, (now - (a.publishedAt ? Date.parse(a.publishedAt) / 1000 : now)) / 3600)
+    })).filter(x => x.title && x.url);
+  },
+  /* Marketaux:金融新聞,支援 symbols 參數,只取標題/來源/URL */
+  async marketaux(query, n, symbol) {
+    const base = "https://api.marketaux.com/v1/news/all";
+    const url = symbol
+      ? `${base}?symbols=${encodeURIComponent(symbol)}&filter_entities=true&language=en&limit=${n}&api_token=${NEWS_API_KEY}`
+      : `${base}?search=${encodeURIComponent(query)}&language=en&limit=${n}&api_token=${NEWS_API_KEY}`;
+    const j = await fetchAny([url]);
+    const now = Date.now() / 1000;
+    return (j.data || []).map(a => ({
+      title: a.title, src: a.source || "", url: a.url,
+      agoH: Math.max(0.1, (now - (a.published_at ? Date.parse(a.published_at) / 1000 : now)) / 3600)
+    })).filter(x => x.title && x.url);
+  }
+};
+
 async function getNews(symbols) {
-  const key = "news:" + symbols.slice(0, 8).join(",");
+  const key = "news:" + (NEWS_ENABLED_EXT ? NEWS_PROVIDER + ":" : "") + symbols.slice(0, 8).join(",");
   const c = cacheGet(key, TTL.news);
   if (c) return c;
   const nowS = Date.now() / 1000;
@@ -432,33 +557,52 @@ async function getNews(symbols) {
     const name = store && store.name && store.name !== sym ? store.name : null;
     const mkt = mktOf(sym);
     if (mkt === "US") {
-      queries.push(sym);                          // 美股:代碼本身索引良好
+      queries.push(sym);
       if (name) queries.push(name);
     } else {
-      if (name) queries.push(name);               // 港/A/日股:優先用名稱
-      queries.push(sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, "")); // 去後綴的純數字/代碼
+      if (name) queries.push(name);
+      queries.push(sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, ""));
       queries.push(sym);
     }
     return [...new Set(queries)].slice(0, 2);
   }
 
   const mine = []; let hot = [];
-  const jobs = symbols.slice(0, 8).map(async s => {
-    try {
-      const qs = await queryFor(s);
-      for (const q of qs) {
-        const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=4`));
-        const got = mapNews(j.news, s);
-        if (got.length) { mine.push(...got); break; } // 第一個有結果的查詢詞即採用
+
+  if (NEWS_ENABLED_EXT) {
+    // ---- 正規授權 API 路徑 ----
+    const prov = newsProviders[NEWS_PROVIDER];
+    const jobs = symbols.slice(0, 8).map(async s => {
+      try {
+        const qs = await queryFor(s);
+        const got = await prov(qs[0] || s, 4, s);
+        mine.push(...got.map(x => ({ ...x, sym: s })));
+      } catch (e) {}
+    });
+    jobs.push((async () => {
+      try { hot.push(...(await prov("stock market", 8, null)).map(x => ({ ...x, sym: null }))) } catch (e) {}
+    })());
+    await Promise.all(jobs);
+  } else {
+    // ---- 預設:Yahoo 聚合(僅標題+來源+連結)----
+    const jobs = symbols.slice(0, 8).map(async s => {
+      try {
+        const qs = await queryFor(s);
+        for (const q of qs) {
+          const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=4`));
+          const got = mapNews(j.news, s);
+          if (got.length) { mine.push(...got); break; }
+        }
+      } catch (e) {}
+    });
+    jobs.push((async () => {
+      for (const q of ["stock market", "federal reserve"]) {
+        try { const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=6`)); hot.push(...mapNews(j.news, null)) } catch (e) {}
       }
-    } catch (e) {}
-  });
-  jobs.push((async () => {
-    for (const q of ["stock market", "federal reserve"]) {
-      try { const j = await fetchAny(YH(`/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=0&newsCount=6`)); hot.push(...mapNews(j.news, null)) } catch (e) {}
-    }
-  })());
-  await Promise.all(jobs);
+    })());
+    await Promise.all(jobs);
+  }
+
   const seen = new Set();
   const dedupe = arr => arr.filter(n => !seen.has(n.url) && seen.add(n.url)).sort((a, b) => a.agoH - b.agoH);
   const out = { mine: dedupe(mine).slice(0, 30), hot: dedupe(hot).slice(0, 20) };
@@ -640,6 +784,14 @@ const server = http.createServer(async (req, res) => {
       const out = {};
       await Promise.all(ccys.map(async c => { try { out[c] = await smartFx(c) } catch (e) {} }));
       return send(req, res, 200, out);
+    }
+    if (p === "/api/gurus") {
+      return send(req, res, 200, { gurus: GURUS.map(g => ({ id: g.id, name: g.name, who: g.who })) });
+    }
+    if (p === "/api/guru") {
+      const id = (u.searchParams.get("id") || "").trim();
+      try { return send(req, res, 200, await getGuru(id)) }
+      catch (e) { return send(req, res, 502, { error: "guru_failed", detail: String(e.message || e) }) }
     }
     if (p === "/api/news") {
       const syms = (u.searchParams.get("symbols") || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -859,5 +1011,5 @@ if (require.main === module) {
     }
   }, 10 * 60e3);
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, get PENDING(){return PENDING} };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, get PENDING(){return PENDING}, parseInfoTable, getGuru, GURUS };
 }

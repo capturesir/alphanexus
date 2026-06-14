@@ -24,12 +24,14 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Industry-standard accounting**: raw-price valuation + transaction restatement + internal cash transfers — correctly handles dividends, splits and fees, avoiding NAV distortion and double counting.
 - **Resilient data layer**: multi-source fallback, local persistence + incremental updates, post-market prefetch, request coalescing, gzip.
 - **Real account system**: scrypt password hashing, Bearer tokens, optional email verification, cloud portfolio sync.
+- **Privacy & sharing**: one-tap privacy mode hides all amounts; share a returns-only (no amounts) performance card.
 - **Zero dependencies**: backend uses only Node.js built-ins — no `npm install`.
 
 ## Feature Overview
 
 ### Asset List
 - Holdings overview: market value, P/L, return %, dividends received, trailing-12-month dividend estimate.
+- **Total card**: tap the amount to toggle privacy mode; tap the P/L below to cycle "total P/L / last-two-trading-day change"; the "Analysis" button opens the analysis page.
 - **Sorting**: by value, daily change %, or return (asc/desc).
 - **Tap amount to cycle**: latest market value → latest price (daily %) → daily value change.
 - **Holding detail page**: tap any holding for latest price, mini sparkline, full transaction history for that asset, dividends, data source; delete the entire asset.
@@ -37,6 +39,11 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Transactions**: nine activity types (stock/bond/cash/option/other/dividend/interest/fee/liability) with a fee field.
 - **Transaction filter**: grouped dropdown (by type / by symbol); filtering by symbol also includes that asset's related dividends.
 - **Asset location**: distinguishes brokers/banks; a picker icon selects existing locations; blank defaults to "Default".
+
+### Portfolio Analysis
+- **Asset allocation**: pie chart of cash / stocks / bonds / other, with weights and amounts.
+- **Overall performance**: portfolio TWR vs major indices (SPY, VT) over the same period.
+- **Track investing gurus**: powered by US SEC EDGAR 13F public filings — shows the latest-quarter top-10 holdings (name / value / weight) of gurus such as Buffett, Burry, Ackman, Dalio, Tepper and Druckenmiller; clearly noting limitations (US long positions only, up to 45-day lag after quarter-end, no cash).
 
 ### Performance Chart
 - Three metrics: NAV, TWR (time-weighted), MWR (money-weighted) — TWR and MWR share a cumulative basis and coincide when there are no external cash flows.
@@ -55,6 +62,9 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 ### Profile
 - Avatar & profile, change password, logout.
 - Dark/light theme, language, up/down color preference, default chart type.
+- **Privacy mode** toggle (on by default): hides all amounts (shown as •••); ratios and prices stay visible.
+- **P/L display** default mode (total P/L / daily change).
+- **Share return**: generate a returns-only card (no amounts), rendered to PNG via Canvas, saved to the photo album through the system share sheet or downloaded directly.
 - **Auto-dividend** toggle and **dividend withholding tax** rate.
 - **Custom data sources** (JSONPath), **CSV import/export**, demo portfolio load/clear.
 
@@ -112,6 +122,7 @@ Open `http://localhost:8080`. On first run, choose Guest mode and load the demo 
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | enable email-verified signup (465 implicit TLS) | unset = no verification |
 | `NEWS_PROVIDER` / `NEWS_API_KEY` | switch to a licensed news API (`newsapi` or `marketaux`) | unset = Yahoo aggregation |
 | `MARKET_FRESH_MS` | freshness window for market data | 30 min |
+| `SEC_UA` | SEC User-Agent for guru 13F lookups (use a real email) | built-in placeholder |
 
 ## Testing
 
@@ -152,8 +163,8 @@ Architecture inspired by two excellent open-source projects (concepts only, no c
 
 ## Contact / Author
 
-- Author: _(Capture)_
-- Email: _(capturesir@gmail.com)_
+- Author: Capture
+- Email: capturesir@gmail.com
 - Issues & suggestions: reach out via the email above, or open an issue in the repository.
 
 ## License

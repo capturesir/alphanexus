@@ -60,7 +60,7 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Shows only headline, source and time, linking to the original article** — no content reproduction.
 
 ### Profile
-- Avatar & profile, change password, logout.
+- Avatar & profile, change password, logout, **delete account** (password-confirmed, permanently removes all data; supports GDPR/PDPO right to erasure).
 - Dark/light theme, language, up/down color preference, default chart type.
 - **Privacy mode** toggle (on by default): hides all amounts (shown as •••); ratios and prices stay visible.
 - **P/L display** default mode (total P/L / daily change).

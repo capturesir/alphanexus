@@ -113,6 +113,19 @@ async function run() {
   ok(!!r.j.token, "D3 正確驗證碼 → 簽發 token");
   r = await call("/api/auth/login", { email: "u@x.com", pwd: "pass1234" });
   ok(!!r.j.token, "D4 驗證後可正常登入");
+  // D5 刪除帳號:錯密碼拒絕、正確密碼徹底清除
+  const tok = r.j.token;
+  const delCall = (body, token) => new Promise((res, rej) => {
+    const rq = http.request({ host: "localhost", port, path: "/api/auth/delete", method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token } },
+      x => { let b = ""; x.on("data", c => b += c); x.on("end", () => res({ code: x.statusCode, j: JSON.parse(b || "{}") })) });
+    rq.on("error", rej); rq.write(JSON.stringify(body)); rq.end();
+  });
+  let dr = await delCall({ pwd: "wrong" }, tok);
+  ok(dr.j.error === "bad_pwd", "D5a 錯密碼無法刪除帳號");
+  dr = await delCall({ pwd: "pass1234" }, tok);
+  ok(dr.j.ok === true, "D5b 正確密碼刪除帳號成功");
+  const after = await call("/api/auth/login", { email: "u@x.com", pwd: "pass1234" });
+  ok(after.j.error === "no_user", "D5c 刪除後帳號已不存在");
   await new Promise(r => S4.server.close(r));
 
   // ---- E. 可插拔新聞層:設定 NEWS_PROVIDER 時走授權 API、不打 Yahoo ----
@@ -139,6 +152,23 @@ async function run() {
   const multi = S5.parseInfoTable(`<infoTable><nameOfIssuer>A</nameOfIssuer><value>100</value></infoTable><infoTable><nameOfIssuer>B</nameOfIssuer><value>200</value></infoTable>`);
   ok(multi.length === 2 && multi[1].value === 200, "F2 parseInfoTable 解析多筆");
   ok(Array.isArray(S5.GURUS) && S5.GURUS.some(g => g.who === "Warren Buffett"), "F3 大師清單含巴菲特");
+
+  // ---- G. 儲存層(Store)介面契約 ----
+  clean();
+  delete require.cache[require.resolve("../server.js")];
+  const S6 = require("../server.js");
+  const St = S6.Store;
+  const need = ["getByEmail","exists","getByToken","put","save","del","pGet","pPut","pDel","pfGet","pfPut","pfDel","pfAllTxns"];
+  ok(St && need.every(m => typeof St[m] === "function"), "G1 Store 介面方法齊全");
+  St.put("z@x.com", { id: "uidZ", name: "Z", salt: "s", hash: "h", tokens: ["tokZ"] });
+  ok(St.exists("z@x.com") && St.getByEmail("z@x.com").id === "uidZ", "G2 put/getByEmail/exists");
+  ok(St.getByToken("tokZ") && St.getByToken("tokZ").email === "z@x.com", "G3 getByToken");
+  St.pfPut("uidZ", { txns: [{ sym: "AAPL" }], settings: {}, updatedAt: 1 });
+  ok(St.pfGet("uidZ").txns[0].sym === "AAPL", "G4 pfPut/pfGet");
+  const allSyms = [...St.pfAllTxns()].map(t => t.sym);
+  ok(allSyms.includes("AAPL"), "G5 pfAllTxns 掃描全組合");
+  St.del("z@x.com"); St.pfDel("uidZ");
+  ok(!St.exists("z@x.com"), "G6 del 清除用戶");
 
   clean();
   console.log(`\n後端測試:${pass} 項全部通過 ✓`);

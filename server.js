@@ -663,10 +663,43 @@ const mailer = {
     });
   }
 };
-/* 待驗證註冊:email -> {name,salt,hash,code,exp,tries,lastSent} */
-const PENDING_F = path.join(DATA, "pending.json");
-let PENDING = readJSON(PENDING_F, {});
-function savePending() { writeJSON(PENDING_F, PENDING) }
+/* ====================== 儲存層抽象(Store) ======================
+   所有「用戶帳號 / 待驗證註冊 / 投資組合」的持久化都經過這個介面。
+   目前後端為 JSON 檔(行為與先前完全一致)。將來用戶量大時,只需把這一層
+   內部換成 SQLite(Node 22+ 內建 node:sqlite),其餘程式碼與 API 完全不動。 */
+function createJsonStore() {
+  const USERS_F = path.join(DATA, "users.json");
+  const PENDING_F = path.join(DATA, "pending.json");
+  let USERS = readJSON(USERS_F, {});
+  let PENDING = readJSON(PENDING_F, {});
+  const saveUsers = () => writeJSON(USERS_F, USERS);
+  const savePending = () => writeJSON(PENDING_F, PENDING);
+  return {
+    getByEmail: (email) => USERS[email] || null,
+    exists: (email) => !!USERS[email],
+    getByToken: (token) => {
+      for (const email in USERS) { const u = USERS[email]; if (u.tokens && u.tokens.includes(token)) return { email, u, token } }
+      return null;
+    },
+    put: (email, rec) => { USERS[email] = rec; saveUsers() },
+    save: () => saveUsers(),
+    del: (email) => { delete USERS[email]; saveUsers() },
+    pGet: (email) => PENDING[email] || null,
+    pPut: (email, rec) => { PENDING[email] = rec; savePending() },
+    pDel: (email) => { if (PENDING[email]) { delete PENDING[email]; savePending() } },
+    pfGet: (uid) => readJSON(path.join(PORT_DIR, uid + ".json"), { txns: [], settings: null, updatedAt: 0 }),
+    pfPut: (uid, doc) => writeJSON(path.join(PORT_DIR, uid + ".json"), doc),
+    pfDel: (uid) => { try { const f = path.join(PORT_DIR, uid + ".json"); if (fs.existsSync(f)) fs.unlinkSync(f) } catch (e) {} },
+    // 掃描所有組合的交易(供夜間預抓收集代碼)
+    pfAllTxns: function* () {
+      let files = []; try { files = fs.readdirSync(PORT_DIR) } catch (e) {}
+      for (const f of files) { const d = readJSON(path.join(PORT_DIR, f), {}); for (const t of (d.txns || [])) yield t }
+    },
+    _raw: () => ({ USERS, PENDING })
+  };
+}
+const Store = createJsonStore();
+
 const genCode = () => String(crypto.randomInt(100000, 1000000));
 async function sendVerifyCode(email, code) {
   await mailer.send({
@@ -677,9 +710,6 @@ async function sendVerifyCode(email, code) {
 }
 
 /* ---------------------- 帳號系統 ---------------------- */
-const USERS_F = path.join(DATA, "users.json");
-let USERS = readJSON(USERS_F, {});
-function saveUsers() { writeJSON(USERS_F, USERS) }
 function hashPwd(pwd, salt) { return crypto.scryptSync(pwd, salt, 32).toString("hex") }
 function pubUser(u, email) { return { name: u.name, email, avatar: u.avatar || "🙂" } }
 function newToken(u) { const t = crypto.randomBytes(24).toString("hex"); u.tokens = (u.tokens || []).slice(-9); u.tokens.push(t); return t }
@@ -687,10 +717,8 @@ function userByToken(req) {
   const h = req.headers["authorization"] || "";
   const t = h.startsWith("Bearer ") ? h.slice(7) : null;
   if (!t) return null;
-  for (const email in USERS) { const u = USERS[email]; if (u.tokens && u.tokens.includes(t)) return { email, u, token: t } }
-  return null;
+  return Store.getByToken(t);
 }
-function portfolioPath(uid) { return path.join(PORT_DIR, uid + ".json") }
 
 /* ---------------------- HTTP 工具 ---------------------- */
 const zlib = require("zlib");
@@ -852,44 +880,43 @@ const server = http.createServer(async (req, res) => {
       const pwd = String(b.pwd || "");
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(req, res, 400, { error: "bad_email" });
       if (pwd.length < 4) return send(req, res, 400, { error: "weak_pwd" });
-      if (USERS[email]) return send(req, res, 409, { error: "exists" });
+      if (Store.exists(email)) return send(req, res, 409, { error: "exists" });
       const salt = crypto.randomBytes(16).toString("hex");
       const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [] };
       if (MAIL_ENABLED) { // 郵箱驗證:先入待驗證區,寄送 6 位驗證碼
         const code = genCode();
-        PENDING[email] = { ...rec, code, exp: Date.now() + 15 * 60e3, tries: 0, lastSent: Date.now() };
-        savePending();
+        Store.pPut(email, { ...rec, code, exp: Date.now() + 15 * 60e3, tries: 0, lastSent: Date.now() });
         try { await sendVerifyCode(email, code) }
-        catch (e) { delete PENDING[email]; savePending(); log("smtp fail", String(e.message || e)); return send(req, res, 502, { error: "mail_failed" }) }
+        catch (e) { Store.pDel(email); log("smtp fail", String(e.message || e)); return send(req, res, 502, { error: "mail_failed" }) }
         return send(req, res, 200, { pending: true });
       }
       const token = newToken(rec);
-      USERS[email] = rec; saveUsers();
+      Store.put(email, rec);
       return send(req, res, 200, { token, user: pubUser(rec, email) });
     }
     if (p === "/api/auth/verify" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
-      const pd = PENDING[email];
+      const pd = Store.pGet(email);
       if (!pd) return send(req, res, 404, { error: "no_pending" });
-      if (Date.now() > pd.exp) { delete PENDING[email]; savePending(); return send(req, res, 400, { error: "code_expired" }) }
+      if (Date.now() > pd.exp) { Store.pDel(email); return send(req, res, 400, { error: "code_expired" }) }
       pd.tries = (pd.tries || 0) + 1;
-      if (pd.tries > 5) { delete PENDING[email]; savePending(); return send(req, res, 429, { error: "too_many_tries" }) }
-      if (String(b.code || "").trim() !== pd.code) { savePending(); return send(req, res, 401, { error: "bad_code" }) }
+      if (pd.tries > 5) { Store.pDel(email); return send(req, res, 429, { error: "too_many_tries" }) }
+      if (String(b.code || "").trim() !== pd.code) { Store.pPut(email, pd); return send(req, res, 401, { error: "bad_code" }) }
       const usr = { id: pd.id, name: pd.name, avatar: pd.avatar, salt: pd.salt, hash: pd.hash, tokens: [] };
       const token = newToken(usr);
-      USERS[email] = usr; saveUsers();
-      delete PENDING[email]; savePending();
+      Store.put(email, usr);
+      Store.pDel(email);
       return send(req, res, 200, { token, user: pubUser(usr, email) });
     }
     if (p === "/api/auth/resend" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
-      const pd = PENDING[email];
+      const pd = Store.pGet(email);
       if (!pd) return send(req, res, 404, { error: "no_pending" });
       if (Date.now() - (pd.lastSent || 0) < 60e3) return send(req, res, 429, { error: "resend_too_fast" });
       pd.code = genCode(); pd.exp = Date.now() + 15 * 60e3; pd.tries = 0; pd.lastSent = Date.now();
-      savePending();
+      Store.pPut(email, pd);
       try { await sendVerifyCode(email, pd.code) }
       catch (e) { return send(req, res, 502, { error: "mail_failed" }) }
       return send(req, res, 200, { ok: true });
@@ -897,15 +924,15 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/auth/login" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
-      const usr = USERS[email];
+      const usr = Store.getByEmail(email);
       if (!usr) return send(req, res, 404, { error: "no_user" });
       if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });
-      const token = newToken(usr); saveUsers();
+      const token = newToken(usr); Store.save();
       return send(req, res, 200, { token, user: pubUser(usr, email) });
     }
     if (p === "/api/auth/logout" && req.method === "POST") {
       const a = userByToken(req);
-      if (a) { a.u.tokens = a.u.tokens.filter(t => t !== a.token); saveUsers() }
+      if (a) { a.u.tokens = a.u.tokens.filter(t => t !== a.token); Store.save() }
       return send(req, res, 200, { ok: true });
     }
     if (p === "/api/auth/password" && req.method === "POST") {
@@ -917,7 +944,22 @@ const server = http.createServer(async (req, res) => {
       a.u.salt = crypto.randomBytes(16).toString("hex");
       a.u.hash = hashPwd(String(b.newPwd), a.u.salt);
       a.u.tokens = [a.token];
-      saveUsers();
+      Store.save();
+      return send(req, res, 200, { ok: true });
+    }
+    if (p === "/api/auth/delete" && req.method === "POST") {
+      const a = userByToken(req);
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
+      const b = await readBody(req);
+      // 需以密碼確認,避免 token 被盜後遭惡意刪號
+      if (hashPwd(String(b.pwd || ""), a.u.salt) !== a.u.hash) return send(req, res, 401, { error: "bad_pwd" });
+      // 1) 刪除組合檔
+      Store.pfDel(a.u.id);
+      // 2) 刪除用戶記錄(連同 salt/hash/tokens)
+      Store.del(a.email);
+      // 3) 清掉可能殘留的待驗證記錄
+      Store.pDel(a.email);
+      log("account deleted", a.email);
       return send(req, res, 200, { ok: true });
     }
     if (p === "/api/me") {
@@ -927,7 +969,7 @@ const server = http.createServer(async (req, res) => {
         const b = await readBody(req);
         if (b.name) a.u.name = String(b.name).slice(0, 40);
         if (b.avatar) a.u.avatar = String(b.avatar).slice(0, 8);
-        saveUsers();
+        Store.save();
       }
       return send(req, res, 200, { user: pubUser(a.u, a.email) });
     }
@@ -936,7 +978,6 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/portfolio") {
       const a = userByToken(req);
       if (!a) return send(req, res, 401, { error: "unauthorized" });
-      const f = portfolioPath(a.u.id);
       if (req.method === "PUT") {
         const b = await readBody(req);
         const doc = {
@@ -944,10 +985,10 @@ const server = http.createServer(async (req, res) => {
           settings: (b.settings && typeof b.settings === "object") ? b.settings : {},
           updatedAt: Date.now()
         };
-        writeJSON(f, doc);
+        Store.pfPut(a.u.id, doc);
         return send(req, res, 200, { ok: true, updatedAt: doc.updatedAt });
       }
-      return send(req, res, 200, readJSON(f, { txns: [], settings: null, updatedAt: 0 }));
+      return send(req, res, 200, Store.pfGet(a.u.id));
     }
 
     return send(req, res, 404, { error: "not_found" });
@@ -963,12 +1004,7 @@ const PREFETCH_HOUR = process.env.PREFETCH_HOUR === undefined ? 5 : +process.env
 let lastPrefetchDay = "", prefetchRunning = false;
 function collectSymbols() {
   const syms = new Set(Object.keys(CUSTOM));
-  try {
-    for (const f of fs.readdirSync(PORT_DIR)) {
-      const d = readJSON(path.join(PORT_DIR, f), {});
-      for (const t of (d.txns || [])) if (t.sym) syms.add(t.sym);
-    }
-  } catch (e) {}
+  try { for (const t of Store.pfAllTxns()) if (t.sym) syms.add(t.sym) } catch (e) {}
   return [...syms];
 }
 async function prefetchAll() {
@@ -1011,5 +1047,5 @@ if (require.main === module) {
     }
   }, 10 * 60e3);
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, get PENDING(){return PENDING}, parseInfoTable, getGuru, GURUS };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS };
 }

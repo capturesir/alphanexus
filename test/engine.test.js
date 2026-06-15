@@ -74,14 +74,17 @@ state.txns = [
   { id:'4', kind:'dividend', sym:'DIVX', ccy:'USD', loc:'富途', amount:60, date:'2024-03-14' }];
 reconcileAutoDividends();
 const autos = state.txns.filter(t => t.auto);
-ok(autos.length === 2, '(e) 3/15 去重、9/16 兩位置自動入帳');
-ok(Math.abs(autos.find(t => t.loc === '富途').amount - 52.5) < 1e-9, '(e) 30% 稅後 $52.5');
-ok(Math.abs(autos.find(t => t.loc === '中銀').amount - 35) < 1e-9, '(e) 中銀 $35');
+// 每位置去重:3/15 富途因 3/14 手動股息(±14天)而跳過,但中銀無 → 補上;9/16 兩位置各一筆 = 共 3 筆
+ok(autos.length === 3, '(e) 每位置去重:3/15中銀 + 9/16富途 + 9/16中銀 = 3筆');
+ok(!autos.some(t => t.loc === '富途' && t.date === '2024-03-15'), '(e) 3/15富途因手動股息跳過(每位置去重)');
+ok(!!autos.find(t => t.loc === '中銀' && t.date === '2024-03-15'), '(e) 3/15中銀補上(不受富途影響)');
+ok(Math.abs(autos.find(t => t.loc === '富途' && t.date === '2024-09-16').amount - 52.5) < 1e-9, '(e) 9/16富途 30%稅後 $52.5');
+ok(Math.abs(autos.find(t => t.loc === '中銀' && t.date === '2024-09-16').amount - 35) < 1e-9, '(e) 9/16中銀 $35');
 state.settings.divTax = 0;
-ok(reapplyDivTax() === 2 && Math.abs(autos.find(t => t.loc === '富途').amount - 75) < 1e-9, '(e) 改 0% 稅率重算');
-state.settings.divSkip = ['DIVX|2024-09-16'];
+ok(reapplyDivTax() === 3 && Math.abs(autos.find(t => t.loc === '富途' && t.date === '2024-09-16').amount - 75) < 1e-9, '(e) 改 0% 稅率重算');
+state.settings.divSkip = ['DIVX|2024-09-16|富途', 'DIVX|2024-09-16|中銀', 'DIVX|2024-03-15|中銀'];
 state.txns = state.txns.filter(t => !t.auto);
-ok(!reconcileAutoDividends(), '(e) 跳過清單生效,刪除後不重生');
+ok(!reconcileAutoDividends(), '(e) 跳過清單(每位置)生效,刪除後不重生');
 
 // (f) MWR 累積口徑:無外部現金流時 MWR累積 ≈ TWR累積(做法一)
 const fpx = new Float64Array(N_DAYS);
@@ -102,6 +105,291 @@ state.txns.push({ id:'3', kind:'cash', ccy:'USD', loc:'A', amount:30000, date: f
 state.txns.push({ id:'4', kind:'stock', sym:'MWX', ccy:'USD', loc:'A', side:'buy', price: fpx[Math.max(1,lastf-60)], units:500, date: fmtD(DATES[Df.i0 + Math.max(1,lastf-60)]) });
 Df = buildDaily(null); lastf = Df.values.length - 1; twf = twrCurve(Df);
 ok(Math.abs((twf[lastf]/twf[0]-1) - mwrCumOf(Df, 0, lastf)) > 1e-4, '(f) 有現金流時 MWR累積 與 TWR累積 分岔');
+
+// ============ (g) 圖表期間計算:TWR/MWR 截段、買賣、資金進出、YTD、股息 ============
+state.settings.autoDiv = false;
+const K = (D, date) => dIdx(new Date(date)) - D.i0;
+const px3 = (pts) => { // pts: [[dateStr, price], ...] 線性內插建構價格序列
+  const a = new Float64Array(N_DAYS);
+  const idx = pts.map(p => [dIdx(new Date(p[0])), p[1]]);
+  for (let i = 0; i < N_DAYS; i++) {
+    if (i <= idx[0][0]) { a[i] = idx[0][1]; continue; }
+    let seg = idx.length - 1;
+    for (let s = 0; s < idx.length - 1; s++) if (i > idx[s][0] && i <= idx[s + 1][0]) { seg = s; break; }
+    if (i > idx[idx.length - 1][0]) { a[i] = idx[idx.length - 1][1]; continue; }
+    const [k1, v1] = idx[seg], [k2, v2] = idx[seg + 1];
+    a[i] = v1 + (v2 - v1) * (i - k1) / (k2 - k1);
+  }
+  return a;
+};
+
+// (g1) TWR 截段正確性:三段 +50% / -20% / +30%,無資金流
+(function () {
+  const px = px3([['2024-01-01', 100], ['2024-05-01', 150], ['2024-09-01', 120], ['2025-01-01', 156]]);
+  REAL.series['G1'] = { raw: px, adj: px }; REAL.events['G1'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G1', n: 'G1', z: 'G1', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G1', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2024-01-01' }];
+  const D = buildDaily(null), tw = twrCurve(D);
+  ok(Math.abs((tw[K(D, '2024-09-01')] / tw[K(D, '2024-05-01')] - 1) - (-0.20)) < 0.01, '(g1) TWR 截中段 = -20%');
+  ok(Math.abs((tw[K(D, '2025-01-01')] / tw[K(D, '2024-05-01')] - 1) - 0.04) < 0.01, '(g1) TWR 截後兩段 = +4%');
+  ok(Math.abs((tw[K(D, '2025-01-01')] / tw[0] - 1) - 0.56) < 0.01, '(g1) TWR 全段 = +56%');
+})();
+
+// (g2) 期間中加碼:TWR 剔除(=0%),MWR 反映時機(為負)
+(function () {
+  const px = px3([['2024-01-01', 100], ['2024-07-01', 200], ['2025-01-01', 100]]);
+  REAL.series['G2'] = { raw: px, adj: px }; REAL.events['G2'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G2', n: 'G2', z: 'G2', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G2', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2024-01-01' },
+    { id: '3', kind: 'cash', ccy: 'USD', loc: 'A', amount: 200, date: '2024-07-01' },
+    { id: '4', kind: 'stock', sym: 'G2', ccy: 'USD', loc: 'A', side: 'buy', price: 200, units: 1, date: '2024-07-01' }];
+  const D = buildDaily(null), last = D.values.length - 1, tw = twrCurve(D);
+  ok(Math.abs(tw[last] / tw[0] - 1) < 0.005, '(g2) 加碼後 TWR 仍=0%(剔除資金流時機)');
+  ok(mwrOf(D, 0, last) < -0.05, '(g2) 高點加碼 MWR 年化為負(反映時機)');
+})();
+
+// (g3) 期間起點 k0 市值基準:下半段只看 k0 之後
+(function () {
+  const px = px3([['2024-01-01', 100], ['2024-07-01', 200], ['2025-01-01', 240]]);
+  REAL.series['G3'] = { raw: px, adj: px }; REAL.events['G3'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G3', n: 'G3', z: 'G3', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G3', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2024-01-01' }];
+  const D = buildDaily(null), tw = twrCurve(D), a = K(D, '2024-07-01'), b = K(D, '2025-01-01');
+  ok(Math.abs((tw[b] / tw[a] - 1) - 0.20) < 0.01, '(g3) 下半段 TWR (200→240) = +20%');
+  ok(Math.abs(mwrCumOf(D, a, b) - 0.20) < 0.03, '(g3) 下半段 MWR累積 ≈ +20%');
+})();
+
+// (g4) YTD 起點 = 今年初市值(非成本):去年買入,今年漲
+(function () {
+  const today = dIdx(TODAY);
+  const px = px3([['2025-06-01', 100], ['2025-12-31', 150], [fmtD(DATES[today]), 180]]);
+  REAL.series['G4'] = { raw: px, adj: px }; REAL.events['G4'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G4', n: 'G4', z: 'G4', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2025-06-01' },
+    { id: '2', kind: 'stock', sym: 'G4', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2025-06-01' }];
+  const D = buildDaily(null), tw = twrCurve(D), last = D.values.length - 1;
+  const y0 = new Date(TODAY.getFullYear(), 0, 1);
+  let k0 = Math.min(Math.max(0, dIdx(y0) - D.i0), last);
+  ok(Math.abs((tw[last] / tw[k0] - 1) - 0.20) < 0.03, '(g4) YTD TWR 用今年初市值(150→180=+20%)');
+  ok(Math.abs((tw[last] / tw[0] - 1) - 0.80) < 0.03, '(g4) 全段用成本(100→180=+80%),與YTD不同');
+})();
+
+// (g5) 期間中部分賣出:組合層級 TWR 含賣出後現金(GIPS),MWR 視賣出為內部轉移
+(function () {
+  const px = px3([['2024-01-01', 100], ['2024-07-01', 150], ['2025-01-01', 120]]);
+  REAL.series['G5'] = { raw: px, adj: px }; REAL.events['G5'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G5', n: 'G5', z: 'G5', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 200, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G5', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 2, date: '2024-01-01' },
+    { id: '3', kind: 'stock', sym: 'G5', ccy: 'USD', loc: 'A', side: 'sell', price: 150, units: 1, date: '2024-07-01' }];
+  const D = buildDaily(null), last = D.values.length - 1, tw = twrCurve(D);
+  ok(Math.abs((tw[last] / tw[0] - 1) - 0.35) < 0.01, '(g5) 賣出後現金計入組合,全段 TWR = +35%');
+  const H = holdingsDetail(null);
+  ok(Math.abs(H.total - 270) < 0.5, '(g5) 期末總資產=270(120股值+150現金)');
+})();
+
+// (g6) 期間內派息:股息計入報酬(橫盤+$10股息=+10%)
+(function () {
+  const px = new Float64Array(N_DAYS).fill(100);
+  REAL.series['G6'] = { raw: px, adj: px }; REAL.events['G6'] = { dividends: [{ date: '2024-07-01', amount: 10 }], splits: [] };
+  registerSym({ s: 'G6', n: 'G6', z: 'G6', m: 'US', c: 'USD' });
+  state.settings.autoDiv = true; state.settings.divTax = 0;
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G6', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2024-01-01' }];
+  reconcileAutoDividends();
+  const D = buildDaily(null), last = D.values.length - 1, tw = twrCurve(D);
+  ok(Math.abs((tw[last] / tw[0] - 1) - 0.10) < 0.005, '(g6) 橫盤+$10股息 全段 TWR = +10%');
+  ok(Math.abs((tw[K(D, '2024-07-01')] / tw[0] - 1) - 0.10) < 0.01, '(g6) 上半段(含除息)= +10%');
+  ok(Math.abs(tw[last] / tw[K(D, '2024-07-01')] - 1) < 0.005, '(g6) 下半段(橫盤)= 0%');
+  ok(Math.abs(holdingsDetail(null).total - 110) < 0.1, '(g6) 期末資產=110(股息入帳)');
+  state.settings.autoDiv = false;
+})();
+
+// (g7) MWR 精算對照人手 XIRR(加碼 / 純持有 / 部分賣出)
+(function () {
+  const irr = (cfs) => { let lo = -0.99, hi = 10; for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; (cfs.reduce((s, c) => s + c.amt / Math.pow(1 + m, c.t), 0) > 0) ? lo = m : hi = m; } return (lo + hi) / 2; };
+  // 純持有:線性漲 100→150
+  const px = px3([['2024-01-01', 100], ['2025-01-01', 150]]);
+  REAL.series['G7'] = { raw: px, adj: px }; REAL.events['G7'] = { dividends: [], splits: [] };
+  registerSym({ s: 'G7', n: 'G7', z: 'G7', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100, date: '2024-01-01' },
+    { id: '2', kind: 'stock', sym: 'G7', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: '2024-01-01' }];
+  const D = buildDaily(null), last = D.values.length - 1;
+  const tToday = last / 365, endV = D.values[last];
+  const manual = Math.pow(endV / 100, 1 / tToday) - 1;
+  ok(Math.abs(mwrOf(D, 0, last) - manual) < 0.01, '(g7) 純持有 MWR年化 = 人手XIRR');
+})();
+
+// (g8) 效能守門:大型組合(50股500筆)單次完整重算應遠低於上限
+// 目的是偵測「數量級退化」(例如線性算法被改成平方級),而非吹毛求疵的毫秒波動,
+// 故門檻設得寬鬆(800ms),遠高於正常實測(~50ms);只要沒爆量級就會通過。
+(function () {
+  const nStocks = 50, nTxns = 500;
+  for (let s = 0; s < nStocks; s++) {
+    const sym = 'P' + s;
+    const px = new Float64Array(N_DAYS);
+    for (let i = 0; i < N_DAYS; i++) px[i] = 100 + Math.sin(i / 30 + s) * 20;
+    REAL.series[sym] = { raw: px, adj: px }; REAL.events[sym] = { dividends: [], splits: [] };
+    registerSym({ s: sym, n: sym, z: sym, m: 'US', c: 'USD' });
+  }
+  state.txns = [{ id: 'pc', kind: 'cash', ccy: 'USD', loc: 'A', amount: 1e7, date: '2021-01-01' }];
+  for (let t = 0; t < nTxns; t++) {
+    const sym = 'P' + (t % nStocks);
+    const dt = new Date(2021, 0, 1); dt.setDate(dt.getDate() + Math.floor(t / nStocks) * 3);
+    state.txns.push({ id: 'p' + t, kind: 'stock', sym, ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 1, date: fmtD(dt) });
+  }
+  buildDaily(null); // 暖機
+  const t0 = process.hrtime.bigint();
+  const Dp = buildDaily(null);
+  const tw = twrCurve(Dp);
+  mwrCurve(Dp, 0, Dp.values.length - 1);
+  const t1 = process.hrtime.bigint();
+  const ms = Number(t1 - t0) / 1e6;
+  console.log('   (g8) 大型組合單次完整重算耗時 ≈ ' + ms.toFixed(1) + ' ms (上限 800ms)');
+  ok(ms < 800, '(g8) 大型組合(50股500筆)單次重算 < 800ms(效能未退化)');
+})();
+
+// ============ (h) 股息重構:除息資格 / 多位置 / 刪除存續 / 來源標識 ============
+state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip = [];
+
+// (h0a) 除息資格:除息日「當天買入」無權領該次息
+(function () {
+  REAL.events['H0'] = { dividends: [{ date: '2024-06-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H0', n: 'H0', z: 'H0', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H0', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-05-01' }, // 除息前持有
+    { id: '3', kind: 'stock', sym: 'H0', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 50, date: '2024-06-03' }];  // 除息日當天買入→無權
+  reconcileAutoDividends();
+  const dv = state.txns.find(t => t.auto && t.sym === 'H0');
+  ok(dv && Math.abs(dv.units - 100) < 1e-6, '(h0a) 除息日當天買入不計入,僅 100 股領息(非150)');
+})();
+
+// (h0b) 除息資格:除息日「當天賣出」仍享當次息
+(function () {
+  state.settings.divSkip = [];
+  REAL.events['H0b'] = { dividends: [{ date: '2024-06-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H0b', n: 'H0b', z: 'H0b', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H0b', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-05-01' },
+    { id: '3', kind: 'stock', sym: 'H0b', ccy: 'USD', loc: 'A', side: 'sell', price: 100, units: 100, date: '2024-06-03' }]; // 除息日當天賣出→仍享息
+  reconcileAutoDividends();
+  const dv = state.txns.find(t => t.auto && t.sym === 'H0b');
+  ok(dv && Math.abs(dv.units - 100) < 1e-6, '(h0b) 除息日當天賣出仍領 100 股息(買賣不對稱)');
+})();
+
+// (h3) 多位置:同代碼在 A/B 各自按持股獨立派息(最初回報的 bug)
+(function () {
+  state.settings.divSkip = [];
+  REAL.events['H3'] = { dividends: [{ date: '2024-06-03', amount: 2 }], splits: [] };
+  registerSym({ s: 'H3', n: 'H3', z: 'H3', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: '中銀', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H3', ccy: 'USD', loc: '中銀', side: 'buy', price: 100, units: 100, date: '2024-05-01' },
+    { id: '3', kind: 'stock', sym: 'H3', ccy: 'USD', loc: '', side: 'buy', price: 100, units: 50, date: '2024-05-01' }]; // 預設位置
+  reconcileAutoDividends();
+  const divs = state.txns.filter(t => t.auto && t.sym === 'H3');
+  ok(divs.length === 2, '(h3) 兩位置各自派息共 2 筆');
+  ok(Math.abs(divs.find(t => (t.loc || '') === '中銀').amount - 200) < 1e-6, '(h3) 中銀 100股×$2 = $200');
+  ok(Math.abs(divs.find(t => (t.loc || '') === '').amount - 100) < 1e-6, '(h3) 預設 50股×$2 = $100');
+})();
+
+// (h6) 刪除存續:刪某位置某次股息 → 重算不復活(尊重刪除意圖)
+(function () {
+  state.settings.divSkip = [];
+  REAL.events['H6'] = { dividends: [{ date: '2024-03-03', amount: 1 }, { date: '2024-06-03', amount: 1 }, { date: '2024-09-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H6', n: 'H6', z: 'H6', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'B', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H6', ccy: 'USD', loc: 'B', side: 'buy', price: 100, units: 500, date: '2024-01-10' }];
+  reconcileAutoDividends();
+  ok(state.txns.filter(t => t.auto && t.sym === 'H6').length === 3, '(h6) 初次 3 筆派息');
+  // 用戶刪除 6/3 那筆 → 加入跳過清單(每位置鍵)
+  const del = state.txns.find(t => t.auto && t.sym === 'H6' && t.date === '2024-06-03');
+  state.settings.divSkip = [...(state.settings.divSkip || []), 'H6|2024-06-03|B'];
+  state.txns = state.txns.filter(t => t.id !== del.id);
+  ok(state.txns.filter(t => t.auto && t.sym === 'H6').length === 2, '(h6) 刪除後剩 2 筆');
+  // 再次重算(模擬後續任何觸發)→ 被刪那筆不復活
+  reconcileAutoDividends();
+  const after = state.txns.filter(t => t.auto && t.sym === 'H6');
+  ok(after.length === 2 && !after.some(t => t.date === '2024-06-03'), '(h6) 重算後被刪那筆不復活(尊重刪除意圖)');
+})();
+
+// (h-manual) 來源標識:改金額後轉手動,重算不覆蓋
+(function () {
+  state.settings.divSkip = [];
+  REAL.events['HM'] = { dividends: [{ date: '2024-06-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'HM', n: 'HM', z: 'HM', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'HM', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-05-01' }];
+  reconcileAutoDividends();
+  const dv = state.txns.find(t => t.auto && t.sym === 'HM');
+  ok(dv && dv.auto === true, '(h-manual) 初次為自動(帶標識)');
+  // 模擬用戶改金額→轉手動(移除 auto/gross)
+  dv.amount = 88; delete dv.auto; delete dv.gross;
+  reconcileAutoDividends();
+  const all = state.txns.filter(t => t.sym === 'HM' && t.kind === 'dividend');
+  ok(all.length === 1 && all[0].amount === 88, '(h-manual) 轉手動後重算不覆蓋(金額維持88、不重生)');
+})();
+// (h5) 轉倉:中性(不影響總資產/TWR);轉倉日後兩位置各自派息
+(function () {
+  state.settings.divSkip = []; state.settings.autoDiv = true; state.settings.divTax = 0;
+  const px = new Float64Array(N_DAYS); for (let i = 0; i < N_DAYS; i++) px[i] = 100;
+  REAL.series['H5'] = { raw: px, adj: px };
+  REAL.events['H5'] = { dividends: [{ date: '2024-03-03', amount: 1 }, { date: '2024-09-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H5', n: 'H5', z: 'H5', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H5', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 500, date: '2024-01-10' },
+    // 6/1 轉倉 300 股 A→B(成本基礎 100)
+    { id: '3', kind: 'transfer', sym: 'H5', ccy: 'USD', from: 'A', to: 'B', units: 300, basis: 100, date: '2024-06-01' }];
+  // 全組合層級:轉倉中性,總資產不變
+  const Dall = buildDaily(null);
+  const totalNoXfer = 100000; // 50000現金 + 500股*100 = 100000
+  ok(Math.abs(Dall.values[Dall.values.length - 1] - totalNoXfer) < 1 + 1e-6, '(h5) 轉倉後全組合總資產不變(中性)');
+  ok(Math.abs(twrCurve(Dall).slice(-1)[0] - 1) < 1e-6, '(h5) 轉倉不影響 TWR(橫盤→0%)');
+  reconcileAutoDividends();
+  const divs = state.txns.filter(t => t.auto && t.sym === 'H5');
+  // 3/3(轉倉前):全 500 股在 A → A 一筆 $500;9/3(轉倉後):A 200股=$200、B 300股=$300
+  const d33A = divs.find(t => t.date === '2024-03-03' && (t.loc || '') === 'A');
+  const d93A = divs.find(t => t.date === '2024-09-03' && (t.loc || '') === 'A');
+  const d93B = divs.find(t => t.date === '2024-09-03' && (t.loc || '') === 'B');
+  ok(d33A && Math.abs(d33A.amount - 500) < 1e-6, '(h5) 轉倉前 3/3:A 全 500 股 = $500');
+  ok(d93A && Math.abs(d93A.amount - 200) < 1e-6, '(h5) 轉倉後 9/3:A 餘 200 股 = $200');
+  ok(d93B && Math.abs(d93B.amount - 300) < 1e-6, '(h5) 轉倉後 9/3:B 得 300 股 = $300');
+})();
+// (h4) 位置變更連動:把某位置自動股息搬到新位置(模擬編輯股票位置後的搬移邏輯)
+(function () {
+  state.settings.divSkip = []; state.settings.autoDiv = true; state.settings.divTax = 0;
+  REAL.events['H4'] = { dividends: [{ date: '2024-03-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H4', n: 'H4', z: 'H4', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'stock', sym: 'H4', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-01-10' }];
+  reconcileAutoDividends();
+  const before = state.txns.find(t => t.auto && t.sym === 'H4');
+  ok(before && (before.loc || '') === 'A', '(h4) 股息初始在 A');
+  // 模擬「變更股票位置 A→B 並連動搬移股息」的核心邏輯
+  for (const t of state.txns) {
+    if (t.kind === 'stock' && t.sym === 'H4') t.loc = 'B';
+    if (t.kind === 'dividend' && t.auto && t.sym === 'H4' && (t.loc || '') === 'A') t.loc = 'B';
+  }
+  reconcileAutoDividends();
+  const divs = state.txns.filter(t => t.auto && t.sym === 'H4');
+  ok(divs.length === 1 && divs[0].loc === 'B', '(h4) 變更位置後股息隨股票移至 B(不重生於A)');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

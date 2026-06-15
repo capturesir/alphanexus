@@ -84,7 +84,7 @@ WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Persistence + incremental updates**: history stored in `data/market/`, served from store within 30 min, otherwise only the gap is fetched; full refetch only when a new split is detected.
 - **Post-market prefetch**: daily at 05:00 Taipei (`PREFETCH_HOUR`), refreshing all holdings and custom sources.
 - **Custom data sources**: feed any API via JSONPath (auto date detection, SSRF protection, repeated-failure alerts).
-- **Pluggable news layer (auto-routed by market)**: **HK (.HK), China A-shares (.SS/.SZ) and Taiwan (.TW) tickers automatically query Google News in Chinese by company name, while US stays on Yahoo** — works with no configuration, attribution kept, no content reproduced. You can also set `NEWS_PROVIDER=rss` to force RSS for all, or `NEWS_PROVIDER=newsapi|marketaux` + `NEWS_API_KEY` for licensed sources. News is cached **per symbol** with request coalescing — each symbol is fetched at most once per cycle site-wide, regardless of user count.
+- **Pluggable news layer (auto-routed by market)**: **HK (.HK), China A-shares (.SS/.SZ) and Taiwan (.TW) tickers auto-query Google News in Chinese, Japan (.T) in Japanese, while US stays on Yahoo (English)** — all by company name — works with no configuration, attribution kept, no content reproduced. You can also set `NEWS_PROVIDER=rss` to force RSS for all, or `NEWS_PROVIDER=newsapi|marketaux` + `NEWS_API_KEY` for licensed sources. News is cached **per symbol** with request coalescing — each symbol is fetched at most once per cycle site-wide, regardless of user count.
 
 ## Project Structure
 

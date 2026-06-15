@@ -566,11 +566,12 @@ function parseRssItems(xml) {
 /* Google News RSS:公開、媒體聚合性質,支援中文關鍵字 + 地區/語言。
    個人/非商業用途使用,僅取標題+來源+連結並導流原站,保留出處。 */
 async function googleNewsRss(query, region) {
-  // region: 'HK'(港,繁中)/ 'TW'(台,繁中)/ 'CN'(陸,簡中)/ 'US'(英文)
+  // region: 'HK'(港,繁中)/ 'TW'(台,繁中)/ 'CN'(陸,簡中)/ 'JP'(日,日文)/ 'US'(英文)
   const cfg = {
     HK: "hl=zh-HK&gl=HK&ceid=HK:zh-Hant",
     TW: "hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
     CN: "hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+    JP: "hl=ja&gl=JP&ceid=JP:ja",
     US: "hl=en-US&gl=US&ceid=US:en"
   }[region] || "hl=en-US&gl=US&ceid=US:en";
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&${cfg}`;
@@ -587,10 +588,15 @@ function newsQueryInfo(sym) {
   const store = loadStore("hist", sym);
   const name = store && store.name && store.name !== sym ? store.name : null;
   const mkt = mktOf(sym);
-  const region = mkt === "HK" ? "HK" : mkt === "TW" ? "TW" : mkt === "CN" ? "CN" : "US";
   const bare = sym.replace(/\.(HK|SS|SZ|T|TWO?|L)$/i, "");
-  // 中文市場優先用名稱(英文索引對 .HK 等後綴差);美股用代碼
-  const queries = region === "US" ? [sym, name].filter(Boolean) : [name, bare, sym].filter(Boolean);
+  // region 決定 RSS 的語言/地區;US = 走 Yahoo 英文(或授權 API)
+  const region = mkt === "HK" ? "HK" : mkt === "TW" ? "TW" : mkt === "CN" ? "CN" : mkt === "JP" ? "JP" : "US";
+  // 查詢詞策略:
+  //  · 中文市場(港/台/A)+ 日股:優先公司名稱,再去後綴代碼(英文/在地索引對 .HK/.T 等後綴差)
+  //  · 美股:代碼索引良好,用代碼 + 名稱
+  const queries = (region === "US" && mkt === "US")
+    ? [sym, name].filter(Boolean)
+    : [name, bare, sym].filter(Boolean);
   return { region, name, bare, queries: [...new Set(queries)].slice(0, 2) };
 }
 
@@ -600,8 +606,8 @@ function newsForSymbol(sym) {
     const info = newsQueryInfo(sym);
     // 按市場自動選來源:中文市場(港/台/A 股)優先用 Google News 中文 RSS,
     // 不需設任何環境變數;美股維持原本來源(授權 API 或 Yahoo)。
-    const isCN = info.region !== "US";
-    const srcTag = NEWS_ENABLED_EXT ? NEWS_PROVIDER : (isCN || USE_RSS) ? "rss" : "yh";
+    const useLocalRss = info.region !== "US"; // 中文市場(港/台/A)+ 日股 → Google News 在地語言
+    const srcTag = NEWS_ENABLED_EXT ? NEWS_PROVIDER : (useLocalRss || USE_RSS) ? "rss" : "yh";
     const ck = "news1:" + srcTag + ":" + sym;
     const cached = cacheGet(ck, TTL.news);
     if (cached) return cached;
@@ -609,9 +615,9 @@ function newsForSymbol(sym) {
     try {
       if (NEWS_ENABLED_EXT) {
         // 已設定授權 API:美股用之;中文市場仍優先 Google News(授權 API 對港股中文新聞通常也弱)
-        if (isCN) { for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; } }
+        if (useLocalRss) { for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; } }
         if (!got.length) got = await newsProviders[NEWS_PROVIDER](info.queries[0] || sym, 4, sym);
-      } else if (isCN || USE_RSS) {
+      } else if (useLocalRss || USE_RSS) {
         for (const q of info.queries) { got = await googleNewsRss(q, info.region); if (got.length) break; }
       } else {
         const nowS = Date.now() / 1000;

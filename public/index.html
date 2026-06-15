@@ -1547,12 +1547,11 @@ function openHoldingDetail(sym){
         <div class="tiny">${isXfer?T("transfer"):(t.loc||T("defaultLoc"))+" · "+T(KIND_KEY[t.kind]||"tOther")}</div></div></div>`;
     }).join("")||`<div class="tiny">${T("noTxn")}</div>`}</div>
     <div style="height:14px"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn" id="hdDelAll" style="flex:0 0 auto;color:var(--down);border-color:var(--down)">🗑 ${T("delAllShort")}</button>
-      ${h&&h.units>1e-9&&(h.kind==="stock"||h.kind==="bond"||h.kind==="other")?`<button class="btn" id="hdXfer" style="flex:0 0 auto">⇄ ${T("transfer")}</button>`:""}
-      <div class="grow" style="flex:1 1 auto"></div>
-      <button class="btn" id="hdClose" style="flex:0 0 auto">${T("close")}</button>
-      <button class="btn btn-primary" id="hdAdd" style="flex:0 0 auto">＋ ${T("newTxnShort")}</button>
+    <div class="row">
+      <button class="btn btn-danger" id="hdDelAll">${T("delAllShort")}</button>
+      <div class="grow"></div>
+      <button class="btn" id="hdClose">${T("close")}</button>
+      <button class="btn btn-primary" id="hdAdd">＋ ${T("newTxnShort")}</button>
     </div>`);
   m.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>{
     const tx=state.txns.find(t=>t.id===el.dataset.edit);
@@ -1563,8 +1562,7 @@ function openHoldingDetail(sym){
     closeModal();openTxnModal(tx);
   });
   m.querySelector("#hdClose").onclick=closeModal;
-  const hx=m.querySelector("#hdXfer");
-  if(hx)hx.onclick=()=>{closeModal();openTransferModal(sym)};
+  // 轉倉入口已隱藏(底層 transfer 處理仍保留,供既有資料與將來恢復);如需恢復,在上方按鈕列加回 hdXfer 並綁定 openTransferModal(sym)
   m.querySelector("#hdAdd").onclick=()=>{closeModal();const tx={kind:o&&o.m==="US-OPT"?"option":"stock",sym,name:h?h.name:symName(o||{n:sym,z:sym}),ccy,loc:"",side:"buy",price:"",units:"",date:fmtD(TODAY)};openTxnModal(tx)};
   m.querySelector("#hdDelAll").onclick=async()=>{
     if(!confirm(T("confirmDelAll").replace("{sym}",sym)+` (${myTxns.length})`))return;

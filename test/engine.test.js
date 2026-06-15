@@ -415,6 +415,77 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   reconcileAutoDividends();
   ok(!state.txns.some(t => t.auto && t.sym === 'H7'), '(h7) 持股歸零 → 自動股息不再重生');
 })();
+// ============ (h8) 刪除股票交易的穿倉處理(取向三-精簡版)============
+// 規則:刪除一筆股票交易後,若導致任何位置在任何時點持股變負(穿倉),
+//       則自動找出並一併刪除「導致穿倉」的轉倉(最小集合),再重算自動股息。
+//       不穿倉則直接刪除。手動股息與跳過清單不受影響。
+// 介面:deleteHoldingTxn(id) → {removed:[...ids], ok:true}
+
+// (h8a) 單筆買入 + 一筆轉倉:刪買入會使來源穿倉 → 連帶刪該轉倉
+(function () {
+  state.settings.divSkip = []; state.settings.autoDiv = false;
+  registerSym({ s: 'X8', n: 'X8', z: 'X8', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: 'c', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: 'buy', kind: 'stock', sym: 'X8', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 500, date: '2024-02-01' },
+    { id: 'xfer', kind: 'transfer', sym: 'X8', ccy: 'USD', from: 'A', to: 'B', units: 200, basis: 100, date: '2024-05-01' }];
+  const r = deleteHoldingTxn('buy');
+  ok(r.removed.includes('buy') && r.removed.includes('xfer'), '(h8a) 刪唯一買入→連帶刪轉倉(否則A穿倉)');
+  ok(!state.txns.some(t => t.id === 'xfer'), '(h8a) 轉倉已移除');
+  // A、B 都應無 X8 持股
+  const uA = unitsByLocAt('X8', fmtD(TODAY), false);
+  ok(!(uA['A'] > 1e-9) && !(uA['B'] > 1e-9), '(h8a) A、B 皆無 X8 持股(無孤兒/負股)');
+})();
+
+// (h8b) 多筆買入,刪一筆後仍足夠 → 不穿倉,轉倉保留
+(function () {
+  state.settings.divSkip = [];
+  registerSym({ s: 'X8b', n: 'X8b', z: 'X8b', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: 'c', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: 'buy1', kind: 'stock', sym: 'X8b', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 500, date: '2024-02-01' },
+    { id: 'buy2', kind: 'stock', sym: 'X8b', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 300, date: '2024-03-01' },
+    { id: 'xfer', kind: 'transfer', sym: 'X8b', ccy: 'USD', from: 'A', to: 'B', units: 200, basis: 100, date: '2024-05-01' }];
+  // 刪 buy1(500),A 剩 300,轉倉 200 ≤ 300 → 不穿倉,轉倉保留
+  const r = deleteHoldingTxn('buy1');
+  ok(r.removed.includes('buy1') && !r.removed.includes('xfer'), '(h8b) 刪一筆後仍足夠→轉倉保留');
+  ok(state.txns.some(t => t.id === 'xfer'), '(h8b) 轉倉仍存在');
+  const u = unitsByLocAt('X8b', fmtD(TODAY), false);
+  ok(Math.abs((u['A'] || 0) - 100) < 1e-6 && Math.abs((u['B'] || 0) - 200) < 1e-6, '(h8b) A=100(300-200轉出),B=200');
+})();
+
+// (h8c) 多段轉倉鏈:A→B→C,刪最初買入 → 連帶刪整條鏈(否則層層穿倉)
+(function () {
+  state.settings.divSkip = [];
+  registerSym({ s: 'X8c', n: 'X8c', z: 'X8c', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: 'c', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: 'buy', kind: 'stock', sym: 'X8c', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 500, date: '2024-02-01' },
+    { id: 'x1', kind: 'transfer', sym: 'X8c', ccy: 'USD', from: 'A', to: 'B', units: 300, basis: 100, date: '2024-04-01' },
+    { id: 'x2', kind: 'transfer', sym: 'X8c', ccy: 'USD', from: 'B', to: 'C', units: 200, basis: 100, date: '2024-06-01' }];
+  // 刪 buy:A 來源沒了 → x1(A→B)穿倉必刪 → B 也沒貨源 → x2(B→C)亦穿倉必刪
+  const r = deleteHoldingTxn('buy');
+  ok(r.removed.includes('buy') && r.removed.includes('x1') && r.removed.includes('x2'), '(h8c) 刪最初買入→連帶刪整條轉倉鏈');
+  const u = unitsByLocAt('X8c', fmtD(TODAY), false);
+  ok(!(u['A'] > 1e-9) && !(u['B'] > 1e-9) && !(u['C'] > 1e-9), '(h8c) A/B/C 皆無持股(無負股殘留)');
+})();
+
+// (h8d) 多段轉倉鏈但部分可保留:A有600(刪500剩100),A→B 100、B→C 50 → 不穿倉,全保留
+(function () {
+  state.settings.divSkip = [];
+  registerSym({ s: 'X8d', n: 'X8d', z: 'X8d', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: 'c', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: 'buy1', kind: 'stock', sym: 'X8d', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 500, date: '2024-02-01' },
+    { id: 'buy2', kind: 'stock', sym: 'X8d', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-02-15' },
+    { id: 'x1', kind: 'transfer', sym: 'X8d', ccy: 'USD', from: 'A', to: 'B', units: 100, basis: 100, date: '2024-04-01' },
+    { id: 'x2', kind: 'transfer', sym: 'X8d', ccy: 'USD', from: 'B', to: 'C', units: 50, basis: 100, date: '2024-06-01' }];
+  // 刪 buy1(500),A 剩 100;A→B 轉 100 → A=0、B=100;B→C 轉 50 → B=50、C=50。無穿倉,全保留
+  const r = deleteHoldingTxn('buy1');
+  ok(r.removed.length === 1 && r.removed[0] === 'buy1', '(h8d) 不穿倉→只刪買入,兩段轉倉全保留');
+  const u = unitsByLocAt('X8d', fmtD(TODAY), false);
+  ok(Math.abs((u['A'] || 0) - 0) < 1e-6 && Math.abs((u['B'] || 0) - 50) < 1e-6 && Math.abs((u['C'] || 0) - 50) < 1e-6, '(h8d) A=0,B=50,C=50');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

@@ -194,6 +194,7 @@
  "transferTooMuch": "Exceeds available units (max {n})",
  "transferDone": "Transfer complete",
  "confirmDelStockWithDiv": "After deleting this stock/bond transaction, the system recalculates this symbol's auto-dividends in that location based on the new holdings (amounts adjust if shares decrease; removed if they reach zero). Dividends you edited manually are unaffected. Delete?",
+ "confirmDelStockCutXfer": "Deleting this transaction would leave {n} transfer(s) without enough source shares; the system will also remove those transfers and recalculate auto-dividends in all affected locations. Manually edited dividends are unaffected. Delete?",
  "moveLocWithDiv": "You changed this holding's location (from {from} to {to}). Move all auto-dividends of this symbol at {from} to {to} as well? (Manual dividend records are not moved.)",
  "manualDivWarn": "Please confirm the system has not already auto-booked this dividend (holdings with a matching ex-date are booked automatically). Auto-dividends adjust when holdings change; manual entries must be maintained yourself. Add manually anyway?",
  "grossLbl": "Gross",

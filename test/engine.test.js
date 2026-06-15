@@ -390,6 +390,31 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   const divs = state.txns.filter(t => t.auto && t.sym === 'H4');
   ok(divs.length === 1 && divs[0].loc === 'B', '(h4) 變更位置後股息隨股票移至 B(不重生於A)');
 })();
+// (h7) 刪除股票交易 → 連帶重算自動股息(A設計):部分刪改金額、全刪消失、手動不動
+(function () {
+  state.settings.divSkip = []; state.settings.autoDiv = true; state.settings.divTax = 0;
+  REAL.events['H7'] = { dividends: [{ date: '2024-06-03', amount: 1 }], splits: [] };
+  registerSym({ s: 'H7', n: 'H7', z: 'H7', m: 'US', c: 'USD' });
+  // 同位置兩筆買入:100 + 200 = 300 股
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: '2024-01-02' },
+    { id: 'buyA', kind: 'stock', sym: 'H7', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: '2024-02-01' },
+    { id: 'buyB', kind: 'stock', sym: 'H7', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 200, date: '2024-03-01' }];
+  reconcileAutoDividends();
+  let dv = state.txns.find(t => t.auto && t.sym === 'H7');
+  ok(dv && Math.abs(dv.amount - 300) < 1e-6, '(h7) 初始 300 股 → 股息 $300');
+  // 模擬刪除 buyB(200股):清掉該位置純自動股息 → 重算成 100 股
+  state.txns = state.txns.filter(t => t.id !== 'buyB');
+  state.txns = state.txns.filter(t => !(t.kind === 'dividend' && t.auto && t.sym === 'H7' && (t.loc || '') === 'A'));
+  reconcileAutoDividends();
+  dv = state.txns.find(t => t.auto && t.sym === 'H7');
+  ok(dv && Math.abs(dv.amount - 100) < 1e-6, '(h7) 刪一筆後剩 100 股 → 股息重算 $100');
+  // 再刪 buyA(歸零)→ 股息應消失
+  state.txns = state.txns.filter(t => t.id !== 'buyA');
+  state.txns = state.txns.filter(t => !(t.kind === 'dividend' && t.auto && t.sym === 'H7' && (t.loc || '') === 'A'));
+  reconcileAutoDividends();
+  ok(!state.txns.some(t => t.auto && t.sym === 'H7'), '(h7) 持股歸零 → 自動股息不再重生');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

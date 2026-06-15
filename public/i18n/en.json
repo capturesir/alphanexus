@@ -141,6 +141,8 @@
  "noPositionNow": "No current position (history closed)",
  "dataSrcLbl": "Source",
  "delAllOfSym": "Delete all txns of this asset",
+ "delAllShort": "Delete all",
+ "newTxnShort": "Add",
  "confirmDelAll": "Delete ALL transactions of {sym}? This cannot be undone",
  "close": "Close",
  "noTxn": "No transactions yet",

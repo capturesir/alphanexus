@@ -141,6 +141,8 @@
  "noPositionNow": "目前无持仓(历史交易已平仓)",
  "dataSrcLbl": "数据源",
  "delAllOfSym": "删除此资产全部交易",
+ "delAllShort": "删除全部",
+ "newTxnShort": "新增",
  "confirmDelAll": "确定删除 {sym} 的全部交易?此操作无法复原",
  "close": "关闭",
  "noTxn": "暂无交易记录",

@@ -486,6 +486,58 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   const u = unitsByLocAt('X8d', fmtD(TODAY), false);
   ok(Math.abs((u['A'] || 0) - 0) < 1e-6 && Math.abs((u['B'] || 0) - 50) < 1e-6 && Math.abs((u['C'] || 0) - 50) < 1e-6, '(h8d) A=0,B=50,C=50');
 })();
+
+// ============ (i) 績效指標 perfMetrics ============
+// (i1) 最大回撤:構造 TWR 曲線 1→1.5→1.2→1.8,峰1.5後跌到1.2 = -20%
+(function () {
+  const twr = new Float64Array(40);
+  for (let k = 0; k < 40; k++) twr[k] = 1 + 0.01 * k; // 緩升,先放長度滿足 ≥30
+  // 覆寫一段製造回撤:峰值在 idx10=2.0,谷在 idx15=1.6 → -20%
+  twr[10] = 2.0; twr[11] = 1.9; twr[12] = 1.8; twr[13] = 1.7; twr[14] = 1.65; twr[15] = 1.6;
+  for (let k = 16; k < 40; k++) twr[k] = 1.6 + 0.02 * (k - 15);
+  const m = perfMetrics(twr, 0, 39, null);
+  ok(m.ok && Math.abs(m.mdd - (-0.20)) < 0.005, '(i1) 最大回撤 = -20%');
+})();
+
+// (i2) 期間不足(<30天)→ ok:false
+(function () {
+  const twr = new Float64Array(20); for (let k = 0; k < 20; k++) twr[k] = 1 + 0.01 * k;
+  const m = perfMetrics(twr, 0, 19, null);
+  ok(!m.ok && m.days === 20, '(i2) 少於30交易日 → 期間不足');
+})();
+
+// (i3) 波動率年化:固定日報酬無波動 → 波動率≈0、夏普可算
+(function () {
+  const twr = new Float64Array(60); twr[0] = 1;
+  for (let k = 1; k < 60; k++) twr[k] = twr[k - 1] * 1.001; // 每日固定 +0.1%,標準差=0
+  const m = perfMetrics(twr, 0, 59, null);
+  ok(m.ok && m.volAnn < 1e-6, '(i3) 固定日報酬 → 年化波動率≈0');
+})();
+
+// (i4) Beta:組合日報酬 = 2×SPY日報酬 → Beta≈2
+(function () {
+  const n = 50;
+  const spy = new Float64Array(n); spy[0] = 100;
+  const twr = new Float64Array(n); twr[0] = 1;
+  for (let k = 1; k < n; k++) {
+    const sr = (k % 2 === 0 ? 0.01 : -0.005); // SPY 日報酬交替
+    spy[k] = spy[k - 1] * (1 + sr);
+    twr[k] = twr[k - 1] * (1 + 2 * sr);        // 組合 = 2×SPY
+  }
+  const m = perfMetrics(twr, 0, n - 1, spy);
+  ok(m.ok && m.beta != null && Math.abs(m.beta - 2) < 0.05, '(i4) Beta ≈ 2(組合=2×SPY)');
+})();
+
+// (i5) 夏普方向:有波動且年化報酬 > 無風險利率 → 夏普為正
+(function () {
+  const twr = new Float64Array(252); twr[0] = 1;
+  for (let k = 1; k < 252; k++) {
+    const r = 0.0015 + (k % 2 === 0 ? 0.004 : -0.003); // 平均正報酬 + 波動
+    twr[k] = twr[k - 1] * (1 + r);
+  }
+  const m = perfMetrics(twr, 0, 251, null, 0.04);
+  ok(m.ok && m.volAnn > 0 && m.sharpe != null && m.sharpe > 0 && m.annRet > 0.04, '(i5) 有波動且年化>無風險 → 夏普為正');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

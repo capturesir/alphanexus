@@ -538,6 +538,35 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   const m = perfMetrics(twr, 0, 251, null, 0.04);
   ok(m.ok && m.volAnn > 0 && m.sharpe != null && m.sharpe > 0 && m.annRet > 0.04, '(i5) 有波動且年化>無風險 → 夏普為正');
 })();
+// ============ (j) 相關性矩陣 correlationMatrix ============
+(function () {
+  // 構造三個經調整價序列:A 與 B 完全同向(corr=+1)、A 與 C 完全反向(corr=-1)
+  const A = new Float64Array(N_DAYS), B = new Float64Array(N_DAYS), C = new Float64Array(N_DAYS);
+  A[0] = 100; B[0] = 50; C[0] = 200;
+  for (let i = 1; i < N_DAYS; i++) {
+    const r = (i % 2 === 0 ? 0.01 : -0.008);
+    A[i] = A[i - 1] * (1 + r);
+    B[i] = B[i - 1] * (1 + r);        // 與 A 同向
+    C[i] = C[i - 1] * (1 - r);        // 與 A 反向
+  }
+  const getAdj = s => ({ A, B, C }[s]);
+  const { syms, matrix } = correlationMatrix(['A', 'B', 'C'], getAdj, 252);
+  ok(syms.length === 3, '(j) 三個有效序列');
+  const iA = syms.indexOf('A'), iB = syms.indexOf('B'), iC = syms.indexOf('C');
+  ok(Math.abs(matrix[iA][iA] - 1) < 1e-9, '(j) 對角線 = 1');
+  ok(Math.abs(matrix[iA][iB] - 1) < 0.01, '(j) A~B 完全正相關 ≈ +1');
+  ok(Math.abs(matrix[iA][iC] - (-1)) < 0.01, '(j) A~C 完全負相關 ≈ -1');
+  ok(Math.abs(matrix[iA][iB] - matrix[iB][iA]) < 1e-9, '(j) 矩陣對稱');
+})();
+
+// (j2) 資料不足或缺序列的代碼會被略過
+(function () {
+  const A = new Float64Array(N_DAYS); A[0] = 100;
+  for (let i = 1; i < N_DAYS; i++) A[i] = A[i - 1] * 1.001;
+  const getAdj = s => (s === 'A' ? A : null); // B 無序列
+  const { syms } = correlationMatrix(['A', 'B'], getAdj, 252);
+  ok(syms.length === 1 && syms[0] === 'A', '(j2) 缺序列的代碼被略過');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

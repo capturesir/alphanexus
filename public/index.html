@@ -1644,7 +1644,7 @@ function openHoldingDetail(sym){
     const W=300,Hh=64,rng=mx-mn||1;
     const d=pts.map((v,i)=>`${i?"L":"M"}${(i/(pts.length-1)*W).toFixed(1)},${(Hh-(v-mn)/rng*Hh).toFixed(1)}`).join("");
     const up=pts[pts.length-1]>=pts[0];
-    spark=`<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:64px;margin:6px 0"><path d="${d}" fill="none" stroke="${up?"var(--up)":"var(--down)"}" stroke-width="1.6"/></svg>`;
+    spark=`<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:64px;margin:6px 0"><path d="${d}" fill="none" stroke="${up?"var(--up)":"var(--dn)"}" stroke-width="1.6"/></svg>`;
   }else{
     // 無走勢資料:區分「抓取失敗」與「載入中/離線」,給友善提示而非空白
     const failed=LIVE&&REAL.fail&&REAL.fail[sym];

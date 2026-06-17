@@ -1232,7 +1232,7 @@ function renderAssets(){
           <span class="tiny">${h.name||""} ${h.m?`<span class="mkt-tag">${h.m}</span>`:""}</span>
           <span class="tiny num ${plc}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</span>
         </div>
-        <div class="tiny num">${T("qty")} ${(+h.units.toFixed(4)).toLocaleString()} · ${fmtMoney(h.px,h.ccy)}${extra.length?" · 💰 "+extra.join(" · "):""}</div>
+        <div class="tiny num">${T("qty")} ${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()} · ${fmtMoney(h.px,h.ccy)}${extra.length?" · 💰 "+extra.join(" · "):""}</div>
       </div>
     </div>`}).join("");
     // #7 點金額循環切換顯示模式(攔截,不觸發進入詳情)
@@ -1249,7 +1249,7 @@ function renderAssets(){
     const rows=H.cashByCcy[ccy], sum=rows.reduce((s,r)=>s+r.amt,0);
     const det=rows.map(r=>`${r.loc} ${fmtAmt(r.amt,ccy,true)}`).join(" · ");
     return `<div class="cash-pill"><div><b>${ccy}</b><div class="tiny">${det}</div></div>
-      <div style="text-align:right"><b class="num ${sum>=0?"":"pl-neg"}">${fmtMoney(sum,ccy)}</b>
+      <div style="text-align:right"><b class="num ${sum>=0?"":"pl-neg"}">${fmtAmt(sum,ccy)}</b>
       <div class="tiny num">≈ ${fmtAmt(fx(sum,ccy,base,N_DAYS-1),base,true)}</div></div></div>`;
   }).join("")
     +(H.incomeTotal>0?`<div class="cash-pill"><div><b>💰 ${T("incomeTotalLbl")}</b></div><div style="text-align:right"><b class="num pl-pos">+${fmtAmt(H.incomeTotal,base,true)}</b></div></div>`:"")
@@ -1271,10 +1271,10 @@ function renderAssets(){
     const isCash=t.kind==="cash", isInc=t.kind==="dividend"||t.kind==="interest", isExp=t.kind==="fee"||t.kind==="liability";
     const kindLbl=T(KIND_KEY[t.kind]||"tOther");
     const title=isCash?`${T("tCash")} ${t.ccy}`:(isInc||isExp)?`${t.sym?t.sym+" ":""}${kindLbl}${t.auto?" ⚡":""}`:`${t.sym}`;
-    const desc=isCash?`${t.amount>=0?"＋":""}${fmtMoney(t.amount,t.ccy)}`
-      :isInc?`＋${fmtMoney(t.amount,t.ccy)}`
-      :isExp?`−${fmtMoney(t.amount,t.ccy)}`
-      :`${t.side==="buy"?T("buy"):T("sell")} ${(+t.units).toLocaleString()} @ ${fmtMoney(t.price,t.ccy)}${t.fee?` (${T("fee")} ${fmtMoney(t.fee,t.ccy)})`:""}`;
+    const desc=isCash?`${t.amount>=0?"＋":""}${fmtAmt(t.amount,t.ccy)}`
+      :isInc?`＋${fmtAmt(t.amount,t.ccy)}`
+      :isExp?`−${fmtAmt(t.amount,t.ccy)}`
+      :`${t.side==="buy"?T("buy"):T("sell")} ${state.privacyOn?"•••":(+t.units).toLocaleString()} @ ${fmtMoney(t.price,t.ccy)}${t.fee?` (${T("fee")} ${fmtAmt(t.fee,t.ccy)})`:""}`;
     const sideCls=isCash?(t.amount>=0?"pl-pos":"pl-neg"):isInc?"pl-pos":isExp?"pl-neg":(t.side==="buy"?"pl-pos":"pl-neg");
     return `<div class="holding" data-txn="${t.id}" style="cursor:pointer">
       <div class="sym-badge">${isCash?"💵":isExp?"🧾":isInc?"💰":t.sym.split(".")[0].slice(0,5)}</div>
@@ -1659,7 +1659,7 @@ function openHoldingDetail(sym){
     </div>
     ${spark}
     ${h?`<div class="stat-grid" style="margin:4px 0 10px">
-      <div class="stat"><div class="tiny">${T("qty")}</div><div class="v num">${(+h.units.toFixed(4)).toLocaleString()}</div></div>
+      <div class="stat"><div class="tiny">${T("qty")}</div><div class="v num">${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()}</div></div>
       <div class="stat"><div class="tiny">${T("mktValue")}</div><div class="v num">${fmtAmt(h.mv,base,true)}</div></div>
       <div class="stat"><div class="tiny">${T("avgCost")}</div><div class="v num">${fmtAmt(h.units>0?h.cost/h.units:0,base,true)}</div></div>
       <div class="stat"><div class="tiny">${T("plLbl")}</div><div class="v num ${h.pl>=0?"pl-pos":"pl-neg"}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</div></div>

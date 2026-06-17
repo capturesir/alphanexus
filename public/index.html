@@ -92,6 +92,9 @@ html[data-theme="dark"] .total-card{background:linear-gradient(135deg,#1A2334,#1
 html[data-color="redUp"] .pl-pos{color:var(--dn)}
 html[data-color="redUp"] .pl-neg{color:var(--up)}
 .mkt-tag{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;background:var(--gold-soft);color:var(--gold)}
+.src-tag{font-size:9px;font-weight:600;padding:1px 4px;border-radius:4px;margin-left:4px}
+.src-sim{background:rgba(255,170,0,.12);color:#e68a00}
+.src-stale{background:rgba(120,120,120,.12);color:var(--ink3)}
 
 /* ---- 自動完成下拉 ---- */
 .ac-wrap{position:relative}
@@ -543,6 +546,10 @@ newsJustNow:"just now",hAgo:"h ago",dAgo:"d ago",searchNoRes:"No matching ticker
 optHint:"US option format: ticker+expiry+C/P+strike",ccyConvNote:"converted at daily FX into",
 periodHigh:"Period high",periodLow:"Period low",chg:"Change"}
 };
+// 數據來源標籤 i18n
+if(I18N["zh-TW"])Object.assign(I18N["zh-TW"],{srcSim:"模擬",srcStale:"快取",srcOffline:"交易價",srcSimHint:"⚠️ 模擬數據（基於歷史參數估算，非真實市場價格）",srcStaleHint:"使用伺服器快取數據（可能不是最新）",srcOfflineHint:"使用輸入的交易價格（無法獲取市場數據）"});
+if(I18N["zh-CN"])Object.assign(I18N["zh-CN"],{srcSim:"模拟",srcStale:"缓存",srcOffline:"交易价",srcSimHint:"⚠️ 模拟数据（基于历史参数估算，非真实市场价格）",srcStaleHint:"使用服务器缓存数据（可能不是最新）",srcOfflineHint:"使用的交易价格（无法获取市场数据）"});
+if(I18N["en"])Object.assign(I18N["en"],{srcSim:"Sim",srcStale:"Cached",srcOffline:"Txn price",srcSimHint:"⚠️ Simulated data (based on historical parameters, not real market prices)",srcStaleHint:"Using server cache (may not be latest)",srcOfflineHint:"Using entered transaction price (market data unavailable)"});
 function T(k){return (I18N[state.settings.lang]||I18N["zh-TW"])[k]||k}
 function applyI18n(){
   $$("[data-i18n]").forEach(el=>el.textContent=T(el.dataset.i18n));
@@ -643,6 +650,8 @@ function updateLiveBadge(){
 async function ensureMarketData(){
   if(!LIVE)return false;
   let changed=false;
+  // 每 5 分鐘清除失敗記錄,讓暫時性 API 錯誤(如 429 限流)有機會重試
+  if(!REAL._failClearAt||Date.now()-REAL._failClearAt>300e3){REAL._failClearAt=Date.now();for(const k in REAL.fail)delete REAL.fail[k]}
   const syms=[...new Set([...state.txns.filter(t=>t.sym).map(t=>t.sym),...state.chart.comps])]
     .filter(s=>!REAL.series[s]&&!REAL.fail[s]);
   const ccys=CCYS.filter(c=>c!=="USD"&&!REAL.fx[c]);
@@ -651,7 +660,7 @@ async function ensureMarketData(){
     for(const c of ccys){ if(r[c]&&r[c].dates&&r[c].dates.length){ REAL.fx[c]=alignToCalendar(r[c].dates,r[c].rates); changed=true } }
   }).catch(()=>{}));
   for(const s of syms)jobs.push(api("/api/history?symbol="+encodeURIComponent(s)).then(r=>{
-    REAL.series[s]={raw:alignToCalendar(r.dates,r.raw),adj:alignToCalendar(r.dates,r.adj)};
+    REAL.series[s]={raw:alignToCalendar(r.dates,r.raw),adj:alignToCalendar(r.dates,r.adj),source:r.stale?"stale":"live"};
     REAL.events[s]={dividends:r.dividends||[],splits:r.splits||[],adjusted:r.adjusted!==false,source:r.source||"yahoo"};
     const o=registerSym({s:r.symbol,n:r.name||s,z:r.name||s,m:r.market||mktOf(s),c:r.ccy||"USD"});
     if(r.ccy)o.c=r.ccy; if(r.name&&o.dyn){o.n=r.name;o.z=r.name}
@@ -799,10 +808,10 @@ function scheduleLive(){
   }).catch(()=>{_emdBusy=false});
 }
 
-const PRICE_CACHE={};
-function getSeries(sym){ // {raw:[], adj:[]}
+const PRICE_CACHE={}; // deprecated: 模擬數據不快取,保留宣告避免引用錯誤
+function getSeries(sym){ // {raw:[], adj:[], source:"live"|"sim"|"offline"}
   if(LIVE&&REAL.series[sym])return REAL.series[sym];
-  if(PRICE_CACHE[sym])return PRICE_CACHE[sym];
+  // PRICE_CACHE 已移除：模擬數據不快取，確保 REAL.series 有數據時永遠優先
   const o=SYM_MAP[sym]; if(!o)return null;
   if(o.dyn)return null; // 動態註冊代碼僅有真實數據,無模擬參數
   const rnd=mulberry32(hashSeed(sym));
@@ -820,7 +829,7 @@ function getSeries(sym){ // {raw:[], adj:[]}
   // 經調整價：把歷史價按股息率向下調整（現價兩者相等）
   const adj=new Float64Array(N_DAYS);
   for(let i=0;i<N_DAYS;i++){const yrs=(N_DAYS-1-i)/365; adj[i]=raw[i]*Math.exp(-o.dy*yrs)}
-  return PRICE_CACHE[sym]={raw,adj};
+  return {raw,adj,source:"sim"};
 }
 function priceAt(sym,idx,adjusted=true){const s=getSeries(sym);return s?(adjusted?s.adj:s.raw)[idx]:0}
 
@@ -1194,7 +1203,7 @@ function renderAssets(){
       const dayPct=prevP?lastP/prevP-1:0;
       // 當日市值變動(基準貨幣)= 持有單位 × (今價−昨價) × 匯率
       const dayVal=s?h.units*(lastP-prevP)*fx(1,h.ccy,base,N_DAYS-1):0;
-      return {...h,lastP,dayPct,dayVal};
+      return {...h,lastP,dayPct,dayVal,src:s?s.source:null};
     });
     const sort=state.holdSort||"mv-desc";
     const cmp={
@@ -1229,7 +1238,7 @@ function renderAssets(){
       <div class="grow">
         <div class="row between"><b style="font-size:13.5px">${h.sym}</b><span class="hold-amt" data-amt="${h.sym}" style="cursor:pointer">${amtHtml}</span></div>
         <div class="row between">
-          <span class="tiny">${h.name||""} ${h.m?`<span class="mkt-tag">${h.m}</span>`:""}</span>
+          <span class="tiny">${h.name||""} ${h.m?`<span class="mkt-tag">${h.m}</span>`:""}${h.src==="sim"?`<span class="src-tag src-sim">${T("srcSim")}</span>`:h.src==="stale"?`<span class="src-tag src-stale">${T("srcStale")}</span>`:""}</span>
           <span class="tiny num ${plc}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</span>
         </div>
         <div class="tiny num">${T("qty")} ${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()} · ${fmtMoney(h.px,h.ccy)}${extra.length?" · 💰 "+extra.join(" · "):""}</div>
@@ -1634,7 +1643,9 @@ function openHoldingDetail(sym){
   const ccy=o?o.c:(h?h.ccy:"USD");
   const myTxns=state.txns.filter(t=>t.sym===sym).slice().sort((a,b)=>a.date>b.date?-1:1);
   const ev=LIVE&&REAL.events[sym];
-  const src=ev&&ev.source?ev.source:(LIVE?"yahoo":"sim");
+  const seriesSrc=series?series.source:null; // "live"|"stale"|"sim"|null
+  const srcLabel=seriesSrc==="sim"?T("srcSim"):seriesSrc==="stale"?T("srcStale"):!series&&h?T("srcOffline"):(ev&&ev.source?ev.source:"yahoo");
+  const srcHint=seriesSrc==="sim"?T("srcSimHint"):seriesSrc==="stale"?T("srcStaleHint"):!series&&h?T("srcOfflineHint"):"";
   // 迷你走勢(原始價,近 180 交易日)
   let spark="";
   if(series){
@@ -1644,7 +1655,10 @@ function openHoldingDetail(sym){
     const W=300,Hh=64,rng=mx-mn||1;
     const d=pts.map((v,i)=>`${i?"L":"M"}${(i/(pts.length-1)*W).toFixed(1)},${(Hh-(v-mn)/rng*Hh).toFixed(1)}`).join("");
     const up=pts[pts.length-1]>=pts[0];
-    spark=`<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:64px;margin:6px 0"><path d="${d}" fill="none" stroke="${up?"var(--up)":"var(--dn)"}" stroke-width="1.6"/></svg>`;
+    const isSim=seriesSrc==="sim";
+    const dashAttr=isSim?' stroke-dasharray="4 3" opacity="0.65"':"";
+    const simLabel=isSim?`<text x="${W/2}" y="12" text-anchor="middle" font-size="10" fill="#e68a00" opacity="0.8">${T("srcSim")}</text>`:"";
+    spark=`<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:64px;margin:6px 0"><path d="${d}" fill="none" stroke="${up?"var(--up)":"var(--dn)"}" stroke-width="1.6"${dashAttr}/>${simLabel}</svg>`;
   }else{
     // 無走勢資料:區分「抓取失敗」與「載入中/離線」,給友善提示而非空白
     const failed=LIVE&&REAL.fail&&REAL.fail[sym];
@@ -1665,7 +1679,7 @@ function openHoldingDetail(sym){
       <div class="stat"><div class="tiny">${T("plLbl")}</div><div class="v num ${h.pl>=0?"pl-pos":"pl-neg"}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</div></div>
     </div>`:`<div class="tiny" style="margin:8px 0">${T("noPositionNow")}</div>`}
     ${H.incomeBySym[sym]>0?`<div class="tiny" style="margin-bottom:6px">💰 ${T("incomeReceived")} ${fmtAmt(H.incomeBySym[sym],base,true)}</div>`:""}
-    <div class="tiny" style="margin-bottom:8px">${T("dataSrcLbl")}: ${src}${ev&&ev.splits&&ev.splits.length?` · ${ev.splits.length} ${T("evSplit")}`:""}${ev&&ev.dividends&&ev.dividends.length?` · ${ev.dividends.length} ${T("evDiv")}`:""}</div>
+    <div class="tiny" style="margin-bottom:8px">${T("dataSrcLbl")}: ${srcLabel}${srcHint?` <span style="color:var(--ink3)">${srcHint}</span>`:""}${ev&&ev.splits&&ev.splits.length?` · ${ev.splits.length} ${T("evSplit")}`:""}${ev&&ev.dividends&&ev.dividends.length?` · ${ev.dividends.length} ${T("evDiv")}`:""}</div>
     <h3 style="font-size:13px;margin:10px 0 4px">${T("txnHistory")} (${myTxns.length})</h3>
     <div style="max-height:34vh;overflow-y:auto">${myTxns.map(t=>{
       const isInc=t.kind==="dividend";

@@ -278,7 +278,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
       <div class="tiny" style="margin-top:5px" data-i18n="gestureHint">提示：雙指捏合縮放，單指拖動平移觀察期間</div>
       <div class="tiny num" id="optNote" style="display:none;margin-top:4px"></div>
       <div class="stat-grid">
-        <div class="stat"><div class="tiny" data-i18n="sTWR">期間TWR</div><div class="v num" id="statTWR">--</div></div>
+        <div class="stat"><div class="tiny" data-i18n="sTWR">期間TWR(年化)</div><div class="v num" id="statTWR">--</div></div>
         <div class="stat"><div class="tiny" data-i18n="sMWR">期間MWR(年化)</div><div class="v num" id="statMWR">--</div></div>
         <div class="stat"><div class="tiny" data-i18n="sNet">期間淨投入</div><div class="v num" id="statFlow">--</div></div>
       </div>
@@ -478,7 +478,7 @@ const I18N={
 "zh-TW":{appName:"WealthLens",appTag:"跨平台投資組合追蹤 · TWR / MWR",email:"電郵",password:"密碼",login:"登入 / 註冊",guest:"以訪客身份使用",demoNote:"訪客模式會載入示範組合，可隨時清除",
 tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
 mValue:"資產值",cLine:"折線",cSmooth:"平滑",cCandle:"陰陽燭",aD:"日",aW:"週",aM:"月",aY:"年",pAll:"全部",
-gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
+gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR(年化)",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
 compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
 nMine:"持倉相關",nHot:"熱門財經",nAll:"全部",edit:"編輯",darkMode:"深色介面",darkModeHint:"切換淺色 / 深色",language:"語言",
 colorPref:"漲跌顏色",colorPrefHint:"資產列表與圖表的漲跌色",greenUp:"綠升紅跌",redUp:"紅升綠跌",chartPref:"預設圖表形態",baseCcy:"統一結算貨幣",
@@ -2354,7 +2354,9 @@ function updateStats(){
   if(!Chart.D){$("#statTWR").textContent=$("#statMWR").textContent=$("#statFlow").textContent="--";return}
   const [k0,k1]=Chart.view;
   const tw=Chart._twr||(Chart._twr=twrCurve(Chart.D));
-  const twr=tw[k1]/tw[k0]-1;
+  const twrCum=tw[k1]/tw[k0]-1;
+  const days=(DATES[Chart.D.i0+k1]-DATES[Chart.D.i0+k0])/86400000;
+  const twr=days>0?Math.pow(1+twrCum,365/days)-1:twrCum;
   const mwrAnn=mwrOf(Chart.D,k0,k1);       // 年化(統計卡標示「年化」)
   let flow=0;for(let k=k0+1;k<=k1;k++)flow+=Chart.D.flows[k];
   const set=(id,v,isP)=>{const e=$(id);e.textContent=v;e.className="v num "+(isP===null?"":(isP>=0?"pl-pos":"pl-neg"))};

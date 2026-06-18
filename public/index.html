@@ -2730,7 +2730,7 @@ function bindMe(){
   $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
   $("#btnLogout").onclick=async()=>{
     if(LIVE&&state.token)apiPost("/api/auth/logout",{}).catch(()=>{});
-    state.user=null;state.token=null;await kvSet("wl_token",null);
+    state.user=null;state.token=null;state.txns=[];await kvSet("wl_token",null);
     await persist();$("#authScreen").style.display="flex"};
   // 刪除帳號:此處只綁定一次點擊;「是否顯示」的判斷在 renderMe()(會隨狀態重繪)
   const bda=$("#btnDeleteAcct");

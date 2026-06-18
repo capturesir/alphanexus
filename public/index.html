@@ -442,6 +442,14 @@ let MEM={};
 async function kvGet(k){ if(STORE_OK){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null}catch(e){return null} } return MEM[k]??null }
 async function kvSet(k,v){ MEM[k]=v; if(STORE_OK){ try{await window.storage.set(k,JSON.stringify(v))}catch(e){} } }
 
+/* ====================== 用戶設定隔離 ====================== */
+const DEFAULT_SETTINGS={lang:"zh-TW",theme:"light",color:"greenUp",ctype:"line",baseCcy:"HKD"};
+function b64enc(s){return btoa(unescape(encodeURIComponent(s)))}
+function b64dec(s){return decodeURIComponent(escape(atob(s)))}
+function userKey(email){return email?"app_settings_"+b64enc(email):"app_settings_guest"}
+function txnsKey(email){return email?"app_txns_"+b64enc(email):"app_txns_guest"}
+function currentUserEmail(){return state.user&&!state.user.guest?state.user.email:null}
+
 const state={
   user:null,            // {name,email,avatar,guest,pwd}
   token:null,           // 後端登入 token (LIVE 模式)
@@ -1379,7 +1387,10 @@ function toast(msg){
 }
 let _syncTimer=null;
 async function persist(){
-  await kvSet("wl_txns",state.txns); await kvSet("wl_settings",state.settings); await kvSet("wl_user",state.user);
+  const em=currentUserEmail();
+  await kvSet(txnsKey(em),state.txns);
+  await kvSet(userKey(em),state.settings);
+  await kvSet("app_user",state.user);
   if(LIVE&&state.token&&state.user&&!state.user.guest){
     clearTimeout(_syncTimer);
     _syncTimer=setTimeout(()=>{apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}).catch(()=>{})},600);
@@ -2729,8 +2740,20 @@ function bindMe(){
   };
   $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
   $("#btnLogout").onclick=async()=>{
+    // 1. 先同步到伺服器（確保最新設定已備份）
+    if(LIVE&&state.token&&!state.user.guest){
+      await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}).catch(()=>{});
+    }
+    // 2. 儲存當前用戶資料到本地
+    const em=currentUserEmail();
+    if(em){ await kvSet(userKey(em),state.settings); await kvSet(txnsKey(em),state.txns) }
+    else if(state.user&&state.user.guest){ await kvSet("app_settings_guest",state.settings); await kvSet("app_txns_guest",state.txns) }
+    // 3. 清空 state → 預設值
     if(LIVE&&state.token)apiPost("/api/auth/logout",{}).catch(()=>{});
-    state.user=null;state.token=null;state.txns=[];await kvSet("wl_token",null);
+    state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
+    await kvSet("app_token",null);
+    state.privacyOn=true;
+    applyTheme();applyI18n();
     await persist();$("#authScreen").style.display="flex"};
   // 刪除帳號:此處只綁定一次點擊;「是否顯示」的判斷在 renderMe()(會隨狀態重繪)
   const bda=$("#btnDeleteAcct");
@@ -2740,7 +2763,13 @@ function bindMe(){
       if(pwd==null||pwd==="")return;
       try{
         await apiPost("/api/auth/delete",{pwd});
-        state.user=null;state.token=null;state.txns=[];await kvSet("wl_token",null);
+        // 清除用戶專屬設定
+        const em=currentUserEmail();
+        if(em){ await kvSet(userKey(em),null); await kvSet(txnsKey(em),null) }
+        state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
+        await kvSet("app_token",null);
+        state.privacyOn=true;
+        applyTheme();applyI18n();
         await persist();
         toast(T("acctDeleted"));
         $("#authScreen").style.display="flex";
@@ -2810,12 +2839,17 @@ function refreshAllCore(){
 function refreshAll(){refreshAllCore();scheduleLive()}
 async function init(){
   // 載入持久化
-  const [u,tx,st,tk]=await Promise.all([kvGet("wl_user"),kvGet("wl_txns"),kvGet("wl_settings"),kvGet("wl_token")]);
-  if(st)state.settings={...state.settings,...st};
-  state.privacyOn=state.settings.privacy!==false; // 預設開啟
-  if(tx)state.txns=tx;
+  const [u,tk]=await Promise.all([kvGet("app_user"),kvGet("app_token")]);
   if(u)state.user=u;
   if(tk)state.token=tk;
+  // 按用戶載入 txns + settings
+  const em=state.user&&!state.user.guest?state.user.email:null;
+  const key=em?b64enc(em):(state.user&&state.user.guest)?"guest":null;
+  const [tx,st]=await Promise.all([key?kvGet("app_txns_"+key):null,key?kvGet("app_settings_"+key):null]);
+  if(st)state.settings={...DEFAULT_SETTINGS,...st};
+  else state.settings={...DEFAULT_SETTINGS};
+  state.privacyOn=state.settings.privacy!==false; // 預設開啟
+  if(tx)state.txns=tx;
   // 探測後端(有後端=即時數據模式)
   await probeLive();
   await loadLangPack(state.settings.lang);
@@ -2824,8 +2858,9 @@ async function init(){
       const me=await api("/api/me");
       state.user={...me.user,guest:false};
       const p=await api("/api/portfolio").catch(()=>null);
-      if(p&&Array.isArray(p.txns)&&p.txns.length){ state.txns=p.txns; if(p.settings)state.settings={...state.settings,...p.settings} }
-    }catch(e){ state.token=null; await kvSet("wl_token",null) }
+      if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
+      if(p&&p.settings)state.settings={...DEFAULT_SETTINGS,...p.settings}; // 伺服器設定覆蓋
+    }catch(e){ state.token=null; await kvSet("app_token",null) }
   }
   state.chart.ctype=state.settings.ctype;
   applyTheme();applyI18n();
@@ -2859,12 +2894,23 @@ async function init(){
   // 登入
   $$("#authScreen [data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.setlang;applyI18n()});
   async function finishAuth(r){
+    // 如果之前是訪客，先儲存訪客資料
+    if(state.user&&state.user.guest){
+      await kvSet("app_settings_guest",state.settings);
+      await kvSet("app_txns_guest",state.txns);
+    }
     state.token=r.token; state.user={...r.user,guest:false};
-    await kvSet("wl_token",r.token);
+    await kvSet("app_token",r.token);
+    await kvSet("app_last_user",b64enc(r.user.email));
     try{
       const p=await api("/api/portfolio");
-      if(p&&Array.isArray(p.txns)&&p.txns.length){ state.txns=p.txns; if(p.settings)state.settings={...state.settings,...p.settings} }
-      else if(state.txns.length){ await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}) }
+      if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
+      if(p&&p.settings){ state.settings={...DEFAULT_SETTINGS,...p.settings} }
+      else{
+        // 伺服器沒有設定，嘗試從本地載入
+        const localSt=await kvGet("app_settings_"+b64enc(r.user.email));
+        if(localSt)state.settings={...DEFAULT_SETTINGS,...localSt};
+      }
     }catch(e){}
     await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
   }
@@ -2886,7 +2932,19 @@ async function init(){
         return toast(m==="bad_pwd"?T("pwdWrong"):m==="weak_pwd"?T("pwdTooShort"):m==="mail_failed"?T("mailFailed"):(e.message||"Error"));
       }
     }
+    // 離線模式：如果之前是訪客，先儲存訪客資料
+    if(state.user&&state.user.guest){
+      await kvSet("app_settings_guest",state.settings);
+      await kvSet("app_txns_guest",state.txns);
+    }
     state.user={name:em.split("@")[0],email:em,avatar:"🙂",guest:false,pwd:pw};
+    await kvSet("app_last_user",b64enc(em));
+    // 載入用戶專屬設定
+    const localSt=await kvGet("app_settings_"+b64enc(em));
+    if(localSt)state.settings={...DEFAULT_SETTINGS,...localSt};
+    else state.settings={...DEFAULT_SETTINGS};
+    const localTx=await kvGet("app_txns_"+b64enc(em));
+    if(localTx)state.txns=localTx;
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
   $("#btnVerify").onclick=async()=>{
@@ -2903,8 +2961,25 @@ async function init(){
     catch(e){ toast(String(e.message)==="resend_too_fast"?T("resendWait"):T("mailFailed")) }
   };
   $("#btnGuest").onclick=async()=>{
+    // 如果之前是正式用戶，先儲存
+    if(state.user&&!state.user.guest){
+      const em=state.user.email;
+      await kvSet(userKey(em),state.settings);
+      await kvSet(txnsKey(em),state.txns);
+      if(LIVE&&state.token)await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings}).catch(()=>{});
+    }
+    // 載入訪客資料
+    const guestSt=await kvGet("app_settings_guest");
+    const guestTx=await kvGet("app_txns_guest");
     state.user={name:"Guest",email:"",avatar:"🦊",guest:true};
-    if(!state.txns.length)seedDemo();
+    state.token=null;
+    if(guestSt)state.settings={...DEFAULT_SETTINGS,...guestSt};
+    else state.settings={...DEFAULT_SETTINGS};
+    if(guestTx&&guestTx.length)state.txns=guestTx;
+    else{state.txns=[];seedDemo()}
+    state.privacyOn=state.settings.privacy!==false;
+    await kvSet("app_last_user","guest");
+    applyTheme();applyI18n();
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
   if(state.user){$("#authScreen").style.display="none";refreshAll()}

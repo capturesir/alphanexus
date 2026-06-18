@@ -1879,8 +1879,7 @@ function openInteractiveChart(sym){
       else if(p==="6M")k0=back(182);else if(p==="1Y")k0=back(365);
       else k0=0;
       k0=Math.min(Math.max(0,k0),last);
-      const _td=this.tradeDays,_ag=_td.length>=2?(_td[_td.length-1]-_td[0])/(_td.length-1):5;
-      this.view=[k0,last+Math.round(_ag*this.padDays)];
+      this.view=[k0,last];
       document.querySelectorAll("#icPeriodRow .chip[data-p]").forEach(c=>c.classList.toggle("on",c.dataset.p===p));
       this.draw();
     },
@@ -1920,7 +1919,9 @@ function openInteractiveChart(sym){
       // 過濾視窗內的交易日
       const td=this.tradeDays.filter(k=>k>=k0&&k<=k1);
       const nTd=td.length;if(nTd<2)return;
-      const nTdTotal=nTd+this.padDays;
+      const _extraK=Math.max(0,k1-(this.n-1));
+      const _avgG=nTd>=2?(td[nTd-1]-td[0])/(nTd-1):5;
+      const nTdTotal=nTd+(_avgG>0?Math.round(_extraK/_avgG):0);
 
       // 主圖
       ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
@@ -2042,7 +2043,10 @@ function openInteractiveChart(sym){
       let maxV=0;
       for(const k of td)if(vol[k]>maxV)maxV=vol[k];
       if(maxV<=0)return;
-      const nTdTotal=nTd+this.padDays;
+      const _vView=this.view;
+      const _vExtra=Math.max(0,_vView[1]-(this.n-1));
+      const _vAvgG=nTd>=2?(td[nTd-1]-td[0])/(nTd-1):5;
+      const nTdTotal=nTd+(_vAvgG>0?Math.round(_vExtra/_vAvgG):0);
       const X=idx=>padL+idx/(nTdTotal-1||1)*w;
       const barW=Math.max(1,w/nTdTotal*0.7);
       const raw=this.series.raw;
@@ -2067,7 +2071,9 @@ function openInteractiveChart(sym){
         const f=Math.max(0,Math.min(1,(clientX-rect.left-padL)/(w||1)));
         const td=this.tradeDays.filter(k=>k>=this.view[0]&&k<=this.view[1]);
         const n=td.length;if(n<1)return 0;
-        const nTotal=n+this.padDays;
+        const _xExtra=Math.max(0,this.view[1]-(this.n-1));
+        const _xAvgG=n>=2?(td[n-1]-td[0])/(n-1):5;
+        const nTotal=n+(_xAvgG>0?Math.round(_xExtra/_xAvgG):0);
         const idx=Math.round(f*(nTotal-1));
         return td[Math.max(0,Math.min(n-1,idx))]; // clamp to last data index
       };

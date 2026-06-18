@@ -833,6 +833,8 @@ function serveStatic(req, res, urlPath) {
     }
     const mime = MIME[path.extname(file)] || "application/octet-stream";
     const headers = { "Content-Type": mime };
+    // HTML 檔案不快取（確保更新後瀏覽器立即載入新版本）
+    if (mime.startsWith("text/html")) headers["Cache-Control"] = "no-cache";
     if (/^(text\/|application\/json|image\/svg)/.test(mime) && buf.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
       buf = zlib.gzipSync(buf); headers["Content-Encoding"] = "gzip";
     }

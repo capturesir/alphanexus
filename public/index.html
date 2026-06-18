@@ -2502,6 +2502,7 @@ function renderMe(){
   $("#ctypePrefSel").value=state.settings.ctype;
   $("#baseCcySel2").value=state.settings.baseCcy;
   const _topCcy=$("#baseCcySel");if(_topCcy)_topCcy.value=state.settings.baseCcy;
+  const _pvt=$("#privacyToggle");if(_pvt)_pvt.classList.toggle("on",state.settings.privacy!==false);
 }
 /* ====================== #8 CSV 匯入 / 匯出 ====================== */
 function parseCSV(text){
@@ -2861,6 +2862,7 @@ async function init(){
       const p=await api("/api/portfolio").catch(()=>null);
       if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
       if(p&&p.settings)state.settings={...DEFAULT_SETTINGS,...p.settings}; // 伺服器設定覆蓋
+      state.privacyOn=state.settings.privacy!==false;
     }catch(e){ state.token=null; await kvSet("app_token",null) }
   }
   state.chart.ctype=state.settings.ctype;

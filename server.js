@@ -122,7 +122,7 @@ function mktOf(s) {
 }
 
 /* ====================== 數據源 Provider 層 ====================== */
-/* 統一輸出: {symbol,name,ccy,market,last,dates[],raw[],adj[],dividends[],splits[],source,adjusted} */
+/* 統一輸出: {symbol,name,ccy,market,last,dates[],raw[],adj[],open[],high[],low[],volume[],dividends[],splits[],source,adjusted} */
 
 const providers = {
   /* ---- Yahoo:歷史價(含調整價 + 股息/拆股事件) ---- */
@@ -135,20 +135,25 @@ const providers = {
     let ccy = meta.currency || "USD", scale = 1;
     if (ccy === "GBp") { ccy = "GBP"; scale = 0.01 }   // 倫敦便士報價
     if (ccy === "ILA") { ccy = "ILS"; scale = 0.01 }   // 以色列 agorot(借鏡 Ghostfolio 修正)
-    const close = (res.indicators.quote && res.indicators.quote[0] && res.indicators.quote[0].close) || [];
+    const quote = (res.indicators.quote && res.indicators.quote[0]) || {};
+    const close = quote.close || [];
     const adjA = (res.indicators.adjclose && res.indicators.adjclose[0] && res.indicators.adjclose[0].adjclose) || close;
-    const dates = [], raw = [], adj = [];
+    const dates = [], raw = [], adj = [], open = [], high = [], low = [], volume = [];
     for (let i = 0; i < res.timestamp.length; i++) {
       if (close[i] == null && adjA[i] == null) continue;
       dates.push(tsToDate(res.timestamp[i]));
       raw.push(close[i] == null ? null : +(close[i] * scale).toFixed(6));
       adj.push(adjA[i] == null ? null : +(adjA[i] * scale).toFixed(6));
+      open.push(quote.open && quote.open[i] != null ? +(quote.open[i] * scale).toFixed(6) : null);
+      high.push(quote.high && quote.high[i] != null ? +(quote.high[i] * scale).toFixed(6) : null);
+      low.push(quote.low && quote.low[i] != null ? +(quote.low[i] * scale).toFixed(6) : null);
+      volume.push(quote.volume && quote.volume[i] != null ? quote.volume[i] : null);
     }
     if (!dates.length) throw new Error("no_data");
     const ev = res.events || {};
     const dividends = Object.values(ev.dividends || {}).map(d => ({ date: tsToDate(d.date), amount: +(d.amount * scale).toFixed(6) })).sort((a, b) => a.date < b.date ? -1 : 1);
     const splits = Object.values(ev.splits || {}).map(s => ({ date: tsToDate(s.date), ratio: s.denominator ? s.numerator / s.denominator : 1, text: s.splitRatio || "" })).sort((a, b) => a.date < b.date ? -1 : 1);
-    return { symbol, name: meta.shortName || meta.longName || symbol, ccy, market: mktOf(symbol), last: raw[raw.length - 1], dates, raw, adj, dividends, splits, source: "yahoo", adjusted: true };
+    return { symbol, name: meta.shortName || meta.longName || symbol, ccy, market: mktOf(symbol), last: raw[raw.length - 1], dates, raw, adj, open, high, low, volume, dividends, splits, source: "yahoo", adjusted: true };
   },
 
   /* ---- Stooq:歷史價備援(CSV,拆股已調整、未含股息調整) ---- */
@@ -165,16 +170,20 @@ const providers = {
     const csv = await fetchAny([`https://stooq.com/q/d/l/?s=${encodeURIComponent(ss)}&d1=20201228&d2=${d2}&i=d`], true);
     const lines = csv.trim().split("\n");
     if (lines.length < 3 || !/^Date,/i.test(lines[0])) throw new Error("no_data");
-    const dates = [], raw = [];
+    const dates = [], raw = [], open = [], high = [], low = [], volume = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split(",");
       const px = parseFloat(c[4]);
       if (!c[0] || !isFinite(px)) continue;
       dates.push(c[0]); raw.push(px);
+      open.push(isFinite(parseFloat(c[1])) ? parseFloat(c[1]) : null);
+      high.push(isFinite(parseFloat(c[2])) ? parseFloat(c[2]) : null);
+      low.push(isFinite(parseFloat(c[3])) ? parseFloat(c[3]) : null);
+      volume.push(isFinite(parseInt(c[5])) ? parseInt(c[5]) : null);
     }
     if (!dates.length) throw new Error("no_data");
     const ccy = /\.hk$/.test(ss) ? "HKD" : /\.jp$/.test(ss) ? "JPY" : "USD";
-    return { symbol, name: symbol, ccy, market: mktOf(symbol), last: raw[raw.length - 1], dates, raw, adj: raw.slice(), dividends: [], splits: [], source: "stooq", adjusted: false };
+    return { symbol, name: symbol, ccy, market: mktOf(symbol), last: raw[raw.length - 1], dates, raw, adj: raw.slice(), open, high, low, volume, dividends: [], splits: [], source: "stooq", adjusted: false };
   },
 
   /* ---- Yahoo:匯率 ---- */
@@ -304,7 +313,7 @@ async function customHistory(symbol, cfg) {
   if (!map.size) throw new Error("no_rows");
   const dates = [...map.keys()].sort();
   const raw = dates.map(d => map.get(d));
-  return { symbol, name: cfg.name || symbol, ccy: cfg.ccy || "USD", market: "CUSTOM", last: raw[raw.length - 1], dates, raw, adj: raw.slice(), dividends: [], splits: [], source: "custom", adjusted: false };
+  return { symbol, name: cfg.name || symbol, ccy: cfg.ccy || "USD", market: "CUSTOM", last: raw[raw.length - 1], dates, raw, adj: raw.slice(), open: [], high: [], low: [], volume: [], dividends: [], splits: [], source: "custom", adjusted: false };
 }
 
 /* ====================== #7 CoinGecko 加密貨幣 provider ====================== */
@@ -412,7 +421,7 @@ async function coingeckoHistory(symbol) {
   for (const [ms, p] of prices) map.set(new Date(ms).toISOString().slice(0, 10), +(+p).toFixed(6));
   const dates = [...map.keys()].sort();
   const raw = dates.map(d => map.get(d));
-  return { symbol: symbol.toUpperCase(), name: coin.name || symbol, ccy: "USD", market: "CRYPTO", last: raw[raw.length - 1], dates, raw, adj: raw.slice(), dividends: [], splits: [], source: "coingecko", adjusted: true };
+  return { symbol: symbol.toUpperCase(), name: coin.name || symbol, ccy: "USD", market: "CRYPTO", last: raw[raw.length - 1], dates, raw, adj: raw.slice(), open: [], high: [], low: [], volume: [], dividends: [], splits: [], source: "coingecko", adjusted: true };
 }
 
 /* 同鍵並發合併:1000 人同時請求同一代碼,僅對外發出 1 次上游請求 */

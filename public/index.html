@@ -656,7 +656,11 @@ async function ensureMarketData(){
     for(const c of ccys){ if(r[c]&&r[c].dates&&r[c].dates.length){ REAL.fx[c]=alignToCalendar(r[c].dates,r[c].rates); changed=true } }
   }).catch(()=>{}));
   for(const s of syms)jobs.push(api("/api/history?symbol="+encodeURIComponent(s)).then(r=>{
-    REAL.series[s]={raw:alignToCalendar(r.dates,r.raw),adj:alignToCalendar(r.dates,r.adj),source:r.stale?"stale":"live"};
+    const ohlcv=(r.dates&&r.dates.length)?((src)=>{
+      const align=(v)=>(v&&v.length)?alignToCalendar(r.dates,v):null;
+      return {open:align(src.open),high:align(src.high),low:align(src.low),volume:align(src.volume)};
+    })(r):{};
+    REAL.series[s]={raw:alignToCalendar(r.dates,r.raw),adj:alignToCalendar(r.dates,r.adj),source:r.stale?"stale":"live",...ohlcv};
     REAL.events[s]={dividends:r.dividends||[],splits:r.splits||[],adjusted:r.adjusted!==false,source:r.source||"yahoo"};
     const o=registerSym({s:r.symbol,n:r.name||s,z:r.name||s,m:r.market||mktOf(s),c:r.ccy||"USD"});
     if(r.ccy)o.c=r.ccy; if(r.name&&o.dyn){o.n=r.name;o.z=r.name}

@@ -1870,7 +1870,7 @@ function openInteractiveChart(sym){
       rsi:{on:false,period:14}
     },
     rsiCanvas:null,rsiCtx:null,rsiH:0,
-    _smaCache:null,_rsiCache:null
+    _smaCache:null,_rsiCache:null,
 
     init(){
       // 計算 i0: series 的第一個日期在 DATES 中的索引
@@ -2124,7 +2124,6 @@ function openInteractiveChart(sym){
         ctx.fillStyle=up?col.up+"99":col.dn+"99";
         ctx.fillRect(X(i)-barW/2,padT+h-bh,barW,bh);
       }
-    },
     },
 
     drawSMA(col,td,nTd,X,Y){

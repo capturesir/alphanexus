@@ -1807,12 +1807,16 @@ function openInteractiveChart(sym){
     <div id="icVolumeWrap" style="height:80px;flex-shrink:0;border-top:1px solid var(--line);position:relative">
       <canvas id="icVolCanvas" style="width:100%;height:100%;display:block"></canvas>
     </div>
-    ${h?`<div style="display:flex;gap:6px;padding:8px 14px;border-top:1px solid var(--line);flex-shrink:0;overflow-x:auto">
-      <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("qty")}</div><div class="v num">${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()}</div></div>
-      <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("mktValue")}</div><div class="v num">${fmtAmt(h.mv,base,true)}</div></div>
-      <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("avgCost")}</div><div class="v num">${fmtAmt(h.units>0?h.cost/h.units:0,base,true)}</div></div>
-      <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("plLbl")}</div><div class="v num ${h.pl>=0?"pl-pos":"pl-neg"}">${fmtAmt(h.pl,base,true)}</div></div>
-      ${H.incomeBySym[sym]>0?`<div class="stat" style="flex:1;min-width:60px"><div class="tiny">💰 ${T("dividend")||"股息"}</div><div class="v num">${fmtAmt(H.incomeBySym[sym],base,true)}</div></div>`:""}
+    ${h?`<div style="padding:8px 14px;border-top:1px solid var(--line);flex-shrink:0">
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("qty")}</div><div class="v num">${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()}</div></div>
+        <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("mktValue")}</div><div class="v num">${fmtAmt(h.mv,base,true)}</div></div>
+        <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("avgCost")}</div><div class="v num">${fmtAmt(h.units>0?h.cost/h.units:0,base,true)}</div></div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <div class="stat" style="flex:1;min-width:60px"><div class="tiny">${T("plLbl")}</div><div class="v num ${h.pl>=0?"pl-pos":"pl-neg"}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</div></div>
+        ${H.incomeBySym[sym]>0?`<div class="stat" style="flex:1;min-width:60px"><div class="tiny">💰 ${T("dividend")||"股息"}</div><div class="v num">${fmtAmt(H.incomeBySym[sym],base,true)}</div></div>`:""}
+      </div>
     </div>`:""}
   `;
   document.body.appendChild(overlay);
@@ -1824,6 +1828,7 @@ function openInteractiveChart(sym){
     series,ccy,sym,
     n:series.raw.length,
     i0:0,  // series 起始索引對應 DATES
+    tradeDays:[], // 只含交易日的索引
     view:[0,0],
     chartType:"line",
     scrubK:null,
@@ -1833,6 +1838,13 @@ function openInteractiveChart(sym){
       // 計算 i0: series 的第一個日期在 DATES 中的索引
       // REAL.series 的 raw[] 長度 = N_DAYS, 索引 0 = DATES[0]
       this.i0=0;
+      // 建立交易日索引(排除非交易日: 價格未變且無成交量)
+      const raw=this.series.raw,vol=this.series.volume;
+      const td=[0];
+      for(let k=1;k<this.n;k++){
+        if(raw[k]!==raw[k-1]||(vol&&vol[k]>0))td.push(k);
+      }
+      this.tradeDays=td;
       this.canvas=document.getElementById("icCanvas");
       this.ctx=this.canvas.getContext("2d");
       this.volCanvas=document.getElementById("icVolCanvas");
@@ -1901,6 +1913,10 @@ function openInteractiveChart(sym){
       const hasOHLC=open&&high&&low;
       const isCandle=this.chartType==="candle"&&hasOHLC;
 
+      // 過濾視窗內的交易日
+      const td=this.tradeDays.filter(k=>k>=k0&&k<=k1);
+      const nTd=td.length;if(nTd<2)return;
+
       // 主圖
       ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
       ctx.clearRect(0,0,this.W,this.H);
@@ -1911,16 +1927,17 @@ function openInteractiveChart(sym){
       // 值域
       let lo=Infinity,hi=-Infinity;
       if(isCandle){
-        for(let k=k0;k<=k1;k++){if(high[k]<lo)lo=high[k];if(low[k]>hi)hi=low[k];
+        for(const k of td){if(high[k]<lo)lo=high[k];if(low[k]>hi)hi=low[k];
           if(high[k]>hi)hi=high[k];if(low[k]<lo)lo=low[k]}
       }else{
-        for(let k=k0;k<=k1;k++){const v=raw[k];if(v<lo)lo=v;if(v>hi)hi=v}
+        for(const k of td){const v=raw[k];if(v<lo)lo=v;if(v>hi)hi=v}
       }
       if(!isFinite(lo)){lo=0;hi=1}
       if(hi-lo<1e-9){hi+=1;lo-=1}
       const pad=(hi-lo)*0.07;lo-=pad;hi+=pad;
-      const X=k=>padL+(k-k0)/(k1-k0||1)*w;
+      const X=idx=>padL+idx/(nTd-1||1)*w; // idx = position in td array
       const Y=v=>padT+(1-(v-lo)/(hi-lo))*h;
+      const kToIdx=k=>{for(let i=0;i<nTd;i++)if(td[i]>=k)return i;return nTd-1};
 
       // 網格 + Y軸
       ctx.strokeStyle=col.line;ctx.fillStyle=col.ink3;ctx.font="10px sans-serif";ctx.textAlign="left";ctx.lineWidth=1;
@@ -1929,69 +1946,72 @@ function openInteractiveChart(sym){
         ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+w,y);ctx.stroke();
         ctx.fillText(fmtMoney(v,this.ccy,true),padL+w+4,y+3);
       }
-      // X軸
-      const ticks=Math.min(5,k1-k0);
+      // X軸(只在交易日標記)
+      const ticks=Math.min(6,nTd-1);
       for(let i=0;i<=ticks;i++){
-        const k=Math.round(k0+(k1-k0)*i/ticks);
+        const ti=Math.round(i/(ticks||1)*(nTd-1));
+        const k=td[ti];
         ctx.textAlign=i===0?"left":i===ticks?"right":"center";
-        const d=new Date(2020,0,1);d.setDate(d.getDate()+k); // approx date from index
-        // Use DATES if available
-        const dt=typeof DATES!=="undefined"&&DATES[k]?DATES[k]:d;
-        ctx.fillText(`${dt.getMonth()+1}/${dt.getDate()}`,X(k),this.H-6);
+        const dt=typeof DATES!=="undefined"&&DATES[k]?DATES[k]:new Date(2020,0,1);
+        ctx.fillText(`${dt.getMonth()+1}/${dt.getDate()}`,X(ti),this.H-6);
       }
 
       ctx.save();ctx.beginPath();ctx.rect(padL,0,w,this.H);ctx.clip();
 
       // 繪製主序列
       if(isCandle){
-        const bw=Math.max(2,Math.min(16,w/(k1-k0+1)*0.65));
-        for(let k=k0;k<=k1;k++){
-          const o=open[k],c=raw[k],hi_=high[k],lo_=low[k];
-          const up=c>=o;
+        const bw=Math.max(2,Math.min(16,w/nTd*0.65));
+        for(let i=0;i<nTd;i++){
+          const k=td[i],o_=open[k],c_=raw[k],hi_=high[k],lo_=low[k];
+          const up=c_>=o_;
           ctx.strokeStyle=ctx.fillStyle=up?col.up:col.dn;
-          ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X(k),Y(hi_));ctx.lineTo(X(k),Y(lo_));ctx.stroke();
-          const y1=Y(Math.max(o,c)),y2=Y(Math.min(o,c));
-          ctx.fillRect(X(k)-bw/2,y1,bw,Math.max(1,y2-y1));
+          ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X(i),Y(hi_));ctx.lineTo(X(i),Y(lo_));ctx.stroke();
+          const y1=Y(Math.max(o_,c_)),y2=Y(Math.min(o_,c_));
+          ctx.fillRect(X(i)-bw/2,y1,bw,Math.max(1,y2-y1));
         }
       }else{
         ctx.strokeStyle=col.gold;ctx.lineWidth=2;ctx.lineJoin="round";ctx.beginPath();
-        let started=false;
-        for(let k=k0;k<=k1;k++){
-          const v=raw[k];if(!isFinite(v))continue;
-          if(!started){ctx.moveTo(X(k),Y(v));started=true}
-          else ctx.lineTo(X(k),Y(v));
+        for(let i=0;i<nTd;i++){
+          const v=raw[td[i]];if(!isFinite(v))continue;
+          i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v));
         }
         ctx.stroke();
         // 漸層填充
-        ctx.lineTo(X(k1),padT+h);ctx.lineTo(X(k0),padT+h);ctx.closePath();
+        ctx.lineTo(X(nTd-1),padT+h);ctx.lineTo(X(0),padT+h);ctx.closePath();
         const g=ctx.createLinearGradient(0,padT,0,padT+h);
         g.addColorStop(0,col.gold+"33");g.addColorStop(1,col.gold+"00");
         ctx.fillStyle=g;ctx.fill();
       }
 
       // 十字線
-      if(this.scrubK!=null&&this.scrubK>=k0&&this.scrubK<=k1){
-        const k=this.scrubK;
-        ctx.strokeStyle=col.ink3;ctx.setLineDash([4,4]);ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(X(k),padT);ctx.lineTo(X(k),padT+h);ctx.stroke();ctx.setLineDash([]);
-        // 水平線
-        const v=raw[k];
-        ctx.beginPath();ctx.moveTo(padL,Y(v));ctx.lineTo(padL+w,Y(v));ctx.stroke();
-        // 點
-        ctx.fillStyle=col.gold;ctx.beginPath();ctx.arc(X(k),Y(v),4,0,7);ctx.fill();
+      if(this.scrubK!=null){
+        const idx=td.indexOf(this.scrubK);
+        if(idx>=0){
+          const k=this.scrubK;
+          ctx.strokeStyle=col.ink3;ctx.setLineDash([4,4]);ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(X(idx),padT);ctx.lineTo(X(idx),padT+h);ctx.stroke();ctx.setLineDash([]);
+          // 水平線
+          const v=raw[k];
+          ctx.beginPath();ctx.moveTo(padL,Y(v));ctx.lineTo(padL+w,Y(v));ctx.stroke();
+          // 點
+          ctx.fillStyle=col.gold;ctx.beginPath();ctx.arc(X(idx),Y(v),4,0,7);ctx.fill();
 
-        // Tooltip
-        const tip=document.getElementById("icTooltip");
-        if(tip){
-          const dt=typeof DATES!=="undefined"&&DATES[k]?DATES[k]:new Date(2020,0,1);
-          const dateStr=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
-          const chg=k>0?raw[k]/raw[k-1]-1:0;
-          let txt=`${dateStr}\n${T("close")||"收"} ${fmtMoney(raw[k],this.ccy)}  ${chg>=0?"+":""}${pct(chg)}`;
-          if(hasOHLC&&open&&high&&low){
-            txt+=`\n${T("open")||"開"} ${fmtMoney(open[k],this.ccy)}  ${T("high")||"高"} ${fmtMoney(high[k],this.ccy)}\n${T("low")||"低"} ${fmtMoney(low[k],this.ccy)}`;
-            if(vol&&vol[k])txt+=`  Vol ${vol[k].toLocaleString()}`;
+          // Tooltip
+          const tip=document.getElementById("icTooltip");
+          if(tip){
+            const dt=typeof DATES!=="undefined"&&DATES[k]?DATES[k]:new Date(2020,0,1);
+            const dateStr=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+            const prevK=idx>0?td[idx-1]:k;
+            const chg=prevK!==k?raw[k]/raw[prevK]-1:0;
+            let txt=`${dateStr}\n${T("close")||"收"} ${fmtMoney(raw[k],this.ccy)}  ${chg>=0?"+":""}${pct(chg)}`;
+            if(hasOHLC&&open&&high&&low){
+              txt+=`\n${T("open")||"開"} ${fmtMoney(open[k],this.ccy)}  ${T("high")||"高"} ${fmtMoney(high[k],this.ccy)}\n${T("low")||"低"} ${fmtMoney(low[k],this.ccy)}`;
+              if(vol&&vol[k])txt+=`  Vol ${vol[k].toLocaleString()}`;
+            }
+            tip.textContent=txt;tip.style.display="block";
           }
-          tip.textContent=txt;tip.style.display="block";
+        }else{
+          const tip=document.getElementById("icTooltip");if(tip)tip.style.display="none";
         }
       }else{
         const tip=document.getElementById("icTooltip");if(tip)tip.style.display="none";
@@ -2000,10 +2020,10 @@ function openInteractiveChart(sym){
       ctx.restore();
 
       // 成交量
-      this.drawVolume(col,k0,k1,vol);
+      this.drawVolume(col,td,nTd,vol);
     },
 
-    drawVolume(col,k0,k1,vol){
+    drawVolume(col,td,nTd,vol){
       const ctx=this.volCtx;if(!ctx||!vol)return;
       ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
       ctx.clearRect(0,0,this.W,this.volH);
@@ -2011,17 +2031,17 @@ function openInteractiveChart(sym){
       const w=this.W-padL-padR,h=this.volH-padT-padB;
       if(w<10||h<10)return;
       let maxV=0;
-      for(let k=k0;k<=k1;k++)if(vol[k]>maxV)maxV=vol[k];
+      for(const k of td)if(vol[k]>maxV)maxV=vol[k];
       if(maxV<=0)return;
-      const X=k=>padL+(k-k0)/(k1-k0||1)*w;
-      const barW=Math.max(1,w/(k1-k0+1)*0.7);
+      const X=idx=>padL+idx/(nTd-1||1)*w;
+      const barW=Math.max(1,w/nTd*0.7);
       const raw=this.series.raw;
-      for(let k=k0;k<=k1;k++){
-        const v=vol[k];if(v<=0)continue;
+      for(let i=0;i<nTd;i++){
+        const k=td[i],v=vol[k];if(v<=0)continue;
         const bh=v/maxV*h;
         const up=k>0?raw[k]>=raw[k-1]:true;
         ctx.fillStyle=up?col.up+"99":col.dn+"99";
-        ctx.fillRect(X(k)-barW/2,padT+h-bh,barW,bh);
+        ctx.fillRect(X(i)-barW/2,padT+h-bh,barW,bh);
       }
     },
 
@@ -2035,7 +2055,9 @@ function openInteractiveChart(sym){
         const padL=8,padR=52;
         const w=rect.width-padL-padR;
         const f=Math.max(0,Math.min(1,(clientX-rect.left-padL)/(w||1)));
-        const [a,b]=this.view;return Math.round(a+f*(b-a));
+        const td=this.tradeDays.filter(k=>k>=this.view[0]&&k<=this.view[1]);
+        const idx=Math.round(f*(td.length-1));
+        return td[Math.max(0,Math.min(td.length-1,idx))];
       };
 
       const clampView=()=>{

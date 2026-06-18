@@ -2232,7 +2232,16 @@ function openInteractiveChart(sym){
 
     openIndicatorPanel(){
       const self=this;
-      const m=openModal(`
+      // 在 overlay 內建立浮動面板（避免 z-index 被 overlay 蓋住）
+      const overlay=document.getElementById("icOverlay");
+      if(!overlay)return;
+      // 移除舊面板（如果有）
+      const old=overlay.querySelector("#icIndPanel"); if(old)old.remove();
+
+      const panel=document.createElement("div");
+      panel.id="icIndPanel";
+      panel.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.4)";
+      panel.innerHTML=`
         <h2 style="margin-bottom:10px">📊 ${T("icIndicators")||"指標"}</h2>
         <div style="display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:8px">
@@ -2265,10 +2274,11 @@ function openInteractiveChart(sym){
           <div class="grow"></div>
           <button class="btn btn-primary" id="indClose">${T("close")||"關閉"}</button>
         </div>
-      `);
+      `;
+      overlay.appendChild(panel);
 
       // SMA 週期選擇
-      m.querySelectorAll("[data-sp]").forEach(btn=>{
+      panel.querySelectorAll("[data-sp]").forEach(btn=>{
         btn.onclick=()=>{
           const p=parseInt(btn.dataset.sp);
           const idx=self.ind.sma.periods.indexOf(p);
@@ -2279,26 +2289,26 @@ function openInteractiveChart(sym){
       });
 
       // SMA 開關
-      const smaToggle=m.querySelector("#smaToggle");
+      const smaToggle=panel.querySelector("#smaToggle");
       if(smaToggle)smaToggle.onchange=()=>{
         self.ind.sma.on=smaToggle.checked;
       };
 
       // RSI 開關
-      const rsiToggle=m.querySelector("#rsiToggle");
+      const rsiToggle=panel.querySelector("#rsiToggle");
       if(rsiToggle)rsiToggle.onchange=()=>{
         self.ind.rsi.on=rsiToggle.checked;
       };
 
       // RSI 週期
-      const rsiPeriod=m.querySelector("#rsiPeriod");
+      const rsiPeriod=panel.querySelector("#rsiPeriod");
       if(rsiPeriod)rsiPeriod.onchange=()=>{
         self.ind.rsi.period=Math.max(2,Math.min(100,parseInt(rsiPeriod.value)||14));
       };
 
       // 關閉按鈕
-      m.querySelector("#indClose").onclick=()=>{
-        closeModal();
+      panel.querySelector("#indClose").onclick=()=>{
+        panel.remove();
         self.updateIndicators();
         self.toggleRSI(self.ind.rsi.on);
         // 更新 SMA 按鈕狀態

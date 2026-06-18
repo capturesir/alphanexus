@@ -1838,11 +1838,13 @@ function openInteractiveChart(sym){
       // 計算 i0: series 的第一個日期在 DATES 中的索引
       // REAL.series 的 raw[] 長度 = N_DAYS, 索引 0 = DATES[0]
       this.i0=0;
-      // 建立交易日索引(排除非交易日: 價格未變且無成交量)
+      // 建立交易日索引(排除週末 + 價格和成交量都與前日相同的假期)
       const raw=this.series.raw,vol=this.series.volume;
       const td=[0];
       for(let k=1;k<this.n;k++){
-        if(raw[k]!==raw[k-1]||(vol&&vol[k]>0))td.push(k);
+        const d=DATES[k],day=d.getDay();
+        const isWeekend=day===0||day===6;
+        if(!isWeekend&&(raw[k]!==raw[k-1]||(vol&&vol[k]!==vol[k-1])))td.push(k);
       }
       this.tradeDays=td;
       this.canvas=document.getElementById("icCanvas");

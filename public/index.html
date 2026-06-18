@@ -2831,7 +2831,7 @@ function onChartLocPick(val){
   refreshChart();
 }
 function refreshAllCore(){
-  applyI18n();
+  applyTheme();applyI18n();
   renderAssets();
   renderLocChips("locFilterChart",state.chart.locFilter,onChartLocPick);
   refreshChartCore();renderNews();renderMe();updateLiveBadge();

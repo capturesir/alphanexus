@@ -1,13 +1,9 @@
 # Dependencies
 node_modules/
 
-# Runtime data (generated at startup)
-data/cache/
-data/market/
-data/portfolios/
-data/users.json
-data/custom_sources.json
-data/alerts.log
+# Runtime data (generated at startup) — NEVER delete
+data/
+!data/.gitkeep
 
 # OS
 .DS_Store

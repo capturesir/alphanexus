@@ -3551,8 +3551,14 @@ async function init(){
       const me=await api("/api/me");
       state.user={...me.user,guest:false};
       const p=await api("/api/portfolio").catch(()=>null);
-      if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
-      if(p&&p.settings)state.settings={...DEFAULT_SETTINGS,...p.settings}; // 伺服器設定覆蓋
+      if(p&&Array.isArray(p.txns)&&p.txns.length>0){
+        state.txns=p.txns;
+      }
+      // else: 保留本地已載入的 txns（line 3545）
+      if(p&&p.settings&&Object.keys(p.settings).length>0){
+        state.settings={...DEFAULT_SETTINGS,...p.settings};
+      }
+      // else: 保留本地已載入的 settings（line 3542）
       applySettingsSideEffects();
     }catch(e){ state.token=null; await kvSet("app_token",null) }
   }
@@ -3597,12 +3603,20 @@ async function init(){
     await kvSet("app_last_user",b64enc(r.user.email));
     try{
       const p=await api("/api/portfolio");
-      if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
-      if(p&&p.settings){ state.settings={...DEFAULT_SETTINGS,...p.settings} }
-      else{
-        // 伺服器沒有設定，嘗試從本地載入
-        const localSt=await kvGet("app_settings_"+b64enc(r.user.email));
-        if(localSt)state.settings={...DEFAULT_SETTINGS,...localSt};
+      // 載入本地數據（用於防止伺服器空數據覆蓋本地）
+      const localTxns=await kvGet(txnsKey(r.user.email));
+      const localSt=await kvGet(userKey(r.user.email));
+      if(p&&Array.isArray(p.txns)&&p.txns.length>0){
+        // 伺服器有數據 → 使用伺服器數據
+        state.txns=p.txns;
+      }else if(Array.isArray(localTxns)&&localTxns.length>0){
+        // 伺服器空但本地有數據 → 保留本地（可能是 data/ 目錄丟失）
+        state.txns=localTxns;
+      }
+      if(p&&p.settings&&Object.keys(p.settings).length>0){
+        state.settings={...DEFAULT_SETTINGS,...p.settings};
+      }else if(localSt&&typeof localSt==="object"){
+        state.settings={...DEFAULT_SETTINGS,...localSt};
       }
     }catch(e){}
     applySettingsSideEffects();

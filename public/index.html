@@ -2503,6 +2503,9 @@ function renderMe(){
   $("#baseCcySel2").value=state.settings.baseCcy;
   const _topCcy=$("#baseCcySel");if(_topCcy)_topCcy.value=state.settings.baseCcy;
   const _pvt=$("#privacyToggle");if(_pvt)_pvt.classList.toggle("on",state.settings.privacy!==false);
+  const _adt=$("#autoDivToggle");if(_adt)_adt.classList.toggle("on",state.settings.autoDiv!==false);
+  const _dti=$("#divTaxInput");if(_dti)_dti.value=isFinite(parseFloat(state.settings.divTax))?state.settings.divTax:0;
+  const _pms=$("#plModeSel");if(_pms)_pms.value=state.settings.plMode||"total";
 }
 /* ====================== #8 CSV 匯入 / 匯出 ====================== */
 function parseCSV(text){
@@ -2832,7 +2835,13 @@ function onChartLocPick(val){
   renderLocChips("locFilterChart",state.chart.locFilter,onChartLocPick);
   refreshChart();
 }
+function applySettingsSideEffects(){
+  state.privacyOn=state.settings.privacy!==false;
+  state.chart.ctype=state.settings.ctype;
+  syncChartType();
+}
 function refreshAllCore(){
+  applySettingsSideEffects();
   applyTheme();applyI18n();
   renderAssets();
   renderLocChips("locFilterChart",state.chart.locFilter,onChartLocPick);
@@ -2850,7 +2859,7 @@ async function init(){
   const [tx,st]=await Promise.all([key?kvGet("app_txns_"+key):null,key?kvGet("app_settings_"+key):null]);
   if(st)state.settings={...DEFAULT_SETTINGS,...st};
   else state.settings={...DEFAULT_SETTINGS};
-  state.privacyOn=state.settings.privacy!==false; // 預設開啟
+  state.privacyOn=state.settings.privacy!==false; // 預設開啟 (init 首次)
   if(tx)state.txns=tx;
   // 探測後端(有後端=即時數據模式)
   await probeLive();
@@ -2862,10 +2871,9 @@ async function init(){
       const p=await api("/api/portfolio").catch(()=>null);
       if(p&&Array.isArray(p.txns)){ state.txns=p.txns }
       if(p&&p.settings)state.settings={...DEFAULT_SETTINGS,...p.settings}; // 伺服器設定覆蓋
-      state.privacyOn=state.settings.privacy!==false;
+      applySettingsSideEffects();
     }catch(e){ state.token=null; await kvSet("app_token",null) }
   }
-  state.chart.ctype=state.settings.ctype;
   applyTheme();applyI18n();
   // 貨幣選單
   [$("#baseCcySel"),$("#baseCcySel2")].forEach(sel=>{sel.innerHTML=CCYS.map(c=>`<option ${c===state.settings.baseCcy?"selected":""}>${c}</option>`).join("")});
@@ -2915,6 +2923,7 @@ async function init(){
         if(localSt)state.settings={...DEFAULT_SETTINGS,...localSt};
       }
     }catch(e){}
+    applySettingsSideEffects();
     await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
   }
   $("#btnLogin").onclick=async()=>{
@@ -2948,6 +2957,7 @@ async function init(){
     else state.settings={...DEFAULT_SETTINGS};
     const localTx=await kvGet("app_txns_"+b64enc(em));
     if(localTx)state.txns=localTx;
+    applySettingsSideEffects();
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
   $("#btnVerify").onclick=async()=>{
@@ -2980,7 +2990,7 @@ async function init(){
     else state.settings={...DEFAULT_SETTINGS};
     if(guestTx&&guestTx.length)state.txns=guestTx;
     else{state.txns=[];seedDemo()}
-    state.privacyOn=state.settings.privacy!==false;
+    applySettingsSideEffects();
     await kvSet("app_last_user","guest");
     applyTheme();applyI18n();
     await persist();$("#authScreen").style.display="none";refreshAll();

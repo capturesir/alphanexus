@@ -178,6 +178,76 @@ async function run() {
   St.del("z@x.com"); St.pfDel("uidZ");
   ok(!St.exists("z@x.com"), "G6 del 清除用戶");
 
+  // ---- H. 設定儲存/讀取/隔離 ----
+  clean();
+  delete require.cache[require.resolve("../server.js")];
+  process.env.SMTP_HOST = ""; // 不寄信
+  const S7 = require("../server.js");
+  await new Promise(r => S7.server.listen(0, r));
+  const p7 = S7.server.address().port;
+  const call7 = (p, body, token) => new Promise((res, rej) => {
+    const hdrs = { "Content-Type": "application/json" };
+    if (token) hdrs.Authorization = "Bearer " + token;
+    const rq = http.request({ host: "localhost", port: p7, path: p, method: body ? "POST" : "GET", headers: hdrs },
+      x => { let b = ""; x.on("data", c => b += c); x.on("end", () => res({ code: x.statusCode, j: JSON.parse(b || "{}") })) });
+    rq.on("error", rej); if (body) rq.write(JSON.stringify(body)); rq.end();
+  });
+  const put7 = (p, body, token) => new Promise((res, rej) => {
+    const rq = http.request({ host: "localhost", port: p7, path: p, method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token } },
+      x => { let b = ""; x.on("data", c => b += c); x.on("end", () => res({ code: x.statusCode, j: JSON.parse(b || "{}") })) });
+    rq.on("error", rej); rq.write(JSON.stringify(body)); rq.end();
+  });
+
+  // 建立測試帳號(直接跳過驗證)
+  const St7 = S7.Store;
+  St7.put("h1@x.com", { id: "h1", name: "H1", salt: "s", hash: "h", tokens: ["tokH1"] });
+  St7.put("h2@x.com", { id: "h2", name: "H2", salt: "s", hash: "h", tokens: ["tokH2"] });
+
+  // H1: 儲存全部 9 項設定 → 讀回一致
+  const h1Settings = { theme:"dark", lang:"en", color:"redUp", ctype:"candle", baseCcy:"GBP", privacy:false, plMode:"daily", autoDiv:false, divTax:15 };
+  await put7("/api/portfolio", { txns: [], settings: h1Settings }, "tokH1");
+  const h1Read = await call7("/api/portfolio", null, "tokH1");
+  const h1s = h1Read.j.settings;
+  ok(h1s.theme === "dark" && h1s.lang === "en" && h1s.color === "redUp" && h1s.ctype === "candle" &&
+     h1s.baseCcy === "GBP" && h1s.privacy === false && h1s.plMode === "daily" && h1s.autoDiv === false && h1s.divTax === 15,
+    "H1 儲存全部 9 項設定 → 讀回一致");
+
+  // H2: 部分更新(只改 theme) → 其他設定不變
+  await put7("/api/portfolio", { txns: [], settings: { ...h1Settings, theme: "light" } }, "tokH1");
+  const h2Read = await call7("/api/portfolio", null, "tokH1");
+  ok(h2Read.j.settings.theme === "light" && h2Read.j.settings.baseCcy === "GBP" && h2Read.j.settings.divTax === 15,
+    "H2 部分更新 theme → 其他設定不變");
+
+  // H3: 用戶隔離 — h2 的設定不影響 h1
+  const h2Settings = { theme:"dark", lang:"zh-CN", color:"greenUp", ctype:"line", baseCcy:"USD", privacy:true, plMode:"total", autoDiv:true, divTax:0 };
+  await put7("/api/portfolio", { txns: [], settings: h2Settings }, "tokH2");
+  const h3Read = await call7("/api/portfolio", null, "tokH1");
+  ok(h3Read.j.settings.lang === "en" && h3Read.j.settings.baseCcy === "GBP",
+    "H3 用戶隔離 — h2 設定不影響 h1");
+
+  // H4: 空設定(新用戶) → 讀回空物件或 undefined
+  St7.put("h4@x.com", { id: "h4", name: "H4", salt: "s", hash: "h", tokens: ["tokH4"] });
+  const h4Read = await call7("/api/portfolio", null, "tokH4");
+  ok(!h4Read.j.settings || Object.keys(h4Read.j.settings).length === 0,
+    "H4 新用戶無設定 → 讀回空");
+
+  // H5: 刪除帳號後設定清除
+  St7.del("h1@x.com"); St7.pfDel("h1");
+  ok(!St7.exists("h1@x.com"), "H5 刪除帳號後用戶不存在");
+
+  // H6: 設定含特殊值(divTax=0, privacy=false)正確儲存
+  St7.put("h6@x.com", { id: "h6", name: "H6", salt: "s", hash: "h", tokens: ["tokH6"] });
+  await put7("/api/portfolio", { txns: [], settings: { divTax: 0, privacy: false, autoDiv: false } }, "tokH6");
+  const h6Read = await call7("/api/portfolio", null, "tokH6");
+  ok(h6Read.j.settings.divTax === 0 && h6Read.j.settings.privacy === false && h6Read.j.settings.autoDiv === false,
+    "H6 特殊值(divTax=0, privacy=false, autoDiv=false)正確儲存");
+
+  // 清理
+  St7.del("h2@x.com"); St7.pfDel("h2");
+  St7.del("h4@x.com"); St7.pfDel("h4");
+  St7.del("h6@x.com"); St7.pfDel("h6");
+  await new Promise(r => S7.server.close(r));
+
   clean();
   console.log(`\n後端測試:${pass} 項全部通過 ✓`);
 }

@@ -32,6 +32,8 @@ for (const d of [DATA, CACHE_DIR, MARKET_DIR, PORT_DIR]) fs.mkdirSync(d, { recur
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 function readJSON(p, fb) { try { return JSON.parse(fs.readFileSync(p, "utf8")) } catch (e) { return fb } }
 function writeJSON(p, obj) { // 原子寫入
+  const dir = path.dirname(p);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const tmp = p + "." + process.pid + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(obj));
   fs.renameSync(tmp, p);

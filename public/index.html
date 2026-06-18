@@ -2501,6 +2501,7 @@ function renderMe(){
   $("#colorSel").value=state.settings.color;
   $("#ctypePrefSel").value=state.settings.ctype;
   $("#baseCcySel2").value=state.settings.baseCcy;
+  const _topCcy=$("#baseCcySel");if(_topCcy)_topCcy.value=state.settings.baseCcy;
 }
 /* ====================== #8 CSV 匯入 / 匯出 ====================== */
 function parseCSV(text){

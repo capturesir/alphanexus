@@ -443,7 +443,7 @@ async function kvGet(k){ if(STORE_OK){ try{const r=await window.storage.get(k);r
 async function kvSet(k,v){ MEM[k]=v; if(STORE_OK){ try{await window.storage.set(k,JSON.stringify(v))}catch(e){} } }
 
 /* ====================== 用戶設定隔離 ====================== */
-const DEFAULT_SETTINGS={lang:"zh-TW",theme:"light",color:"greenUp",ctype:"line",baseCcy:"HKD"};
+const DEFAULT_SETTINGS={lang:"zh-TW",theme:"light",color:"greenUp",ctype:"line",baseCcy:"HKD",chartComps:[]};
 function b64enc(s){return btoa(unescape(encodeURIComponent(s)))}
 function b64dec(s){return decodeURIComponent(escape(atob(s)))}
 function userKey(email){return email?"app_settings_"+b64enc(email):"app_settings_guest"}
@@ -487,7 +487,7 @@ const I18N={
 tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
 mValue:"資產值",cLine:"折線",cSmooth:"平滑",cCandle:"陰陽燭",aD:"日",aW:"週",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR(年化)",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
-compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
+compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",cmpMaxReached:"已達比較上限（5個），請先刪除現有比較",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
 nMine:"持倉相關",nHot:"熱門財經",nAll:"全部",edit:"編輯",darkMode:"深色介面",darkModeHint:"切換淺色 / 深色",language:"語言",
 colorPref:"漲跌顏色",colorPrefHint:"資產列表與圖表的漲跌色",greenUp:"綠升紅跌",redUp:"紅升綠跌",chartPref:"預設圖表形態",baseCcy:"統一結算貨幣",
 changePwd:"修改密碼",modify:"修改",demoData:"示範數據",demoDataHint:"載入或清除示範組合",load:"載入",clear:"清除",logout:"登出",deleteAcct:"刪除帳號",deleteAcctConfirm:"刪除帳號將永久移除你的所有資料且無法復原。請輸入密碼確認:",acctDeleted:"帳號已刪除",deleteAcctFail:"刪除失敗,請再試",
@@ -509,7 +509,7 @@ periodHigh:"期間最高",periodLow:"期間最低",chg:"變動",interactiveChart
 tabAssets:"资产列表",tabChart:"变化图",tabNews:"资讯",tabMe:"我的",add:"新增",totalAssets:"总资产净值",holdings:"持仓",cashByCcy:"各货币现金水平",txnHistory:"交易记录",
 mValue:"资产值",cLine:"折线",cSmooth:"平滑",cCandle:"蜡烛图",aD:"日",aW:"周",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：双指捏合缩放，单指拖动平移观察期间（桌面可用滚轮）",sTWR:"期间TWR(年化)",sMWR:"期间MWR(年化)",sNet:"期间净投入",
-compare:"与 ETF / 股票比较",cmpPh:"输入代码，如 VT、0700、QQQ…",locFilter:"资产位置筛选",locFilterHint:"只计算所选位置的资产值与回报",
+compare:"与 ETF / 股票比较",cmpPh:"输入代码，如 VT、0700、QQQ…",cmpMaxReached:"已达比较上限（5个），请先删除现有比较",locFilter:"资产位置筛选",locFilterHint:"只计算所选位置的资产值与回报",
 nMine:"持仓相关",nHot:"热门财经",nAll:"全部",edit:"编辑",darkMode:"深色界面",darkModeHint:"切换浅色 / 深色",language:"语言",
 colorPref:"涨跌颜色",colorPrefHint:"资产列表与图表的涨跌色",greenUp:"绿涨红跌",redUp:"红涨绿跌",chartPref:"默认图表形态",baseCcy:"统一结算货币",
 changePwd:"修改密码",modify:"修改",demoData:"示范数据",demoDataHint:"载入或清除示范组合",load:"载入",clear:"清除",logout:"退出登录",deleteAcct:"删除账号",deleteAcctConfirm:"删除账号将永久移除你的所有数据且无法复原。请输入密码确认:",acctDeleted:"账号已删除",deleteAcctFail:"删除失败,请重试",
@@ -531,7 +531,7 @@ periodHigh:"期间最高",periodLow:"期间最低",chg:"变动",interactiveChart
 tabAssets:"Assets",tabChart:"Chart",tabNews:"News",tabMe:"Me",add:"Add",totalAssets:"Total net assets",holdings:"Holdings",cashByCcy:"Cash by currency",txnHistory:"Transactions",
 mValue:"Value",cLine:"Line",cSmooth:"Smooth",cCandle:"Candles",aD:"D",aW:"W",aM:"M",aY:"Y",pAll:"ALL",
 gestureHint:"Tip: pinch to zoom, drag to pan the period (mouse wheel on desktop)",sTWR:"Period TWR (ann.)",sMWR:"Period MWR (ann.)",sNet:"Net contributions",
-compare:"Compare with ETFs / stocks",cmpPh:"Enter a ticker, e.g. VT, 0700, QQQ…",locFilter:"Filter by account location",locFilterHint:"Only selected locations are included in value & returns",
+compare:"Compare with ETFs / stocks",cmpPh:"Enter a ticker, e.g. VT, 0700, QQQ…",cmpMaxReached:"Comparison limit reached (5). Please remove an existing one first.",locFilter:"Filter by account location",locFilterHint:"Only selected locations are included in value & returns",
 nMine:"My holdings",nHot:"Top finance",nAll:"All",edit:"Edit",darkMode:"Dark mode",darkModeHint:"Switch light / dark",language:"Language",
 colorPref:"Up/down colors",colorPrefHint:"Gain/loss colors in lists & charts",greenUp:"Green up / red down",redUp:"Red up / green down",chartPref:"Default chart style",baseCcy:"Base currency",
 changePwd:"Change password",modify:"Change",demoData:"Demo data",demoDataHint:"Load or clear the demo portfolio",load:"Load",clear:"Clear",logout:"Log out",deleteAcct:"Delete account",deleteAcctConfirm:"Deleting your account permanently removes all your data and cannot be undone. Enter your password to confirm:",acctDeleted:"Account deleted",deleteAcctFail:"Delete failed, try again",
@@ -4153,15 +4153,20 @@ function bindChartUI(){
   });
   $$("#periodRow .chip").forEach(c=>c.onclick=()=>Chart.applyPeriod(c.dataset.p));
   attachAC($("#cmpInput"),$("#cmpAc"),o=>{
-    if(!state.chart.comps.includes(o.s)&&state.chart.comps.length<6)state.chart.comps.push(o.s);
-    $("#cmpInput").value="";renderCmpTags();refreshChart();
+    if(state.chart.comps.includes(o.s)){$("#cmpInput").value="";return}
+    if(state.chart.comps.length>=5)return toast("⚠️ "+T("cmpMaxReached"));
+    state.chart.comps.push(o.s);
+    state.settings.chartComps=[...state.chart.comps];
+    $("#cmpInput").value="";renderCmpTags();refreshChart();persist();
   });
 }
 function renderCmpTags(){
   $("#cmpTags").innerHTML=state.chart.comps.map((s,i)=>
     `<span class="cmp-tag" style="border-color:${COMP_COLORS[i%6]};color:${COMP_COLORS[i%6]}">${s}<button data-rm="${s}">✕</button></span>`).join("");
   $$("#cmpTags [data-rm]").forEach(b=>b.onclick=()=>{
-    state.chart.comps=state.chart.comps.filter(x=>x!==b.dataset.rm);renderCmpTags();refreshChart();
+    state.chart.comps=state.chart.comps.filter(x=>x!==b.dataset.rm);
+    state.settings.chartComps=[...state.chart.comps];
+    renderCmpTags();refreshChart();persist();
   });
 }
 function syncChartType(){
@@ -4487,7 +4492,7 @@ function bindMe(){
       toast(`✅ ${T("importedN")} ${txns.length}`);
     }catch(err){toast("❌ "+(err.message||T("importBad")))}
   };
-  $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
+  $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];state.settings.chartComps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
   $("#btnLogout").onclick=async()=>{
     // 1. 先同步到伺服器（確保最新設定已備份）
     if(LIVE&&state.token&&!state.user.guest){
@@ -4554,6 +4559,7 @@ function seedDemo(){
     tx({kind:"cash",ccy:"HKD",loc:"中銀",amount:-80000,date:"2024-09-02"}),
   ];
   if(!state.chart.comps.length)state.chart.comps=["VT","SPY"];
+  state.settings.chartComps=[...state.chart.comps];
   renderCmpTags();
 }
 
@@ -4582,6 +4588,8 @@ function onChartLocPick(val){
 function applySettingsSideEffects(){
   state.privacyOn=state.settings.privacy!==false;
   state.chart.ctype=state.settings.ctype;
+  // 從 settings 同步比較列表到 chart runtime state
+  if(Array.isArray(state.settings.chartComps))state.chart.comps=[...state.settings.chartComps];
   syncChartType();
 }
 function refreshAllCore(){

@@ -2283,9 +2283,9 @@ function openInteractiveChart(sym){
             <button class="switch ${self.adjusted?"on":""}" id="adjToggle"></button>
           </div>
           <div class="setting-row">
-            <div style="display:flex;align-items:center;gap:6px">
-              <button class="ic-expand" id="smaExpand" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--ink2);width:16px;text-align:center">▼</button>
-              <div><b>SMA</b><div class="tiny">${self.ind.sma.on?(T("icPeriod")||"週期")+": "+self.ind.sma.periods.join(", "):(T("icSMA")||"簡單移動平均")}</div></div>
+            <div class="ic-ind-label" id="smaLabel" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:0">
+              <span class="ic-expand" id="smaExpand" style="font-size:10px;color:var(--ink2);width:16px;text-align:center;flex-shrink:0">▼</span>
+              <div><b>SMA</b><div class="tiny">${(T("icPeriod")||"週期")+": "+self.ind.sma.periods.join(", ")}</div></div>
             </div>
             <button class="switch ${self.ind.sma.on?"on":""}" id="smaToggle"></button>
           </div>
@@ -2298,9 +2298,9 @@ function openInteractiveChart(sym){
             </div>
           </div>
           <div class="setting-row">
-            <div style="display:flex;align-items:center;gap:6px">
-              <button class="ic-expand" id="rsiExpand" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--ink2);width:16px;text-align:center">▼</button>
-              <div><b>RSI</b><div class="tiny">RSI(${self.ind.rsi.period})</div></div>
+            <div class="ic-ind-label" id="rsiLabel" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:0">
+              <span class="ic-expand" id="rsiExpand" style="font-size:10px;color:var(--ink2);width:16px;text-align:center;flex-shrink:0">▼</span>
+              <div><b>RSI</b><div class="tiny">${"RSI("+self.ind.rsi.period+")"}</div></div>
             </div>
             <button class="switch ${self.ind.rsi.on?"on":""}" id="rsiToggle"></button>
           </div>
@@ -2327,7 +2327,7 @@ function openInteractiveChart(sym){
       const smaToggle=panel.querySelector("#smaToggle");
       function updateSmaSummary(){
         const tiny=smaToggle.previousElementSibling.querySelector(".tiny");
-        if(tiny)tiny.textContent=self.ind.sma.on?(T("icPeriod")||"週期")+": "+self.ind.sma.periods.join(", "):(T("icSMA")||"簡單移動平均");
+        if(tiny)tiny.textContent=(T("icPeriod")||"週期")+": "+self.ind.sma.periods.join(", ");
       }
       smaToggle.onclick=()=>{
         self.ind.sma.on=!self.ind.sma.on;
@@ -2371,25 +2371,28 @@ function openInteractiveChart(sym){
       };
 
       // 展開/收合參數面板
-      function toggleExpand(btnId,paramsId){
-        const btn=panel.querySelector("#"+btnId);
+      function toggleExpand(labelId,expandId,paramsId){
+        const label=panel.querySelector("#"+labelId);
+        const btn=panel.querySelector("#"+expandId);
         const params=panel.querySelector("#"+paramsId);
-        if(btn&&params){
-          btn.onclick=()=>{
+        if(label&&params){
+          const toggle=()=>{
             const isOpen=params.style.maxHeight&&params.style.maxHeight!=="0px";
             params.style.maxHeight=isOpen?"0px":params.scrollHeight+"px";
-            btn.textContent=isOpen?"▼":"▲";
+            if(btn)btn.textContent=isOpen?"▼":"▲";
           };
+          label.onclick=toggle;
         }
       }
-      toggleExpand("smaExpand","smaParams");
-      toggleExpand("rsiExpand","rsiParams");
+      toggleExpand("smaLabel","smaExpand","smaParams");
+      toggleExpand("rsiLabel","rsiExpand","rsiParams");
 
       // RSI 週期
       const rsiPeriod=panel.querySelector("#rsiPeriod");
       rsiPeriod.onchange=()=>{
         self.ind.rsi.period=Math.max(2,Math.min(100,parseInt(rsiPeriod.value)||14));
-        panel.querySelector(".setting-row:last-child b")&&(panel.querySelectorAll(".setting-row")[2].querySelector("b+div").textContent=`RSI(${self.ind.rsi.period})`);
+        const tiny=panel.querySelector("#rsiLabel .tiny");
+        if(tiny)tiny.textContent=`RSI(${self.ind.rsi.period})`;
       };
     },
     bindEvents(){

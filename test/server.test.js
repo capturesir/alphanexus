@@ -6,8 +6,18 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
-const DATA = path.join(__dirname, "../data");
-function clean() { try { fs.rmSync(DATA, { recursive: true, force: true }) } catch (e) {} }
+const os = require("os");
+
+// 重要:測試一律使用獨立的臨時 data 目錄,絕不碰正式的 ./data(避免刪除真實用戶資料)。
+// server.js 會讀取 WL_DATA_DIR 作為資料根目錄。
+const DATA = fs.mkdtempSync(path.join(os.tmpdir(), "wl-test-"));
+process.env.WL_DATA_DIR = DATA;
+function clean() {
+  try { fs.rmSync(DATA, { recursive: true, force: true }) } catch (e) {}
+  try { fs.mkdirSync(DATA, { recursive: true }) } catch (e) {}
+}
+// 測試結束時清理臨時目錄
+process.on("exit", () => { try { fs.rmSync(DATA, { recursive: true, force: true }) } catch (e) {} });
 
 let pass = 0;
 const ok = (c, m) => { if (!c) { console.error("✗", m); process.exit(1) } console.log("✓", m); pass++ };

@@ -1879,7 +1879,7 @@ function openInteractiveChart(sym){
     <div id="icVolumeWrap" style="height:80px;flex-shrink:0;border-top:1px solid var(--line);position:relative">
       <canvas id="icVolCanvas" style="width:100%;height:100%;display:block"></canvas>
     </div>
-    <div id="icIndValues" style="display:none;padding:4px 14px;border-top:1px solid var(--line);flex-shrink:0;font-size:10px;line-height:1.8;color:var(--ink2);white-space:nowrap;overflow:hidden"></div>
+    <div id="icIndValues" style="display:none;padding:4px 14px;border-top:1px solid var(--line);flex-shrink:0;font-size:10px;line-height:1.8;color:var(--ink2)"></div>
     <div id="icRSIWrap" style="height:0;flex-shrink:0;border-top:1px solid var(--line);position:relative;overflow:hidden;transition:height 0.2s">
       <canvas id="icRSICanvas" style="width:100%;height:100%;display:block"></canvas>
     </div>
@@ -2173,28 +2173,26 @@ function openInteractiveChart(sym){
             if(this.ind.sma.on&&this._smaCache){
               this.ind.sma.periods.forEach((p,pi)=>{
                 const v=this._smaCache[p]?this._smaCache[p][k]:null;
-                if(v!=null)html+=`<span style="color:${this.ind.sma.colors[pi%this.ind.sma.colors.length]}">SMA(${p}) ${fmtMoney(v,this.ccy)}</span>  `;
+                if(v!=null)html+=`<div><span style="color:${this.ind.sma.colors[pi%this.ind.sma.colors.length]}">SMA(${p}) ${fmtMoney(v,this.ccy)}</span></div>`;
               });
             }
             if(this.ind.ema.on&&this._emaCache){
               const v=this._emaCache[k];
-              if(v!=null)html+=`<span style="color:${this.ind.ema.color}">EMA(${this.ind.ema.period}) ${fmtMoney(v,this.ccy)}</span>  `;
+              if(v!=null)html+=`<div><span style="color:${this.ind.ema.color}">EMA(${this.ind.ema.period}) ${fmtMoney(v,this.ccy)}</span></div>`;
             }
             if(this.ind.bb.on&&this._bbCache){
               const{upper,mid,lower}=this._bbCache;
-              if(upper[k]!=null)html+=`<span style="color:${this.ind.bb.color}">BB ${fmtMoney(upper[k],this.ccy)} / ${fmtMoney(mid[k],this.ccy)} / ${fmtMoney(lower[k],this.ccy)}</span>  `;
+              if(upper[k]!=null)html+=`<div><span style="color:${this.ind.bb.color}">BB ${fmtMoney(upper[k],this.ccy)} / ${fmtMoney(mid[k],this.ccy)} / ${fmtMoney(lower[k],this.ccy)}</span></div>`;
             }
             if(this.ind.rsi.on&&this._rsiCache){
               const rv=this._rsiCache[k];
-              if(rv!=null)html+=`<span style="color:#ffce56">RSI(${this.ind.rsi.period}) ${rv.toFixed(1)}</span>  `;
+              if(rv!=null)html+=`<div><span style="color:#ffce56">RSI(${this.ind.rsi.period}) ${rv.toFixed(1)}</span></div>`;
             }
             if(this.ind.macd.on&&this._macdCache){
               const{dif,dea,hist}=this._macdCache;
               if(dif[k]!=null){
                 const mc=this.ind.macd.colors;
-                html+=`<span style="color:${mc[0]}">DIF ${dif[k].toFixed(3)}</span>  `;
-                html+=`<span style="color:${mc[1]}">DEA ${dea[k].toFixed(3)}</span>  `;
-                html+=`<span style="color:${mc[2]}">MACD ${hist[k].toFixed(3)}</span>`;
+                html+=`<div><span style="color:${mc[0]}">DIF ${dif[k].toFixed(3)}</span>  <span style="color:${mc[1]}">DEA ${dea[k].toFixed(3)}</span>  <span style="color:${mc[2]}">MACD ${hist[k].toFixed(3)}</span></div>`;
               }
             }
             if(html){indDiv.innerHTML=html;indDiv.style.display="block";}

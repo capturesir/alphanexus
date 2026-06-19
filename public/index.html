@@ -408,7 +408,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
       </div>
     </div>
     <button class="btn btn-danger" style="width:100%" id="btnLogout" data-i18n="logout">登出</button>
-    <button class="btn" style="width:100%;margin-top:8px;color:var(--down);border:1px solid var(--down);background:none;display:none" id="btnDeleteAcct" data-i18n="deleteAcct">刪除帳號</button>
+    <button class="btn" style="width:100%;margin-top:8px;color:var(--dn);border:1px solid var(--dn);background:none;display:none" id="btnDeleteAcct" data-i18n="deleteAcct">刪除帳號</button>
     <div class="tiny" style="text-align:center;margin-top:14px">WealthLens · <span data-i18n="disclaimer">示範平台，內置數據為模擬數據，不構成投資建議</span></div>
   </section>
 
@@ -3632,7 +3632,7 @@ function openTxnModal(txn){
   const syncCashDir=()=>{
     const dep=cashDir==="deposit";
     const btn=m.querySelector("#fCashDir");
-    if(btn){btn.textContent=dep?"＋":"－";btn.style.color=dep?"var(--up)":"var(--down)"}
+    if(btn){btn.textContent=dep?"＋":"－";btn.style.color=dep?"var(--up)":"var(--dn)"}
     const lbl=m.querySelector("#cashDirLabel"); if(lbl)lbl.textContent=dep?T("cashDeposit"):T("cashWithdraw");
     const hint=m.querySelector("#cashDirHint"); if(hint)hint.textContent=dep?T("cashDepositHint"):T("cashWithdrawHint");
   };

@@ -1822,10 +1822,8 @@ function openInteractiveChart(sym){
       <button class="chip" data-p="1Y">1Y</button>
       <button class="chip" data-p="ALL">ALL</button>
       <div style="flex:1"></div>
-      <button class="chip on" data-ct="line">${T("cLine")||"折線"}</button>
-      <button class="chip" data-ct="candle">${T("cCandle")||"陰陽燭"}</button>
-      <div style="flex:1"></div>
-      <button class="chip" id="icIndBtn">📊 ${T("icIndicators")||"指標"}</button>
+      <button class="chip on" id="icChartTypeBtn" title="${T('cLine')||'折線'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,12 6,6 10,10 14,3"/></svg></button>
+      <button class="chip" id="icGearBtn" title="${T('icIndicators')||'指標'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5.5A2.5 2.5 0 1 0 8 10.5 2.5 2.5 0 1 0 8 5.5ZM13.9 7.3l-1.8-.3c-.1-.4-.3-.7-.5-1l.9-1.5c.1-.2 0-.4-.2-.5l-1.2-.7c-.2-.1-.4-.1-.5.1l-.9 1.5c-.4-.2-.7-.3-1.1-.4l-.3-1.8c0-.2-.2-.4-.4-.4h-1.4c-.2 0-.4.2-.4.4l-.3 1.8c-.4.1-.7.3-1.1.4L4 4.1c-.2-.1-.4-.1-.5.1l-.7 1.2c-.1.2-.1.4.1.5l1.5.9c-.2.4-.3.7-.4 1.1l-1.8.3c-.2 0-.4.2-.4.4v1.4c0 .2.2.4.4.4l1.8.3c.1.4.3.7.5 1l-.9 1.5c-.1.2 0 .4.2.5l1.2.7c.2.1.4.1.5-.1l.9-1.5c.4.2.7.3 1.1.4l.3 1.8c0 .2.2.4.4.4h1.4c.2 0 .4-.2.4-.4l.3-1.8c.4-.1.7-.3 1.1-.4l.9 1.5c.2.1.4.1.5-.1l.7-1.2c.1-.2.1-.4-.1-.5l-1.5-.9c.2-.4.3-.7.4-1.1l1.8-.3c.2 0 .4-.2.4-.4V7.7c0-.2-.2-.4-.4-.4Z"/></svg></button>
     </div>
     <div style="flex:1;position:relative;min-height:0">
       <canvas id="icCanvas" style="width:100%;height:100%;display:block"></canvas>
@@ -2280,7 +2278,7 @@ function openInteractiveChart(sym){
         self.toggleRSI(self.ind.rsi.on);
         // toggleRSI 內含 setTimeout(resize+draw)，這裡補充 SMA-only 場景的即時重繪
         if(self.ind.sma.on&&!self.ind.rsi.on){self.draw();}
-        const smaBtn=document.getElementById("icIndBtn");
+        const smaBtn=document.getElementById("icGearBtn");
         if(smaBtn)smaBtn.classList.toggle("on",self.ind.sma.on||self.ind.rsi.on);
       }
 
@@ -2424,21 +2422,25 @@ function openInteractiveChart(sym){
         c.onclick=()=>this.applyPeriod(c.dataset.p);
       });
 
-      // Chart type buttons
-      document.querySelectorAll("#icPeriodRow .chip[data-ct]").forEach(c=>{
-        c.onclick=()=>{
-          this.chartType=c.dataset.ct;
-          document.querySelectorAll("#icPeriodRow .chip[data-ct]").forEach(x=>x.classList.toggle("on",x===c));
-          this.draw();
-        };
-      });
+      // Chart type toggle (line <-> candle)
+      const ctBtn=document.getElementById("icChartTypeBtn");
+      const CTYPES=["line","candle"];
+      const CTICONS=["<svg width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.5'><polyline points='2,12 6,6 10,10 14,3'/></svg>","<svg width='16' height='16' viewBox='0 0 16 16' fill='currentColor'><rect x='3' y='2' width='3' height='6' rx='0.5'/><line x1='4.5' y1='0' x2='4.5' y2='2' stroke='currentColor' stroke-width='1'/><line x1='4.5' y1='8' x2='4.5' y2='10' stroke='currentColor' stroke-width='1'/><rect x='10' y='4' width='3' height='7' rx='0.5'/><line x1='11.5' y1='1' x2='11.5' y2='4' stroke='currentColor' stroke-width='1'/><line x1='11.5' y1='11' x2='11.5' y2='14' stroke='currentColor' stroke-width='1'/></svg>"];
+      if(ctBtn)ctBtn.onclick=()=>{
+        const cur=CTYPES.indexOf(this.chartType);
+        const nxt=(cur+1)%CTYPES.length;
+        this.chartType=CTYPES[nxt];
+        ctBtn.innerHTML=CTICONS[nxt];
+        ctBtn.title=this.chartType==="candle"?T("cCandle")||"陰陽燭":T("cLine")||"折線";
+        this.draw();
+      };
 
       // Back button
       document.getElementById("icBack").onclick=()=>this.destroy();
 
-      // Indicator button
-      const indBtn=document.getElementById("icIndBtn");
-      if(indBtn)indBtn.onclick=()=>this.openIndicatorPanel();
+      // Indicator gear button
+      const gearBtn=document.getElementById("icGearBtn");
+      if(gearBtn)gearBtn.onclick=()=>this.openIndicatorPanel();
     },
 
     destroy(){

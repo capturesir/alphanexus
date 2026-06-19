@@ -590,7 +590,7 @@ async function googleNewsRss(query, region) {
   const now = Date.now();
   return parseRssItems(xml).map(it => ({
     title: it.title, src: it.src || "Google News", url: it.url,
-    agoH: Math.max(0.1, (now - (it.pub ? Date.parse(it.pub) : now)) / 3600)
+    agoH: Math.max(0.1, (now - (it.pub ? Date.parse(it.pub) : now)) / 3600000)
   })).filter(x => x.title && x.url);
 }
 

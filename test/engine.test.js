@@ -602,6 +602,87 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   const dirOf = amt => amt < 0 ? 'withdraw' : 'deposit';
   ok(dirOf(-300) === 'withdraw' && dirOf(800) === 'deposit', '(k3) 編輯時依金額正負還原方向');
 })();
+
+// ============ (L) 股息行事曆 dividendMonthly / dividendTimeline ============
+// 用「相對今天」的日期構造,確保落在過去 12 個月內
+function dStr(monthsAgo, day) {
+  const d = new Date(TODAY); d.setMonth(d.getMonth() - monthsAgo); d.setDate(day || 15);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// (L1) 月度匯總:把過去派息按月份歸類加總(稅後、基準貨幣)
+(function () {
+  state.settings.baseCcy = 'USD'; state.settings.divTax = 0;
+  const d3 = dStr(3, 10), d6 = dStr(6, 20); // 3個月前、6個月前
+  REAL.events['LM'] = { dividends: [{ date: d3, amount: 1 }, { date: d6, amount: 2 }], splits: [] };
+  registerSym({ s: 'LM', n: 'LM', z: 'LM', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: dStr(13, 1) },
+    { id: '2', kind: 'stock', sym: 'LM', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: dStr(13, 1) }];
+  const months = dividendMonthly('USD');
+  ok(months.length === 12, '(L1) 回傳 12 個月');
+  const m3 = parseInt(d3.slice(5, 7), 10) - 1, m6 = parseInt(d6.slice(5, 7), 10) - 1;
+  ok(Math.abs(months[m3] - 100) < 1e-6, '(L1) 3個月前月份 = 100股×$1 = $100');
+  ok(Math.abs(months[m6] - 200) < 1e-6, '(L1) 6個月前月份 = 100股×$2 = $200');
+  const sum = months.reduce((a, b) => a + b, 0);
+  ok(Math.abs(sum - 300) < 1e-6, '(L1) 全年總和 $300');
+})();
+
+// (L2) 稅後折算
+(function () {
+  state.settings.divTax = 30;
+  const d2 = dStr(2, 10);
+  REAL.events['LT'] = { dividends: [{ date: d2, amount: 1 }], splits: [] };
+  registerSym({ s: 'LT', n: 'LT', z: 'LT', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: dStr(13, 1) },
+    { id: '2', kind: 'stock', sym: 'LT', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 100, date: dStr(13, 1) }];
+  const months = dividendMonthly('USD');
+  const m2 = parseInt(d2.slice(5, 7), 10) - 1;
+  ok(Math.abs(months[m2] - 70) < 1e-6, '(L2) 30%稅後:100股×$1×0.7 = $70');
+  state.settings.divTax = 0;
+})();
+
+// (L3) 時間軸:真實過去 + 假想未來(同月同日+1年)
+(function () {
+  const dPast = dStr(2, 10); // 2個月前的真實除淨日
+  REAL.events['LX'] = { dividends: [{ date: dPast, amount: 0.5 }], splits: [] };
+  registerSym({ s: 'LX', n: 'LX', z: 'LX', m: 'US', c: 'USD' });
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 100000, date: dStr(13, 1) },
+    { id: '2', kind: 'stock', sym: 'LX', ccy: 'USD', loc: 'A', side: 'buy', price: 100, units: 200, date: dStr(13, 1) }];
+  const tl = dividendTimeline().filter(e => e.sym === 'LX');
+  const real = tl.find(e => !e.hypothetical), hyp = tl.find(e => e.hypothetical);
+  ok(real && real.date === dPast && real.hypothetical === false, '(L3) 真實過去除淨日存在');
+  ok(hyp && hyp.hypothetical === true, '(L3) 假想未來除淨日存在');
+  // 假想日 = 真實日 +1 年(同月同日)
+  const expFut = (parseInt(dPast.slice(0, 4)) + 1) + dPast.slice(4);
+  ok(hyp.date === expFut, '(L3) 假想日 = 真實日同月同日+1年');
+  ok(Math.abs(hyp.units - 200) < 1e-6, '(L3) 假想日帶當前持股 200');
+})();
+
+// ============ (M) 變化圖比較項:持久化與上限 ============
+// (M1) 還原邏輯:settings.chartComps → state.chart.comps(去重、限上限 5)
+(function () {
+  const CMP_MAX = 5;
+  const restore = (saved) => [...new Set(saved)].slice(0, CMP_MAX);
+  ok(JSON.stringify(restore(['SPY', 'QQQ'])) === JSON.stringify(['SPY', 'QQQ']), '(M1) 正常還原');
+  ok(JSON.stringify(restore(['SPY', 'SPY', 'QQQ'])) === JSON.stringify(['SPY', 'QQQ']), '(M1) 去重');
+  ok(restore(['A', 'B', 'C', 'D', 'E', 'F', 'G']).length === 5, '(M1) 超過上限截斷為 5');
+})();
+
+// (M2) 新增邏輯:未達上限可加、達上限拒絕、重複拒絕
+(function () {
+  const CMP_MAX = 5;
+  const tryAdd = (comps, sym) => {
+    if (comps.includes(sym)) return { ok: false, reason: 'exists' };
+    if (comps.length >= CMP_MAX) return { ok: false, reason: 'limit' };
+    return { ok: true, comps: [...comps, sym] };
+  };
+  ok(tryAdd(['SPY'], 'QQQ').ok === true, '(M2) 未達上限可新增');
+  ok(tryAdd(['SPY'], 'SPY').reason === 'exists', '(M2) 重複拒絕');
+  ok(tryAdd(['A', 'B', 'C', 'D', 'E'], 'F').reason === 'limit', '(M2) 達上限(5)拒絕並提示');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

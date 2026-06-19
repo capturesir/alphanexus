@@ -309,8 +309,10 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
       <button data-n="mine" class="on" data-i18n="nMine">持倉相關</button>
       <button data-n="hot" data-i18n="nHot">熱門財經</button>
       <button data-n="all" data-i18n="nAll">全部</button>
+      <button data-n="div" data-i18n="nDiv">股息</button>
     </div>
     <div class="card" id="newsList"></div>
+    <div id="divCal" style="display:none"></div>
     <div class="tiny" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6" data-i18n="newsDisclaimer">新聞由第三方來源聚合,本平台僅提供標題索引與原文連結,不轉載內文;版權歸原出版者所有,點擊將前往原始出處。</div>
   </section>
 
@@ -487,8 +489,8 @@ const I18N={
 tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
 mValue:"資產值",cLine:"折線",cSmooth:"平滑",cCandle:"陰陽燭",aD:"日",aW:"週",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR(年化)",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
-compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",cmpMaxReached:"已達比較上限（5個），請先刪除現有比較",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
-nMine:"持倉相關",nHot:"熱門財經",nAll:"全部",edit:"編輯",darkMode:"深色介面",darkModeHint:"切換淺色 / 深色",language:"語言",
+compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",cmpExists:"{sym} 已在比較中",cmpLimit:"最多比較 {n} 項,請先刪除已有比較再新增",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
+nMine:"持倉相關",nHot:"熱門財經",nAll:"全部",nDiv:"股息",divMonthlyTitle:"月度股息(預估)",divMonthlyHint:"以過去 12 個月實際派息推算的典型年度各月股息(稅後、基準貨幣);當月以藍色標示。",divYearTotal:"全年合計",divTimelineTitle:"除淨日時間軸",divTimelineHint:"向上為過去一年真實公司行動,向下為未來一年假想除淨日。",divCalEmpty:"暫無持倉相關的股息記錄",hypoApprox:"假設·約",perShareUnit:"股",splitEvent:"拆股",divYearTotalLbl:"全年合計",divCalDisclaimer:"未來除淨日為依過去一年同月同日推算的假想結果,僅供參考,實際派息日期與金額以公司公告為準。",edit:"編輯",darkMode:"深色介面",darkModeHint:"切換淺色 / 深色",language:"語言",
 colorPref:"漲跌顏色",colorPrefHint:"資產列表與圖表的漲跌色",greenUp:"綠升紅跌",redUp:"紅升綠跌",chartPref:"預設圖表形態",baseCcy:"統一結算貨幣",
 changePwd:"修改密碼",modify:"修改",demoData:"示範數據",demoDataHint:"載入或清除示範組合",load:"載入",clear:"清除",logout:"登出",deleteAcct:"刪除帳號",deleteAcctConfirm:"刪除帳號將永久移除你的所有資料且無法復原。請輸入密碼確認:",acctDeleted:"帳號已刪除",deleteAcctFail:"刪除失敗,請再試",
 disclaimer:"示範平台，內置數據為模擬數據，不構成投資建議",
@@ -509,8 +511,8 @@ periodHigh:"期間最高",periodLow:"期間最低",chg:"變動",interactiveChart
 tabAssets:"资产列表",tabChart:"变化图",tabNews:"资讯",tabMe:"我的",add:"新增",totalAssets:"总资产净值",holdings:"持仓",cashByCcy:"各货币现金水平",txnHistory:"交易记录",
 mValue:"资产值",cLine:"折线",cSmooth:"平滑",cCandle:"蜡烛图",aD:"日",aW:"周",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：双指捏合缩放，单指拖动平移观察期间（桌面可用滚轮）",sTWR:"期间TWR(年化)",sMWR:"期间MWR(年化)",sNet:"期间净投入",
-compare:"与 ETF / 股票比较",cmpPh:"输入代码，如 VT、0700、QQQ…",cmpMaxReached:"已达比较上限（5个），请先删除现有比较",locFilter:"资产位置筛选",locFilterHint:"只计算所选位置的资产值与回报",
-nMine:"持仓相关",nHot:"热门财经",nAll:"全部",edit:"编辑",darkMode:"深色界面",darkModeHint:"切换浅色 / 深色",language:"语言",
+compare:"与 ETF / 股票比较",cmpPh:"输入代码，如 VT、0700、QQQ…",cmpExists:"{sym} 已在比较中",cmpLimit:"最多比较 {n} 项,请先删除已有比较再新增",locFilter:"资产位置筛选",locFilterHint:"只计算所选位置的资产值与回报",
+nMine:"持仓相关",nHot:"热门财经",nAll:"全部",nDiv:"股息",divMonthlyTitle:"月度股息(预估)",divMonthlyHint:"以过去 12 个月实际派息推算的典型年度各月股息(税后、基准货币);当月以蓝色标示。",divYearTotal:"全年合计",divTimelineTitle:"除净日时间轴",divTimelineHint:"向上为过去一年真实公司行动,向下为未来一年假想除净日。",divCalEmpty:"暂无持仓相关的股息记录",hypoApprox:"假设·约",perShareUnit:"股",splitEvent:"拆股",divYearTotalLbl:"全年合计",divCalDisclaimer:"未来除净日为依过去一年同月同日推算的假想结果,仅供参考,实际派息日期与金额以公司公告为准。",edit:"编辑",darkMode:"深色界面",darkModeHint:"切换浅色 / 深色",language:"语言",
 colorPref:"涨跌颜色",colorPrefHint:"资产列表与图表的涨跌色",greenUp:"绿涨红跌",redUp:"红涨绿跌",chartPref:"默认图表形态",baseCcy:"统一结算货币",
 changePwd:"修改密码",modify:"修改",demoData:"示范数据",demoDataHint:"载入或清除示范组合",load:"载入",clear:"清除",logout:"退出登录",deleteAcct:"删除账号",deleteAcctConfirm:"删除账号将永久移除你的所有数据且无法复原。请输入密码确认:",acctDeleted:"账号已删除",deleteAcctFail:"删除失败,请重试",
 disclaimer:"示范平台，内置数据为模拟数据，不构成投资建议",
@@ -531,8 +533,8 @@ periodHigh:"期间最高",periodLow:"期间最低",chg:"变动",interactiveChart
 tabAssets:"Assets",tabChart:"Chart",tabNews:"News",tabMe:"Me",add:"Add",totalAssets:"Total net assets",holdings:"Holdings",cashByCcy:"Cash by currency",txnHistory:"Transactions",
 mValue:"Value",cLine:"Line",cSmooth:"Smooth",cCandle:"Candles",aD:"D",aW:"W",aM:"M",aY:"Y",pAll:"ALL",
 gestureHint:"Tip: pinch to zoom, drag to pan the period (mouse wheel on desktop)",sTWR:"Period TWR (ann.)",sMWR:"Period MWR (ann.)",sNet:"Net contributions",
-compare:"Compare with ETFs / stocks",cmpPh:"Enter a ticker, e.g. VT, 0700, QQQ…",cmpMaxReached:"Comparison limit reached (5). Please remove an existing one first.",locFilter:"Filter by account location",locFilterHint:"Only selected locations are included in value & returns",
-nMine:"My holdings",nHot:"Top finance",nAll:"All",edit:"Edit",darkMode:"Dark mode",darkModeHint:"Switch light / dark",language:"Language",
+compare:"Compare with ETFs / stocks",cmpPh:"Enter a ticker, e.g. VT, 0700, QQQ…",cmpExists:"{sym} is already being compared",cmpLimit:"Up to {n} comparisons — remove one before adding another",locFilter:"Filter by account location",locFilterHint:"Only selected locations are included in value & returns",
+nMine:"My holdings",nHot:"Top finance",nAll:"All",nDiv:"Dividends",divMonthlyTitle:"Monthly dividends (estimated)",divMonthlyHint:"Typical yearly per-month dividends estimated from the last 12 months of actual payouts (after-tax, base currency); current month in blue.",divYearTotal:"Year total",divTimelineTitle:"Ex-dividend timeline",divTimelineHint:"Scroll up for real corporate actions over the past year; down for hypothetical ex-dates over the next year.",divCalEmpty:"No dividend records for your holdings yet",hypoApprox:"hypo · approx",perShareUnit:"sh",splitEvent:"Split",divYearTotalLbl:"Year total",divCalDisclaimer:"Future ex-dates are hypothetical estimates based on the same date one year prior, for reference only. Actual dates and amounts are subject to company announcements.",edit:"Edit",darkMode:"Dark mode",darkModeHint:"Switch light / dark",language:"Language",
 colorPref:"Up/down colors",colorPrefHint:"Gain/loss colors in lists & charts",greenUp:"Green up / red down",redUp:"Red up / green down",chartPref:"Default chart style",baseCcy:"Base currency",
 changePwd:"Change password",modify:"Change",demoData:"Demo data",demoDataHint:"Load or clear the demo portfolio",load:"Load",clear:"Clear",logout:"Log out",deleteAcct:"Delete account",deleteAcctConfirm:"Deleting your account permanently removes all your data and cannot be undone. Enter your password to confirm:",acctDeleted:"Account deleted",deleteAcctFail:"Delete failed, try again",
 disclaimer:"Demo platform with simulated data. Not investment advice.",
@@ -744,6 +746,69 @@ function reconcileAutoDividends(){
   }
   if(changed)state.txns.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
   return changed;
+}
+
+/* 股息行事曆 — 月度匯總:取過去 12 個月實際派息,按月份(1-12)歸類加總,
+   稅後、換算為基準貨幣,作為「典型年度各月股息」的預估。回傳長度 12 陣列(index 0=1月)。 */
+function dividendMonthly(base){
+  base=base||state.settings.baseCcy||"USD";
+  const tax=divTaxRate();
+  const months=new Array(12).fill(0);
+  const today=fmtD(TODAY);
+  const yAgo=new Date(TODAY); yAgo.setFullYear(yAgo.getFullYear()-1);
+  const yAgoStr=fmtD(yAgo);
+  const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other")).map(t=>t.sym))];
+  for(const sym of syms){
+    const ev=LIVE&&REAL.events[sym]; if(!ev||!ev.dividends)continue;
+    const o=SYM_MAP[sym]; const ccy=o?o.c:"USD";
+    for(const d of ev.dividends){
+      if(d.date<yAgoStr||d.date>today)continue;          // 只取過去 12 個月
+      const byLoc=unitsByLocAt(sym,d.date,true);
+      let units=0; for(const loc in byLoc){const u=byLoc[loc]; if(u>1e-9)units+=u;}
+      if(units<=1e-9)continue;
+      const grossCcy=units*d.amount;
+      const net=grossCcy*(1-tax);
+      const idx=dIdx(d.date);
+      const baseAmt=fx(net,ccy,base,idx);
+      const mon=parseInt(d.date.slice(5,7),10)-1;          // 0-11
+      if(mon>=0&&mon<12)months[mon]+=baseAmt;
+    }
+  }
+  return months.map(v=>+v.toFixed(2));
+}
+
+/* 股息行事曆 — 除淨日時間軸:
+   真實=過去一年各持倉的除淨日(及拆股);假想=把過去一年的除淨日 +1 年(同月同日,約)。
+   回傳依日期排序的事件陣列 [{sym,name,date,perShare,ccy,kind:'div'|'split',hypothetical:bool}]。 */
+function dividendTimeline(){
+  const out=[];
+  const today=fmtD(TODAY);
+  const yAgo=new Date(TODAY); yAgo.setFullYear(yAgo.getFullYear()-1); const yAgoStr=fmtD(yAgo);
+  const yFwd=new Date(TODAY); yFwd.setFullYear(yFwd.getFullYear()+1); const yFwdStr=fmtD(yFwd);
+  const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other")).map(t=>t.sym))];
+  for(const sym of syms){
+    const ev=LIVE&&REAL.events[sym]; if(!ev)continue;
+    const o=SYM_MAP[sym]; const ccy=o?o.c:"USD"; const nm=o?(o.z||o.n||sym):sym;
+    // 真實過去一年:股息
+    for(const d of (ev.dividends||[])){
+      if(d.date<yAgoStr||d.date>today)continue;
+      const byLoc=unitsByLocAt(sym,d.date,true); let units=0; for(const loc in byLoc){if(byLoc[loc]>1e-9)units+=byLoc[loc]}
+      if(units<=1e-9)continue;
+      out.push({sym,name:nm,date:d.date,perShare:d.amount,ccy,units:+units.toFixed(4),kind:"div",hypothetical:false});
+      // 假想未來:同月同日 +1 年
+      const fd=new Date(d.date); fd.setFullYear(fd.getFullYear()+1); const fds=fmtD(fd);
+      if(fds>today&&fds<=yFwdStr){
+        out.push({sym,name:nm,date:fds,perShare:d.amount,ccy,units:+units.toFixed(4),kind:"div",hypothetical:true});
+      }
+    }
+    // 真實過去一年:拆股(其他公司行動)
+    for(const s of (ev.splits||[])){
+      if(s.date<yAgoStr||s.date>today)continue;
+      out.push({sym,name:nm,date:s.date,ratio:s.ratio||s.numerator+"/"+s.denominator,ccy,kind:"split",hypothetical:false});
+    }
+  }
+  out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  return out;
 }
 
 /* 在「指定交易集合」下,計算某代碼某位置在 dateStr 當天(含)的持股(用於穿倉偵測) */
@@ -3749,6 +3814,8 @@ function openTxnModal(txn){
 <script>
 /* ====================== 圖表引擎（Canvas，支援手勢） ====================== */
 const COMP_COLORS=["#E0762E","#8A5CD6","#2BA8B8","#D2477E","#5C8A2E","#B0883B"];
+const CMP_MAX=5; // 變化圖比較項上限(避免不斷向外部抓資料)
+function persistChartComps(){ state.settings.chartComps=[...state.chart.comps]; persist(); }
 if(typeof CanvasRenderingContext2D!=="undefined"&&!CanvasRenderingContext2D.prototype.roundRect){
   CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h);return this};
 }
@@ -4153,11 +4220,12 @@ function bindChartUI(){
   });
   $$("#periodRow .chip").forEach(c=>c.onclick=()=>Chart.applyPeriod(c.dataset.p));
   attachAC($("#cmpInput"),$("#cmpAc"),o=>{
-    if(state.chart.comps.includes(o.s)){$("#cmpInput").value="";return}
-    if(state.chart.comps.length>=5)return toast("⚠️ "+T("cmpMaxReached"));
+    $("#cmpInput").value="";
+    if(state.chart.comps.includes(o.s)){toast(T("cmpExists").replace("{sym}",o.s));return}
+    if(state.chart.comps.length>=CMP_MAX){toast(T("cmpLimit").replace("{n}",CMP_MAX));return}
     state.chart.comps.push(o.s);
-    state.settings.chartComps=[...state.chart.comps];
-    $("#cmpInput").value="";renderCmpTags();refreshChart();persist();
+    persistChartComps();
+    renderCmpTags();refreshChart();
   });
 }
 function renderCmpTags(){
@@ -4165,8 +4233,8 @@ function renderCmpTags(){
     `<span class="cmp-tag" style="border-color:${COMP_COLORS[i%6]};color:${COMP_COLORS[i%6]}">${s}<button data-rm="${s}">✕</button></span>`).join("");
   $$("#cmpTags [data-rm]").forEach(b=>b.onclick=()=>{
     state.chart.comps=state.chart.comps.filter(x=>x!==b.dataset.rm);
-    state.settings.chartComps=[...state.chart.comps];
-    renderCmpTags();refreshChart();persist();
+    persistChartComps();
+    renderCmpTags();refreshChart();
   });
 }
 function syncChartType(){
@@ -4209,6 +4277,73 @@ function renderNewsLive(){
         <div class="grow"><h3>${escHtml(n.title)}</h3><div class="tiny" style="margin-top:3px">${escHtml(n.src||"")}${n.sym?" · "+escHtml(n.sym):""} · ${ago}</div></div></a>`;
     }).join("");
 }
+
+/* 股息行事曆:上=月度柱狀圖(預估典型年度各月),下=除淨日時間軸(真實過去+假想未來)*/
+function renderDivCalendar(){
+  const box=$("#divCal"); if(!box)return;
+  const base=state.settings.baseCcy||"USD";
+  if(!LIVE){ box.innerHTML=`<div class="card"><div class="tiny" style="text-align:center;color:var(--ink3);padding:20px">${T("needLive")}</div></div>`; return; }
+  const months=dividendMonthly(base);
+  const maxV=Math.max(...months,1);
+  const curMon=TODAY.getMonth(); // 0-11
+  const monNames=["1","2","3","4","5","6","7","8","9","10","11","12"];
+  const total=months.reduce((a,b)=>a+b,0);
+  // 月度柱狀圖
+  let bars=`<div style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:8px 0">`;
+  months.forEach((v,i)=>{
+    const h=Math.round(v/maxV*100);
+    const cur=i===curMon;
+    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+      <div class="tiny num" style="font-size:8px;color:var(--ink3);margin-bottom:2px">${v>0?fmtMoney(v,base,true):""}</div>
+      <div style="width:100%;height:${h}%;min-height:${v>0?3:0}px;background:${cur?"var(--blue)":"var(--line2,#c9d2e3)"};border-radius:3px 3px 0 0" title="${monNames[i]}月: ${fmtMoney(v,base)}"></div>
+      <div class="tiny" style="font-size:9px;margin-top:3px;color:${cur?"var(--blue)":"var(--ink3)"};font-weight:${cur?"700":"400"}">${monNames[i]}</div>
+    </div>`;
+  });
+  bars+=`</div>`;
+  // 時間軸
+  const tl=dividendTimeline();
+  const today=fmtD(TODAY);
+  let firstFutureIdx=tl.findIndex(e=>e.date>=today);
+  if(firstFutureIdx<0)firstFutureIdx=tl.length;
+  let timeline="";
+  if(!tl.length){
+    timeline=`<div class="tiny" style="text-align:center;color:var(--ink3);padding:20px">${T("divCalEmpty")}</div>`;
+  }else{
+    timeline=tl.map((e,idx)=>{
+      const isHyp=e.hypothetical;
+      const isAnchor=idx===firstFutureIdx;
+      const col=isHyp?"var(--blue)":(e.kind==="split"?"var(--gold,#C99A3B)":"var(--ink)");
+      const dot=isHyp?"◇":"●";
+      let label;
+      if(e.kind==="split")label=`${T("splitEvent")} ${e.ratio||""}`;
+      else label=`${e.name} · ${fmtMoney(e.perShare,e.ccy)}/${T("perShareUnit")}${e.units?` × ${(+e.units).toLocaleString()}`:""}`;
+      const hypTag=isHyp?` <span style="color:var(--blue)">(${T("hypoApprox")})</span>`:"";
+      const dateShown=isHyp?`~${e.date.slice(0,7)}`:e.date;
+      return `<div id="${isAnchor?"divTlAnchor":""}" style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);${isAnchor?"background:var(--up-soft);border-radius:8px;padding-left:8px":""}">
+        <div style="color:${col};font-size:12px;width:14px;text-align:center">${dot}</div>
+        <div class="grow">
+          <div class="tiny num" style="color:${col}">${dateShown}${hypTag}</div>
+          <div class="tiny" style="color:${isHyp?"var(--ink3)":"var(--ink2,var(--ink))"};margin-top:2px">${label}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  box.innerHTML=`
+    <div class="card">
+      <div class="row between" style="margin-bottom:4px"><h3 style="font-size:14px">${T("divMonthlyTitle")}</h3><span class="tiny num" style="color:var(--ink3)">${T("divYearTotal")} ${fmtMoney(total,base)}</span></div>
+      <div class="tiny" style="color:var(--ink3);margin-bottom:4px">${T("divMonthlyHint")}</div>
+      ${bars}
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3 style="font-size:14px;margin-bottom:4px">${T("divTimelineTitle")}</h3>
+      <div class="tiny" style="color:var(--ink3);margin-bottom:8px">${T("divTimelineHint")}</div>
+      <div style="max-height:50vh;overflow-y:auto">${timeline}</div>
+    </div>
+    <div class="tiny" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6">${T("divCalDisclaimer")}</div>`;
+  // 預設定位到最接近現在的除淨日
+  setTimeout(()=>{const a=$("#divTlAnchor");if(a)a.scrollIntoView({block:"center"})},50);
+}
+
 function renderNews(){
   if(LIVE){renderNewsLive();return}
   const lang=I18N[state.settings.lang]?state.settings.lang:"zh-TW";
@@ -4492,7 +4627,7 @@ function bindMe(){
       toast(`✅ ${T("importedN")} ${txns.length}`);
     }catch(err){toast("❌ "+(err.message||T("importBad")))}
   };
-  $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];state.settings.chartComps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
+  $("#btnClear").onclick=async()=>{state.txns=[];state.chart.comps=[];renderCmpTags();await persist();refreshAll();toast(T("cleared"))};
   $("#btnLogout").onclick=async()=>{
     // 1. 先同步到伺服器（確保最新設定已備份）
     if(LIVE&&state.token&&!state.user.guest){
@@ -4559,7 +4694,6 @@ function seedDemo(){
     tx({kind:"cash",ccy:"HKD",loc:"中銀",amount:-80000,date:"2024-09-02"}),
   ];
   if(!state.chart.comps.length)state.chart.comps=["VT","SPY"];
-  state.settings.chartComps=[...state.chart.comps];
   renderCmpTags();
 }
 
@@ -4588,8 +4722,10 @@ function onChartLocPick(val){
 function applySettingsSideEffects(){
   state.privacyOn=state.settings.privacy!==false;
   state.chart.ctype=state.settings.ctype;
-  // 從 settings 同步比較列表到 chart runtime state
-  if(Array.isArray(state.settings.chartComps))state.chart.comps=[...state.settings.chartComps];
+  // 還原持久化的比較項(去重、限上限),讓用戶不必每次登入重加
+  if(Array.isArray(state.settings.chartComps)){
+    state.chart.comps=[...new Set(state.settings.chartComps)].slice(0,CMP_MAX);
+  }
   syncChartType();
 }
 function refreshAllCore(){
@@ -4657,7 +4793,10 @@ async function init(){
   $$("#newsSeg button").forEach(b=>b.onclick=()=>{
     state.newsTab=b.dataset.n;
     $$("#newsSeg button").forEach(x=>x.classList.toggle("on",x===b));
-    renderNews();
+    const isDiv=state.newsTab==="div";
+    $("#newsList").style.display=isDiv?"none":"";
+    $("#divCal").style.display=isDiv?"block":"none";
+    if(isDiv)renderDivCalendar(); else renderNews();
   });
   Chart.init();bindChartUI();bindMe();syncChartType();renderCmpTags();
   // 登入

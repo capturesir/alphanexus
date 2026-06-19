@@ -1879,6 +1879,7 @@ function openInteractiveChart(sym){
     <div id="icVolumeWrap" style="height:80px;flex-shrink:0;border-top:1px solid var(--line);position:relative">
       <canvas id="icVolCanvas" style="width:100%;height:100%;display:block"></canvas>
     </div>
+    <div id="icIndValues" style="display:none;padding:4px 14px;border-top:1px solid var(--line);flex-shrink:0;font-size:10px;line-height:1.8;color:var(--ink2);white-space:nowrap;overflow:hidden"></div>
     <div id="icRSIWrap" style="height:0;flex-shrink:0;border-top:1px solid var(--line);position:relative;overflow:hidden;transition:height 0.2s">
       <canvas id="icRSICanvas" style="width:100%;height:100%;display:block"></canvas>
     </div>
@@ -2147,14 +2148,14 @@ function openInteractiveChart(sym){
           // 點
           ctx.fillStyle=col.gold;ctx.beginPath();ctx.arc(X(idx),Y(v),4,0,7);ctx.fill();
 
-          // Tooltip
+          // Tooltip（基本資訊）
           const tip=document.getElementById("icTooltip");
           if(tip){
             const dt=typeof DATES!=="undefined"&&DATES[k]?DATES[k]:new Date(2020,0,1);
             const dateStr=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
             const prevK=idx>0?td[idx-1]:k;
             const chg=prevK!==k?raw[k]/raw[prevK]-1:0;
-            const chgStr=`${chg>=0?"+":""}${pct(chg)}`;
+            const chgStr=pct(chg);
             let txt=dateStr;
             if(hasOHLC&&open&&high&&low){
               txt+=`\n${T("icOpen")||"開盤"} ${fmtMoney(open[k],this.ccy)}  ${T("icClose")||"收盤"} ${fmtMoney(raw[k],this.ccy)}`;
@@ -2163,44 +2164,55 @@ function openInteractiveChart(sym){
             }else{
               txt+=`\n${T("icClose")||"收盤"} ${fmtMoney(raw[k],this.ccy)}  ${chgStr}`;
             }
-            // 技術指標值
-            let indLine="";
+            tip.textContent=txt;tip.style.display="block";
+          }
+          // 技術指標值（成交量下方）
+          const indDiv=document.getElementById("icIndValues");
+          if(indDiv){
+            let html="";
             if(this.ind.sma.on&&this._smaCache){
               this.ind.sma.periods.forEach((p,pi)=>{
                 const v=this._smaCache[p]?this._smaCache[p][k]:null;
-                if(v!=null)indLine+=`SMA(${p}) ${fmtMoney(v,this.ccy)}  `;
+                if(v!=null)html+=`<span style="color:${this.ind.sma.colors[pi%this.ind.sma.colors.length]}">SMA(${p}) ${fmtMoney(v,this.ccy)}</span>  `;
               });
             }
             if(this.ind.ema.on&&this._emaCache){
               const v=this._emaCache[k];
-              if(v!=null)indLine+=`EMA(${this.ind.ema.period}) ${fmtMoney(v,this.ccy)}  `;
+              if(v!=null)html+=`<span style="color:${this.ind.ema.color}">EMA(${this.ind.ema.period}) ${fmtMoney(v,this.ccy)}</span>  `;
             }
             if(this.ind.bb.on&&this._bbCache){
-              const{upper,lower}=this._bbCache;
-              if(upper[k]!=null)indLine+=`BB ${fmtMoney(upper[k],this.ccy)}~${fmtMoney(lower[k],this.ccy)}  `;
+              const{upper,mid,lower}=this._bbCache;
+              if(upper[k]!=null)html+=`<span style="color:${this.ind.bb.color}">BB ${fmtMoney(upper[k],this.ccy)} / ${fmtMoney(mid[k],this.ccy)} / ${fmtMoney(lower[k],this.ccy)}</span>  `;
             }
             if(this.ind.rsi.on&&this._rsiCache){
               const rv=this._rsiCache[k];
-              if(rv!=null)indLine+=`RSI(${this.ind.rsi.period}) ${rv.toFixed(1)}  `;
+              if(rv!=null)html+=`<span style="color:#ffce56">RSI(${this.ind.rsi.period}) ${rv.toFixed(1)}</span>  `;
             }
             if(this.ind.macd.on&&this._macdCache){
               const{dif,dea,hist}=this._macdCache;
-              if(dif[k]!=null)indLine+=`DIF ${dif[k].toFixed(3)}  DEA ${dea[k].toFixed(3)}  MACD ${hist[k].toFixed(3)}`;
+              if(dif[k]!=null){
+                const mc=this.ind.macd.colors;
+                html+=`<span style="color:${mc[0]}">DIF ${dif[k].toFixed(3)}</span>  `;
+                html+=`<span style="color:${mc[1]}">DEA ${dea[k].toFixed(3)}</span>  `;
+                html+=`<span style="color:${mc[2]}">MACD ${hist[k].toFixed(3)}</span>`;
+              }
             }
-            if(indLine)txt+=`\n${indLine.trim()}`;
-            tip.textContent=txt;tip.style.display="block";
+            if(html){indDiv.innerHTML=html;indDiv.style.display="block";}
+            else{indDiv.style.display="none";}
           }
         }else{
           const tip=document.getElementById("icTooltip");if(tip)tip.style.display="none";
+          const indDiv=document.getElementById("icIndValues");if(indDiv)indDiv.style.display="none";
         }
       }else{
         const tip=document.getElementById("icTooltip");if(tip)tip.style.display="none";
+        const indDiv=document.getElementById("icIndValues");if(indDiv)indDiv.style.display="none";
       }
 
       ctx.restore();
 
       // 成交量
-      this.drawVolume(col,td,nTd,vol);
+      this.drawVolume(col,td,nTd,vol,this.scrubK);
       // RSI
       if(this.ind.rsi.on){
         this.drawRSI(col,td,nTd,X,this.scrubK);
@@ -2211,7 +2223,7 @@ function openInteractiveChart(sym){
       }
     },
 
-    drawVolume(col,td,nTd,vol){
+    drawVolume(col,td,nTd,vol,scrubK){
       const ctx=this.volCtx;if(!ctx||!vol)return;
       ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
       ctx.clearRect(0,0,this.W,this.volH);
@@ -2232,8 +2244,14 @@ function openInteractiveChart(sym){
         const k=td[i],v=vol[k];if(v<=0)continue;
         const bh=v/maxV*h;
         const up=k>0?prices[k]>=prices[k-1]:true;
-        ctx.fillStyle=up?col.up+"99":col.dn+"99";
+        const isHL=scrubK!=null&&k===scrubK;
+        if(isHL){
+          ctx.fillStyle=col.gold;ctx.globalAlpha=0.8;
+        }else{
+          ctx.fillStyle=up?col.up+"99":col.dn+"99";
+        }
         ctx.fillRect(X(i)-barW/2,padT+h-bh,barW,bh);
+        if(isHL)ctx.globalAlpha=1;
       }
     },
 

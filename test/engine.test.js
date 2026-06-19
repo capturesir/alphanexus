@@ -567,6 +567,41 @@ state.settings.autoDiv = true; state.settings.divTax = 0; state.settings.divSkip
   const { syms } = correlationMatrix(['A', 'B'], getAdj, 252);
   ok(syms.length === 1 && syms[0] === 'A', '(j2) 缺序列的代碼被略過');
 })();
+
+// ============ (k) 現金存入/提取:正負金額 → 資金流方向(核心,不可破壞)============
+// (k1) 存入為正:現金增加,計為正外部資金流
+(function () {
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' }];
+  const D = buildDaily(null);
+  const lastK = D.values.length - 1;
+  let totalFlow = 0; for (let k = 0; k <= lastK; k++) totalFlow += D.flows[k];
+  ok(Math.abs(D.values[lastK] - 10000) < 1e-6, '(k1) 存入 10000 → 現金 10000');
+  ok(Math.abs(totalFlow - 10000) < 1e-6, '(k1) 存入計為 +10000 外部資金流');
+})();
+
+// (k2) 提取為負:現金減少,計為負外部資金流
+(function () {
+  state.txns = [
+    { id: '1', kind: 'cash', ccy: 'USD', loc: 'A', amount: 10000, date: '2024-01-02' },
+    { id: '2', kind: 'cash', ccy: 'USD', loc: 'A', amount: -3000, date: '2024-02-01' }];
+  const D = buildDaily(null);
+  const lastK = D.values.length - 1;
+  let totalFlow = 0; for (let k = 0; k <= lastK; k++) totalFlow += D.flows[k];
+  ok(Math.abs(D.values[lastK] - 7000) < 1e-6, '(k2) 存10000提3000 → 現金 7000');
+  ok(Math.abs(totalFlow - 7000) < 1e-6, '(k2) 淨外部資金流 = +7000');
+})();
+
+// (k3) 方向→金額轉換邏輯(模擬 UI:絕對值×方向符號)
+(function () {
+  const toSigned = (absAmt, dir) => dir === 'withdraw' ? -Math.abs(absAmt) : Math.abs(absAmt);
+  ok(toSigned(500, 'deposit') === 500, '(k3) 存入方向 → 正金額');
+  ok(toSigned(500, 'withdraw') === -500, '(k3) 提取方向 → 負金額');
+  ok(toSigned(-500, 'deposit') === 500, '(k3) 即使輸入負值,存入方向仍取正(絕對值)');
+  // 反推:既有交易的 amount 正負 → 初始方向
+  const dirOf = amt => amt < 0 ? 'withdraw' : 'deposit';
+  ok(dirOf(-300) === 'withdraw' && dirOf(800) === 'deposit', '(k3) 編輯時依金額正負還原方向');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

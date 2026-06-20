@@ -6,15 +6,15 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 
 > ⚠️ **Disclaimer**: This is a personal finance tracking tool. All market data, FX rates and news come from third-party sources, are provided for reference only, and **do not constitute investment advice**. News is shown as headline indexing with links to the original publishers, who retain all copyright.
 
-## Screenshots
+## System Interface
 
-| Asset List | Performance Chart |
+| | |
 |:---:|:---:|
-| ![Asset List](docs/screenshots/asset-list.jpeg) | ![Chart](docs/screenshots/performance-chart.jpeg) |
-
-| News | Profile |
-|:---:|:---:|
-| ![News](docs/screenshots/news.jpeg) | ![Profile](docs/screenshots/settings.jpeg) |
+| ![01](docs/screenshots/01.jpeg) | ![02](docs/screenshots/02.jpeg) |
+| ![03](docs/screenshots/03.jpeg) | ![04](docs/screenshots/04.jpeg) |
+| ![05](docs/screenshots/05.jpeg) | ![06](docs/screenshots/06.jpeg) |
+| ![07](docs/screenshots/07.png) | ![08](docs/screenshots/08.jpeg) |
+| ![09](docs/screenshots/09.jpeg) | ![10](docs/screenshots/10.jpeg) |
 
 ## Highlights
 

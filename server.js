@@ -360,10 +360,11 @@ function parseInfoTable(xml) {
   while ((m = re.exec(xml))) {
     const b = m[1];
     const name = pick(b, "nameOfIssuer");
+    const cusip = pick(b, "cusip");
     const value = parseFloat(pick(b, "value").replace(/,/g, ""));
     const sh = parseFloat(pick(b, "sshPrnamt").replace(/,/g, ""));
     const cl = pick(b, "titleOfClass");
-    if (name && isFinite(value)) rows.push({ name, value, shares: isFinite(sh) ? sh : null, cls: cl });
+    if (name && isFinite(value)) rows.push({ name, cusip, value, shares: isFinite(sh) ? sh : null, cls: cl });
   }
   return rows;
 }

@@ -8,13 +8,13 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 
 ## System Interface
 
-| | |
+|  |  |
 |:---:|:---:|
-| ![01](docs/screenshots/01.jpeg) | ![02](docs/screenshots/02.jpeg) |
-| ![03](docs/screenshots/03.jpeg) | ![04](docs/screenshots/04.jpeg) |
-| ![05](docs/screenshots/05.jpeg) | ![06](docs/screenshots/06.jpeg) |
-| ![07](docs/screenshots/07.png) | ![08](docs/screenshots/08.jpeg) |
-| ![09](docs/screenshots/09.jpeg) | ![10](docs/screenshots/10.jpeg) |
+| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
+| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
+| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
+| ![](docs/screenshots/07.png) | ![](docs/screenshots/08.jpeg) |
+| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
 
 ## Highlights
 

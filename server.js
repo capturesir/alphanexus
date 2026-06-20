@@ -585,7 +585,18 @@ async function buildGuruNav(id) {
     try { const h = await smartHistory(s); priceMap[s] = {}; (h.dates || []).forEach((d, i) => priceMap[s][d] = h.raw[i]); }
     catch (e) { priceMap[s] = {}; }
   }
-  const priceOf = (sym, d) => (priceMap[sym] && priceMap[sym][d] != null) ? priceMap[sym][d] : null;
+  const priceOf = (sym, d) => {
+    if (!priceMap[sym]) return null;
+    if (priceMap[sym][d] != null) return priceMap[sym][d];
+    // 13F 季度末日常落在週末/假日,往前找最近交易日(最多 5 天)
+    for (let i = 1; i <= 5; i++) {
+      const prev = new Date(d + "T00:00:00Z");
+      prev.setUTCDate(prev.getUTCDate() - i);
+      const k = prev.toISOString().slice(0, 10);
+      if (priceMap[sym][k] != null) return priceMap[sym][k];
+    }
+    return null;
+  };
   // 日期序列:從首季到今天(用任一有資料股票的交易日)
   const allDates = new Set();
   for (const s of syms) for (const d in (priceMap[s] || {})) allDates.add(d);

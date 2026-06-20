@@ -1,5 +1,5 @@
 {
-  "name": "wealthlens",
+  "name": "alphanexus",
   "version": "0.1.0",
   "description": "Mobile-first portfolio tracker with live market data, TWR/MWR, multi-currency and cloud sync",
   "main": "server.js",

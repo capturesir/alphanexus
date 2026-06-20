@@ -1,5 +1,5 @@
 {
- "appName": "WealthLens",
+ "appName": "AlphaNexus",
  "appTag": "Cross-platform portfolio tracking · TWR / MWR",
  "email": "Email",
  "password": "Password",
@@ -165,7 +165,7 @@
  "grpType": "Transaction type",
  "grpSymbol": "Holdings",
  "pickLoc": "Pick existing location",
- "emptyWelcome": "Welcome to WealthLens! Add your first transaction, or load the demo portfolio to explore.",
+ "emptyWelcome": "Welcome to AlphaNexus! Add your first transaction, or load the demo portfolio to explore.",
  "loadDemo": "Load demo",
  "today": "today",
  "mktValue": "Market value",

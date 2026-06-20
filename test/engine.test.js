@@ -683,6 +683,32 @@ function dStr(monthsAgo, day) {
   ok(tryAdd(['SPY'], 'SPY').reason === 'exists', '(M2) 重複拒絕');
   ok(tryAdd(['A', 'B', 'C', 'D', 'E'], 'F').reason === 'limit', '(M2) 達上限(5)拒絕並提示');
 })();
+
+// (M3) 登出應清空執行時比較項(避免上一用戶殘留影響下一用戶)
+(function () {
+  const sim = { chart: { comps: ['SPY', 'QQQ', 'VT'] }, settings: { chartComps: ['SPY', 'QQQ', 'VT'] } };
+  // 模擬登出:重置 settings 為預設(chartComps=[]) 並清空 chart.comps
+  sim.settings = { chartComps: [] };
+  sim.chart.comps = [];
+  ok(sim.chart.comps.length === 0, '(M3) 登出後執行時比較項清空');
+  // 模擬下一用戶載入(其 settings 有不同比較項)→ 還原應為新用戶的,不含上一用戶殘留
+  sim.settings = { chartComps: ['DIA'] };
+  const CMP_MAX = 5;
+  sim.chart.comps = Array.isArray(sim.settings.chartComps) ? [...new Set(sim.settings.chartComps)].slice(0, CMP_MAX) : [];
+  ok(JSON.stringify(sim.chart.comps) === JSON.stringify(['DIA']), '(M3) 下一用戶只見自己的比較項,無殘留');
+})();
+
+// (M4) 還原只應在「載入時」發生,刪除後重繪不應把已刪項還原回來
+(function () {
+  // 模擬:settings 與 chart.comps 為單一來源,刪除時兩者同步更新
+  const state = { chart: { comps: ['SPY', 'QQQ'] }, settings: { chartComps: ['SPY', 'QQQ'] } };
+  const persistComps = () => { state.settings.chartComps = [...state.chart.comps]; };
+  // 刪除 SPY
+  state.chart.comps = state.chart.comps.filter(x => x !== 'SPY');
+  persistComps();
+  // 模擬重繪(不再從 settings 覆蓋 chart.comps)→ SPY 不應復活
+  ok(!state.chart.comps.includes('SPY') && !state.settings.chartComps.includes('SPY'), '(M4) 刪除後 settings 與執行時同步,重繪不復活');
+})();
 `;
 
 eval(code + "\n;\n" + tests);

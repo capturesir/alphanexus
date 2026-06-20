@@ -1,8 +1,8 @@
-# WealthLens — Portfolio Management Platform
+# AlphaNexus — Portfolio Management Platform
 
 [中文](README.md) | **English**
 
-WealthLens is a **mobile-first**, multilingual portfolio tracker built as a **single-file HTML frontend + zero-dependency Node.js backend**, focused on accurate cross-market, multi-currency accounting and performance analytics. It runs on an entry-level VPS, or offline via `file://`.
+AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **single-file HTML frontend + zero-dependency Node.js backend**, focused on accurate cross-market, multi-currency accounting and performance analytics. It runs on an entry-level VPS, or offline via `file://`.
 
 > ⚠️ **Disclaimer**: This is a personal finance tracking tool. All market data, FX rates and news come from third-party sources, are provided for reference only, and **do not constitute investment advice**. News is shown as headline indexing with links to the original publishers, who retain all copyright.
 

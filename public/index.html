@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-<title>WealthLens · 投資組合管理</title>
+<title>AlphaNexus · 投資組合管理</title>
 <style>
 :root{
   --bg:#F6F7F5; --card:#FFFFFF; --card2:#F0F2EF; --line:#E3E6E1;
@@ -66,6 +66,11 @@ label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:10px
 .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;letter-spacing:.3px}
 .logo .mark{width:26px;height:26px;border-radius:8px;background:var(--brand);color:var(--bg);display:grid;place-items:center;font-size:13px;font-weight:800}
 .logo .mark span{color:var(--gold)}
+.mark-svg{width:74%;height:74%;display:block}
+.mark-svg .mk-a{font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:700;fill:var(--bg);text-anchor:middle}
+.mark-svg .mk-n{stroke:var(--gold);stroke-width:2.4;fill:none;stroke-linecap:round}
+.mark-svg .mk-d1{fill:var(--gold)}
+.mark-svg .mk-d2{fill:var(--bg)}
 
 /* ---- 底部分頁列 ---- */
 #tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:860px;height:var(--tabbar-h);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
@@ -158,8 +163,8 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
   <div id="authScreen">
     <div class="auth-card">
       <div class="auth-hero">
-        <div class="mark">W<span>L</span></div>
-        <h1 data-i18n="appName">WealthLens</h1>
+        <div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div>
+        <h1 data-i18n="appName">AlphaNexus</h1>
         <div class="muted" data-i18n="appTag">跨平台投資組合追蹤 · TWR / MWR</div>
       </div>
       <div class="card">
@@ -193,7 +198,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
   <!-- 1. 資產列表 -->
   <section class="screen" id="scr-assets">
     <div class="topbar">
-      <div class="logo"><div class="mark">W<span>L</span></div><span data-i18n="tabAssets">資產列表</span><span class="live-badge"></span></div>
+      <div class="logo"><div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div><span data-i18n="tabAssets">資產列表</span><span class="live-badge"></span></div>
       <div class="row">
         <select id="baseCcySel" style="width:auto;padding:6px 10px;font-size:12.5px;font-weight:700"></select>
         <button class="btn btn-gold btn-sm" id="btnAddTxn">＋ <span data-i18n="add">新增</span></button>
@@ -241,7 +246,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
   <!-- 2. 資產變化圖 -->
   <section class="screen" id="scr-chart">
     <div class="topbar">
-      <div class="logo"><div class="mark">W<span>L</span></div><span data-i18n="tabChart">資產變化圖</span></div>
+      <div class="logo"><div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div><span data-i18n="tabChart">資產變化圖</span></div>
       <div class="seg" id="metricSeg" style="width:auto">
         <button data-m="value" class="on" data-i18n="mValue">資產值</button>
         <button data-m="twr">TWR</button>
@@ -303,7 +308,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
   <!-- 3. 資訊平台 -->
   <section class="screen" id="scr-news">
     <div class="topbar">
-      <div class="logo"><div class="mark">W<span>L</span></div><span data-i18n="tabNews">資訊平台</span></div>
+      <div class="logo"><div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div><span data-i18n="tabNews">資訊平台</span></div>
     </div>
     <div class="seg" id="newsSeg" style="margin-bottom:12px">
       <button data-n="mine" class="on" data-i18n="nMine">持倉相關</button>
@@ -319,7 +324,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
   <!-- 4. 個人中心 -->
   <section class="screen" id="scr-me">
     <div class="topbar">
-      <div class="logo"><div class="mark">W<span>L</span></div><span data-i18n="tabMe">個人中心</span></div>
+      <div class="logo"><div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div><span data-i18n="tabMe">個人中心</span></div>
     </div>
     <div class="card row" style="gap:14px">
       <div class="avatar-big" id="meAvatar">🙂</div>
@@ -411,7 +416,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     </div>
     <button class="btn btn-danger" style="width:100%" id="btnLogout" data-i18n="logout">登出</button>
     <button class="btn" style="width:100%;margin-top:8px;color:var(--dn);border:1px solid var(--dn);background:none;display:none" id="btnDeleteAcct" data-i18n="deleteAcct">刪除帳號</button>
-    <div class="tiny" style="text-align:center;margin-top:14px">WealthLens · <span data-i18n="disclaimer">示範平台，內置數據為模擬數據，不構成投資建議</span></div>
+    <div class="tiny" style="text-align:center;margin-top:14px">AlphaNexus · <span data-i18n="disclaimer">示範平台，內置數據為模擬數據，不構成投資建議</span></div>
   </section>
 
   <nav id="tabbar">
@@ -485,7 +490,7 @@ const apiPut=(p,b)=>api(p,{method:"PUT",body:JSON.stringify(b)});
 <script>
 /* ====================== i18n ====================== */
 const I18N={
-"zh-TW":{appName:"WealthLens",appTag:"跨平台投資組合追蹤 · TWR / MWR",email:"電郵",password:"密碼",login:"登入 / 註冊",guest:"以訪客身份使用",demoNote:"訪客模式會載入示範組合，可隨時清除",
+"zh-TW":{appName:"AlphaNexus",appTag:"跨平台投資組合追蹤 · TWR / MWR",email:"電郵",password:"密碼",login:"登入 / 註冊",guest:"以訪客身份使用",demoNote:"訪客模式會載入示範組合，可隨時清除",
 tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
 mValue:"資產值",cLine:"折線",cSmooth:"平滑",cCandle:"陰陽燭",aD:"日",aW:"週",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR(年化)",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
@@ -499,7 +504,7 @@ symbol:"金融資產代碼",assetName:"資產名稱",currency:"貨幣",location:
 side:"方向",buy:"買入",sell:"賣出",deposit:"存入 / 提取資金（負數為提取）",cashDeposit:"資金存入",cashWithdraw:"資金提取",cashDepositHint:"存入的資金計為外部資金流(不影響報酬率計算的本金基準)",cashWithdrawHint:"提取的資金計為外部資金流(本金減少)",price:"價格（每單位）",units:"單位數",amount:"金額（可為負數）",
 date:"交易日期",save:"儲存",cancel:"取消",delete:"刪除",defaultLoc:"預設",
 cash:"現金",unrealPL:"未實現損益",costBasis:"成本",mktVal:"市值",qty:"數量",
-noHoldings:"尚未有持倉，點擊右上「＋新增」輸入第一筆交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"當日漲↓",sortDayAsc:"當日跌↑",sortPlDesc:"報酬↓",sortPlAsc:"報酬↑",sortMv:"市值",sortDayPct:"價格（單日升跌%）",sortDayPL:"單日盈虧",allSymbols:"全部代碼",allTxnTypes:"全部交易",analysis:"分析",analysisTitle:"資產分析",asOf:"截至",catWeight:"資產類別比重",overallPerf:"整體表現",perfHint:"組合 TWR 與主要大市同期比較",perfNote:"大市為經調整價總報酬,僅供參考",riskPerf:"風險與績效",maxDrawdown:"最大回撤",volatility:"年化波動率",sharpe:"夏普比率",tradingDays:"交易日",metricsInsufficient:"資料期間不足({n} 交易日,需 ≥30)",metricsNote:"回撤基於 TWR 曲線(排除資金流);波動率年化;夏普以 4% 無風險利率計;Beta 對 SPY。僅供參考。",corrTitle:"資產相關性",corrInsufficient:"需至少兩檔有足夠歷史的持倉",corrNote:"近一年日報酬的皮爾森相關係數。+1(紅)同向、-1(藍)反向、0 無關。相關性低代表分散較有效。",guruTitle:"追蹤投資大師",guruHint:"資料來自美國 SEC 13F 公開申報",pickGuru:"選擇投資大師…",reportDate:"申報季度",guruTotal:"美股多頭總值",positions:"檔持股",guruFail:"暫時無法取得申報資料",privacyLbl:"私隱模式",privacyHint:"開啟後每次登入預設隱藏所有金額(顯示為 •••);任何時候點總資產淨值可臨時切換顯示/隱藏",plModeLbl:"盈虧顯示",plModeHint:"總資產卡片下方盈虧的預設顯示",plModeTotal:"總盈虧",plModeDaily:"當日變化",plDailyTag:"當日",lblTotalPL:"總盈虧",lblDaily:"單日",shareLbl:"分享報酬率",shareHint:"產生只含報酬率、不含金額的成績卡",shareBtn:"分享",shareTitle:"報酬率快照",shareNote:"此快照只含報酬率,不含任何金額,可安心分享。",since:"自",shareDisclaimer:"僅供參考,不構成投資建議",shareSave:"儲存圖像",imgSaved:"圖像已儲存",imgFailed:"儲存失敗,請再試",newsDisclaimer:"新聞由第三方來源聚合,本平台僅提供標題索引與原文連結,不轉載內文;版權歸原出版者所有,點擊將前往原始出處。",grpType:"交易類型",grpSymbol:"持倉代碼",pickLoc:"選取已有位置",emptyWelcome:"歡迎使用 WealthLens！新增第一筆交易,或載入示範組合開始體驗",loadDemo:"載入示範",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"損益",noPositionNow:"目前無持倉(歷史交易已平倉)",dataSrcLbl:"數據源",txnHistory:"交易歷史",sparkLoading:"股價走勢載入中…",sparkUnavailable:"暫無此資產的股價走勢資料",sparkOffline:"離線模式無即時走勢",delAllOfSym:"刪除此資產全部交易",delAllShort:"刪除全部",newTxnShort:"新增",confirmDelAll:"確定刪除 {sym} 的全部交易?此動作無法復原",close:"關閉",noTxn:"尚無交易記錄",noNews:"暫無相關資訊",
+noHoldings:"尚未有持倉，點擊右上「＋新增」輸入第一筆交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"當日漲↓",sortDayAsc:"當日跌↑",sortPlDesc:"報酬↓",sortPlAsc:"報酬↑",sortMv:"市值",sortDayPct:"價格（單日升跌%）",sortDayPL:"單日盈虧",allSymbols:"全部代碼",allTxnTypes:"全部交易",analysis:"分析",analysisTitle:"資產分析",asOf:"截至",catWeight:"資產類別比重",overallPerf:"整體表現",perfHint:"組合 TWR 與主要大市同期比較",perfNote:"大市為經調整價總報酬,僅供參考",riskPerf:"風險與績效",maxDrawdown:"最大回撤",volatility:"年化波動率",sharpe:"夏普比率",tradingDays:"交易日",metricsInsufficient:"資料期間不足({n} 交易日,需 ≥30)",metricsNote:"回撤基於 TWR 曲線(排除資金流);波動率年化;夏普以 4% 無風險利率計;Beta 對 SPY。僅供參考。",corrTitle:"資產相關性",corrInsufficient:"需至少兩檔有足夠歷史的持倉",corrNote:"近一年日報酬的皮爾森相關係數。+1(紅)同向、-1(藍)反向、0 無關。相關性低代表分散較有效。",guruTitle:"追蹤投資大師",guruHint:"資料來自美國 SEC 13F 公開申報",pickGuru:"選擇投資大師…",reportDate:"申報季度",guruTotal:"美股多頭總值",positions:"檔持股",guruFail:"暫時無法取得申報資料",privacyLbl:"私隱模式",privacyHint:"開啟後每次登入預設隱藏所有金額(顯示為 •••);任何時候點總資產淨值可臨時切換顯示/隱藏",plModeLbl:"盈虧顯示",plModeHint:"總資產卡片下方盈虧的預設顯示",plModeTotal:"總盈虧",plModeDaily:"當日變化",plDailyTag:"當日",lblTotalPL:"總盈虧",lblDaily:"單日",shareLbl:"分享報酬率",shareHint:"產生只含報酬率、不含金額的成績卡",shareBtn:"分享",shareTitle:"報酬率快照",shareNote:"此快照只含報酬率,不含任何金額,可安心分享。",since:"自",shareDisclaimer:"僅供參考,不構成投資建議",shareSave:"儲存圖像",imgSaved:"圖像已儲存",imgFailed:"儲存失敗,請再試",newsDisclaimer:"新聞由第三方來源聚合,本平台僅提供標題索引與原文連結,不轉載內文;版權歸原出版者所有,點擊將前往原始出處。",grpType:"交易類型",grpSymbol:"持倉代碼",pickLoc:"選取已有位置",emptyWelcome:"歡迎使用 AlphaNexus！新增第一筆交易,或載入示範組合開始體驗",loadDemo:"載入示範",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"損益",noPositionNow:"目前無持倉(歷史交易已平倉)",dataSrcLbl:"數據源",txnHistory:"交易歷史",sparkLoading:"股價走勢載入中…",sparkUnavailable:"暫無此資產的股價走勢資料",sparkOffline:"離線模式無即時走勢",delAllOfSym:"刪除此資產全部交易",delAllShort:"刪除全部",newTxnShort:"新增",confirmDelAll:"確定刪除 {sym} 的全部交易?此動作無法復原",close:"關閉",noTxn:"尚無交易記錄",noNews:"暫無相關資訊",
 confirmDel:"確定刪除此交易？",saved:"已儲存",deleted:"已刪除",cleared:"已清除所有數據",seeded:"已載入示範組合",
 profile:"個人資訊",nickname:"暱稱",avatar:"頭像",oldPwd:"舊密碼",newPwd:"新密碼",pwdChanged:"密碼已更新",pwdWrong:"舊密碼不正確",
 guestMode:"訪客模式（數據僅保存在本機）",memberMode:"已登入會員",fillEmail:"請輸入電郵及密碼",liveData:"即時數據",simData:"模擬數據",loading:"載入中…",pwdTooShort:"密碼至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手續費",customSrc:"自訂數據源",tFee:"費用",verifyTitle:"驗證碼已寄至您的信箱,請於 15 分鐘內輸入",verifyBtn:"驗證並完成註冊",resendBtn:"重寄",resendOk:"已重寄驗證碼",resendWait:"請稍候 60 秒再重寄",codeWrong:"驗證碼錯誤",codeExpired:"驗證碼已過期,請重寄",codeTooMany:"嘗試次數過多,請重新註冊",mailFailed:"郵件寄送失敗,請稍後再試",tLiability:"負債",expHint:"費用/負債支出將自現金扣除,自然反映於回報率(不視為外部資金流)",autoDivNote:"系統自動入帳之預估股息;修改後將視為手動紀錄",confirmDelAutoDiv:"這是系統自動派發的股息(某持倉的派生記錄)。刪除後,系統重算時不會再自動產生這一筆。確定刪除?",confirmEditAutoDiv:"修改後這筆股息將轉為「手動記錄」,系統日後重算不會再覆蓋它(包括持倉變動時的自動調整)。建議優先用自動派息以保持同步。確定繼續?",transfer:"轉倉",transferHint:"將部分股數由一個資產位置移至另一個(中性內部轉移,不影響損益與報酬率)。自轉倉日起,兩個位置各自計算往後股息。",transferFrom:"由(來源位置)",transferTo:"至(目標位置)",transferUnits:"轉倉股數",transferSameLoc:"來源與目標位置相同",transferTooMuch:"超過可轉股數(可轉 {n})",transferDone:"轉倉完成",confirmDelStockWithDiv:"刪除此股票/債券交易後,系統會依刪除後的新持股重算此股票於該位置的自動股息(持股減少會調整金額,歸零則移除)。你手動修改過的股息不受影響。確定刪除?",confirmDelStockCutXfer:"刪除此交易會導致 {n} 筆轉倉因來源持股不足而無法成立,系統將一併刪除這些轉倉,並重算所有受影響位置的自動股息。手動修改過的股息不受影響。確定刪除?",moveLocWithDiv:"你變更了此股票交易的資產位置(由 {from} 至 {to})。是否將此股票於 {from} 的所有自動股息一併移至 {to}?(手動記錄的股息不會被移動)",manualDivWarn:"建議先確認系統是否已自動派發此股息(持倉若有對應除息日會自動入帳)。自動派息能在持倉變動時同步調整;手動新增則需自行維護。仍要手動新增?",grossLbl:"稅前",autoDivLbl:"自動股息入帳",autoDivHint:"除淨日按持股自動入帳(可逐筆修改)",divTaxLbl:"股息預扣稅率",divTaxHint:"自動股息以稅後金額入帳;預設 0%",divTaxApplied:"已更新自動股息筆數:",customSrcWarn:"此為自訂第三方數據源,若目標網站結構變更可能導致數據失效。",exclOpt:"曲線不含期權現值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累計費用/負債支出",customSrcHint:"以 JSONPath 接入任意 API 的歷史價格",customSrcDesc:"提供 API 網址與 JSONPath(日期/價格路徑),即可為任意基金、債券或理財產品接入歷史價。儲存後在交易中直接使用該代碼。",manage:"管理",csvLbl:"交易紀錄 CSV",csvHint:"匯出備份,或自券商/其他平台匯入",exportCsv:"匯出",importCsv:"匯入",exported:"已匯出",importedN:"已匯入",importReplaceQ:"按「確定」取代現有全部交易;按「取消」則合併加入。",importBad:"CSV 格式無法解析",needLive:"此功能需要即時數據模式(經伺服器開啟頁面)",srcUrl:"API 網址",datePath:"日期路徑(JSONPath)",pricePath:"價格路徑(JSONPath)",testBtn:"測試",testOk:"解析成功",rowsLbl:"筆",noCustomSrc:"尚未設定任何自訂數據源",feeOpt:"手續費(選填)",optional:"選填",incomeReceived:"已收",divTTM:"近一年股息約",incomeTotalLbl:"累計股息/利息收入",divHint:"股息/利息將計入現金,並反映在 TWR/MWR 報酬率中(不視為外部資金流)",
@@ -507,7 +512,7 @@ twrIdx:"TWR 累積回報",mwrIdx:"MWR 累積回報",portfolio:"我的組合",net
 newsJustNow:"剛剛",hAgo:"小時前",dAgo:"天前",searchNoRes:"找不到符合的代碼",
 optHint:"美股期權格式：代碼+到期+C/P+行使價",ccyConvNote:"以當日匯率折算為",
 periodHigh:"期間最高",periodLow:"期間最低",chg:"變動",interactiveChart:"互動圖表",back:"返回",close:"收",open:"開",high:"高",low:"低",noData:"無數據",icOpen:"開盤",icClose:"收盤",icHigh:"高點",icLow:"低點",icChg:"單日升跌",icVol:"成交量",icIndicators:"指標",icSMA:"簡單移動平均",icRSI:"相對強弱",icPeriod:"週期",icOverbought:"超買",icOversold:"超賣",icOn:"開啟",icOff:"關閉",icSettings:"設定",icMaxPeriods:"最多 3 個",icMultiplier:"倍數",icUnadjusted:"不復權",icAdjusted:"復權",icVWAP:"VWAP",icStoch:"隨機",icATR:"波幅",icOBV:"能量潮",icADX:"趨勢強度",icSAR:"停損點",icIchimoku:"一目均衡",icStep:"步長",icMax:"最大",icTenkan:"轉換線",icKijun:"基準線",icSenkou:"先行帶"},
-"zh-CN":{appName:"WealthLens",appTag:"跨平台投资组合追踪 · TWR / MWR",email:"邮箱",password:"密码",login:"登录 / 注册",guest:"以访客身份使用",demoNote:"访客模式会载入示范组合，可随时清除",
+"zh-CN":{appName:"AlphaNexus",appTag:"跨平台投资组合追踪 · TWR / MWR",email:"邮箱",password:"密码",login:"登录 / 注册",guest:"以访客身份使用",demoNote:"访客模式会载入示范组合，可随时清除",
 tabAssets:"资产列表",tabChart:"变化图",tabNews:"资讯",tabMe:"我的",add:"新增",totalAssets:"总资产净值",holdings:"持仓",cashByCcy:"各货币现金水平",txnHistory:"交易记录",
 mValue:"资产值",cLine:"折线",cSmooth:"平滑",cCandle:"蜡烛图",aD:"日",aW:"周",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：双指捏合缩放，单指拖动平移观察期间（桌面可用滚轮）",sTWR:"期间TWR(年化)",sMWR:"期间MWR(年化)",sNet:"期间净投入",
@@ -521,7 +526,7 @@ symbol:"金融资产代码",assetName:"资产名称",currency:"货币",location:
 side:"方向",buy:"买入",sell:"卖出",deposit:"存入 / 提取资金（负数为提取）",cashDeposit:"资金存入",cashWithdraw:"资金提取",cashDepositHint:"存入的资金计为外部资金流(不影响回报率计算的本金基准)",cashWithdrawHint:"提取的资金计为外部资金流(本金减少)",price:"价格（每单位）",units:"单位数",amount:"金额（可为负数）",
 date:"交易日期",save:"保存",cancel:"取消",delete:"删除",defaultLoc:"默认",
 cash:"现金",unrealPL:"未实现损益",costBasis:"成本",mktVal:"市值",qty:"数量",
-noHoldings:"尚未有持仓，点击右上「＋新增」输入第一笔交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"当日涨↓",sortDayAsc:"当日跌↑",sortPlDesc:"回报↓",sortPlAsc:"回报↑",sortMv:"市值",sortDayPct:"价格（单日升跌%）",sortDayPL:"单日盈亏",allSymbols:"全部代码",allTxnTypes:"全部交易",analysis:"分析",analysisTitle:"资产分析",asOf:"截至",catWeight:"资产类别比重",overallPerf:"整体表现",perfHint:"组合 TWR 与主要大市同期比较",perfNote:"大市为经调整价总回报,仅供参考",riskPerf:"风险与绩效",maxDrawdown:"最大回撤",volatility:"年化波动率",sharpe:"夏普比率",tradingDays:"交易日",metricsInsufficient:"资料期间不足({n} 交易日,需 ≥30)",metricsNote:"回撤基于 TWR 曲线(排除资金流);波动率年化;夏普以 4% 无风险利率计;Beta 对 SPY。仅供参考。",corrTitle:"资产相关性",corrInsufficient:"需至少两只有足够历史的持仓",corrNote:"近一年日回报的皮尔森相关系数。+1(红)同向、-1(蓝)反向、0 无关。相关性低代表分散较有效。",guruTitle:"追踪投资大师",guruHint:"资料来自美国 SEC 13F 公开申报",pickGuru:"选择投资大师…",reportDate:"申报季度",guruTotal:"美股多头总值",positions:"只持股",guruFail:"暂时无法取得申报资料",privacyLbl:"隐私模式",privacyHint:"开启后每次登入默认隐藏所有金额(显示为 •••);任何时候点总资产净值可临时切换显示/隐藏",plModeLbl:"盈亏显示",plModeHint:"总资产卡片下方盈亏的默认显示",plModeTotal:"总盈亏",plModeDaily:"当日变化",plDailyTag:"当日",lblTotalPL:"总盈亏",lblDaily:"单日",shareLbl:"分享回报率",shareHint:"生成只含回报率、不含金额的成绩卡",shareBtn:"分享",shareTitle:"回报率快照",shareNote:"此快照只含回报率,不含任何金额,可安心分享。",since:"自",shareDisclaimer:"仅供参考,不构成投资建议",shareSave:"保存图像",imgSaved:"图像已保存",imgFailed:"保存失败,请重试",newsDisclaimer:"新闻由第三方来源聚合,本平台仅提供标题索引与原文链接,不转载内文;版权归原出版者所有,点击将前往原始出处。",grpType:"交易类型",grpSymbol:"持仓代码",pickLoc:"选取已有位置",emptyWelcome:"欢迎使用 WealthLens！添加第一笔交易,或载入示范组合开始体验",loadDemo:"载入示范",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"损益",noPositionNow:"目前无持仓(历史交易已平仓)",dataSrcLbl:"数据源",txnHistory:"交易历史",sparkLoading:"股价走势加载中…",sparkUnavailable:"暂无此资产的股价走势数据",sparkOffline:"离线模式无实时走势",delAllOfSym:"删除此资产全部交易",delAllShort:"删除全部",newTxnShort:"新增",confirmDelAll:"确定删除 {sym} 的全部交易?此操作无法复原",close:"关闭",noTxn:"暂无交易记录",noNews:"暂无相关资讯",
+noHoldings:"尚未有持仓，点击右上「＋新增」输入第一笔交易",sortMvDesc:"市值↓",sortMvAsc:"市值↑",sortDayDesc:"当日涨↓",sortDayAsc:"当日跌↑",sortPlDesc:"回报↓",sortPlAsc:"回报↑",sortMv:"市值",sortDayPct:"价格（单日升跌%）",sortDayPL:"单日盈亏",allSymbols:"全部代码",allTxnTypes:"全部交易",analysis:"分析",analysisTitle:"资产分析",asOf:"截至",catWeight:"资产类别比重",overallPerf:"整体表现",perfHint:"组合 TWR 与主要大市同期比较",perfNote:"大市为经调整价总回报,仅供参考",riskPerf:"风险与绩效",maxDrawdown:"最大回撤",volatility:"年化波动率",sharpe:"夏普比率",tradingDays:"交易日",metricsInsufficient:"资料期间不足({n} 交易日,需 ≥30)",metricsNote:"回撤基于 TWR 曲线(排除资金流);波动率年化;夏普以 4% 无风险利率计;Beta 对 SPY。仅供参考。",corrTitle:"资产相关性",corrInsufficient:"需至少两只有足够历史的持仓",corrNote:"近一年日回报的皮尔森相关系数。+1(红)同向、-1(蓝)反向、0 无关。相关性低代表分散较有效。",guruTitle:"追踪投资大师",guruHint:"资料来自美国 SEC 13F 公开申报",pickGuru:"选择投资大师…",reportDate:"申报季度",guruTotal:"美股多头总值",positions:"只持股",guruFail:"暂时无法取得申报资料",privacyLbl:"隐私模式",privacyHint:"开启后每次登入默认隐藏所有金额(显示为 •••);任何时候点总资产净值可临时切换显示/隐藏",plModeLbl:"盈亏显示",plModeHint:"总资产卡片下方盈亏的默认显示",plModeTotal:"总盈亏",plModeDaily:"当日变化",plDailyTag:"当日",lblTotalPL:"总盈亏",lblDaily:"单日",shareLbl:"分享回报率",shareHint:"生成只含回报率、不含金额的成绩卡",shareBtn:"分享",shareTitle:"回报率快照",shareNote:"此快照只含回报率,不含任何金额,可安心分享。",since:"自",shareDisclaimer:"仅供参考,不构成投资建议",shareSave:"保存图像",imgSaved:"图像已保存",imgFailed:"保存失败,请重试",newsDisclaimer:"新闻由第三方来源聚合,本平台仅提供标题索引与原文链接,不转载内文;版权归原出版者所有,点击将前往原始出处。",grpType:"交易类型",grpSymbol:"持仓代码",pickLoc:"选取已有位置",emptyWelcome:"欢迎使用 AlphaNexus！添加第一笔交易,或载入示范组合开始体验",loadDemo:"载入示范",today:"今日",mktValue:"市值",avgCost:"平均成本",plLbl:"损益",noPositionNow:"目前无持仓(历史交易已平仓)",dataSrcLbl:"数据源",txnHistory:"交易历史",sparkLoading:"股价走势加载中…",sparkUnavailable:"暂无此资产的股价走势数据",sparkOffline:"离线模式无实时走势",delAllOfSym:"删除此资产全部交易",delAllShort:"删除全部",newTxnShort:"新增",confirmDelAll:"确定删除 {sym} 的全部交易?此操作无法复原",close:"关闭",noTxn:"暂无交易记录",noNews:"暂无相关资讯",
 confirmDel:"确定删除此交易？",saved:"已保存",deleted:"已删除",cleared:"已清除所有数据",seeded:"已载入示范组合",
 profile:"个人资料",nickname:"昵称",avatar:"头像",oldPwd:"旧密码",newPwd:"新密码",pwdChanged:"密码已更新",pwdWrong:"旧密码不正确",
 guestMode:"访客模式（数据仅保存在本机）",memberMode:"已登录会员",fillEmail:"请输入邮箱及密码",liveData:"实时数据",simData:"模拟数据",loading:"加载中…",pwdTooShort:"密码至少 4 位",tDividend:"股息",tInterest:"利息",fee:"手续费",customSrc:"自定义数据源",tFee:"费用",verifyTitle:"验证码已发送至您的邮箱,请于 15 分钟内输入",verifyBtn:"验证并完成注册",resendBtn:"重发",resendOk:"已重发验证码",resendWait:"请稍候 60 秒再重发",codeWrong:"验证码错误",codeExpired:"验证码已过期,请重发",codeTooMany:"尝试次数过多,请重新注册",mailFailed:"邮件发送失败,请稍后再试",tLiability:"负债",expHint:"费用/负债支出将自现金扣除,自然反映于回报率(不视为外部资金流)",autoDivNote:"系统自动入账之预估股息;修改后将视为手动记录",confirmDelAutoDiv:"这是系统自动派发的股息(某持仓的派生记录)。删除后,系统重算时不会再自动产生这一笔。确定删除?",confirmEditAutoDiv:"修改后这笔股息将转为「手动记录」,系统日后重算不会再覆盖它(包括持仓变动时的自动调整)。建议优先用自动派息以保持同步。确定继续?",transfer:"转仓",transferHint:"将部分股数由一个资产位置移至另一个(中性内部转移,不影响损益与回报率)。自转仓日起,两个位置各自计算往后股息。",transferFrom:"由(来源位置)",transferTo:"至(目标位置)",transferUnits:"转仓股数",transferSameLoc:"来源与目标位置相同",transferTooMuch:"超过可转股数(可转 {n})",transferDone:"转仓完成",confirmDelStockWithDiv:"删除此股票/债券交易后,系统会依删除后的新持股重算此股票于该位置的自动股息(持股减少会调整金额,归零则移除)。你手动修改过的股息不受影响。确定删除?",confirmDelStockCutXfer:"删除此交易会导致 {n} 笔转仓因来源持股不足而无法成立,系统将一并删除这些转仓,并重算所有受影响位置的自动股息。手动修改过的股息不受影响。确定删除?",moveLocWithDiv:"你变更了此股票交易的资产位置(由 {from} 至 {to})。是否将此股票于 {from} 的所有自动股息一并移至 {to}?(手动记录的股息不会被移动)",manualDivWarn:"建议先确认系统是否已自动派发此股息(持仓若有对应除息日会自动入账)。自动派息能在持仓变动时同步调整;手动新增则需自行维护。仍要手动新增?",grossLbl:"税前",autoDivLbl:"自动股息入账",autoDivHint:"除净日按持股自动入账(可逐笔修改)",divTaxLbl:"股息预扣税率",divTaxHint:"自动股息以税后金额入账;默认 0%",divTaxApplied:"已更新自动股息笔数:",customSrcWarn:"此为自定义第三方数据源,若目标网站结构变更可能导致数据失效。",exclOpt:"曲线不含期权现值",evDiv:"每股派息",evSplit:"拆股",perShare:"股",expenseTotalLbl:"累计费用/负债支出",customSrcHint:"以 JSONPath 接入任意 API 的历史价格",customSrcDesc:"提供 API 网址与 JSONPath(日期/价格路径),即可为任意基金、债券或理财产品接入历史价。保存后在交易中直接使用该代码。",manage:"管理",csvLbl:"交易记录 CSV",csvHint:"导出备份,或自券商/其他平台导入",exportCsv:"导出",importCsv:"导入",exported:"已导出",importedN:"已导入",importReplaceQ:"按「确定」替换现有全部交易;按「取消」则合并加入。",importBad:"CSV 格式无法解析",needLive:"此功能需要实时数据模式(经服务器打开页面)",srcUrl:"API 网址",datePath:"日期路径(JSONPath)",pricePath:"价格路径(JSONPath)",testBtn:"测试",testOk:"解析成功",rowsLbl:"条",noCustomSrc:"尚未设置任何自定义数据源",feeOpt:"手续费(选填)",optional:"选填",incomeReceived:"已收",divTTM:"近一年股息约",incomeTotalLbl:"累计股息/利息收入",divHint:"股息/利息将计入现金,并反映在 TWR/MWR 回报率中(不视为外部资金流)",
@@ -529,7 +534,7 @@ twrIdx:"TWR 累计回报",mwrIdx:"MWR 累计回报",portfolio:"我的组合",net
 newsJustNow:"刚刚",hAgo:"小时前",dAgo:"天前",searchNoRes:"找不到符合的代码",
 optHint:"美股期权格式：代码+到期+C/P+行权价",ccyConvNote:"按当日汇率折算为",
 periodHigh:"期间最高",periodLow:"期间最低",chg:"变动",interactiveChart:"互动图表",back:"返回",close:"收",open:"开",high:"高",low:"低",noData:"无数据",icOpen:"开盘",icClose:"收盘",icHigh:"高点",icLow:"低点",icChg:"单日涨跌",icVol:"成交量",icIndicators:"指标",icSMA:"简单移动平均",icRSI:"相对强弱",icPeriod:"周期",icOverbought:"超买",icOversold:"超卖",icOn:"开启",icOff:"关闭",icSettings:"设置",icMaxPeriods:"最多 3 个",icMultiplier:"倍数",icUnadjusted:"不复权",icAdjusted:"复权",icVWAP:"VWAP",icStoch:"随机",icATR:"波幅",icOBV:"能量潮",icADX:"趋势强度",icSAR:"停损点",icIchimoku:"一目均衡",icStep:"步长",icMax:"最大",icTenkan:"转换线",icKijun:"基准线",icSenkou:"先行带"},
-"en":{appName:"WealthLens",appTag:"Cross-platform portfolio tracking · TWR / MWR",email:"Email",password:"Password",login:"Sign in / Register",guest:"Continue as guest",demoNote:"Guest mode loads a demo portfolio; you can clear it anytime",
+"en":{appName:"AlphaNexus",appTag:"Cross-platform portfolio tracking · TWR / MWR",email:"Email",password:"Password",login:"Sign in / Register",guest:"Continue as guest",demoNote:"Guest mode loads a demo portfolio; you can clear it anytime",
 tabAssets:"Assets",tabChart:"Chart",tabNews:"News",tabMe:"Me",add:"Add",totalAssets:"Total net assets",holdings:"Holdings",cashByCcy:"Cash by currency",txnHistory:"Transactions",
 mValue:"Value",cLine:"Line",cSmooth:"Smooth",cCandle:"Candles",aD:"D",aW:"W",aM:"M",aY:"Y",pAll:"ALL",
 gestureHint:"Tip: pinch to zoom, drag to pan the period (mouse wheel on desktop)",sTWR:"Period TWR (ann.)",sMWR:"Period MWR (ann.)",sNet:"Net contributions",
@@ -543,7 +548,7 @@ symbol:"Ticker",assetName:"Asset name",currency:"Currency",location:"Account loc
 side:"Side",buy:"Buy",sell:"Sell",deposit:"Deposit / withdraw funds (negative = withdraw)",cashDeposit:"Deposit funds",cashWithdraw:"Withdraw funds",cashDepositHint:"Deposited funds count as an external cash flow (does not distort return calculations).",cashWithdrawHint:"Withdrawn funds count as an external cash flow (principal decreases).",price:"Price (per unit)",units:"Units",amount:"Amount (can be negative)",
 date:"Trade date",save:"Save",cancel:"Cancel",delete:"Delete",defaultLoc:"Default",
 cash:"Cash",unrealPL:"Unrealized P/L",costBasis:"Cost",mktVal:"Market value",qty:"Qty",
-noHoldings:"No holdings yet. Tap “＋ Add” to enter your first trade.",sortMvDesc:"Value ↓",sortMvAsc:"Value ↑",sortDayDesc:"Day % ↓",sortDayAsc:"Day % ↑",sortPlDesc:"Return ↓",sortPlAsc:"Return ↑",sortMv:"Value",sortDayPct:"Price (Day %)",sortDayPL:"Day P/L",allSymbols:"All symbols",allTxnTypes:"All transactions",analysis:"Analysis",analysisTitle:"Portfolio Analysis",asOf:"As of",catWeight:"Asset allocation",overallPerf:"Overall performance",perfHint:"Portfolio TWR vs major indices over the same period",perfNote:"Indices are adjusted-price total return, for reference only",riskPerf:"Risk & performance",maxDrawdown:"Max drawdown",volatility:"Volatility (annualized)",sharpe:"Sharpe ratio",tradingDays:"trading days",metricsInsufficient:"Insufficient period ({n} trading days, need ≥30)",metricsNote:"Drawdown is based on the TWR curve (excludes cash flows); volatility annualized; Sharpe uses 4% risk-free rate; Beta vs SPY. For reference only.",corrTitle:"Asset correlation",corrInsufficient:"Need at least two holdings with sufficient history",corrNote:"Pearson correlation of daily returns over ~1 year. +1 (red) move together, -1 (blue) move opposite, 0 unrelated. Lower correlation means more effective diversification.",guruTitle:"Track investing gurus",guruHint:"Data from US SEC 13F public filings",pickGuru:"Choose a guru…",reportDate:"Filing quarter",guruTotal:"US long total",positions:"positions",guruFail:"Filing data temporarily unavailable",privacyLbl:"Privacy mode",privacyHint:"When on, amounts are hidden by default after each login; tap the total net assets anytime to toggle show/hide",plModeLbl:"P/L display",plModeHint:"Default P/L shown under the total card",plModeTotal:"Total P/L",plModeDaily:"Daily change",plDailyTag:"today",lblTotalPL:"Total P/L",lblDaily:"Daily",shareLbl:"Share return",shareHint:"Generate a card with returns only, no amounts",shareBtn:"Share",shareTitle:"Return snapshot",shareNote:"This snapshot contains returns only — no amounts — safe to share.",since:"Since",shareDisclaimer:"For reference only, not investment advice",shareSave:"Save image",imgSaved:"Image saved",imgFailed:"Save failed, try again",newsDisclaimer:"News is aggregated from third-party sources. This app provides headline indexing and links only — it does not reproduce article content. Copyright belongs to the original publishers; tapping a headline opens the source.",grpType:"Transaction type",grpSymbol:"Holdings",pickLoc:"Pick existing location",emptyWelcome:"Welcome to WealthLens! Add your first transaction, or load the demo portfolio to explore.",loadDemo:"Load demo",today:"today",mktValue:"Market value",avgCost:"Avg cost",plLbl:"P/L",noPositionNow:"No current position (history closed)",dataSrcLbl:"Source",txnHistory:"Transaction history",sparkLoading:"Loading price history…",sparkUnavailable:"Price history unavailable for this asset",sparkOffline:"No live chart in offline mode",delAllOfSym:"Delete all txns of this asset",delAllShort:"Delete all",newTxnShort:"Add",confirmDelAll:"Delete ALL transactions of {sym}? This cannot be undone",close:"Close",noTxn:"No transactions yet",noNews:"No related news",
+noHoldings:"No holdings yet. Tap “＋ Add” to enter your first trade.",sortMvDesc:"Value ↓",sortMvAsc:"Value ↑",sortDayDesc:"Day % ↓",sortDayAsc:"Day % ↑",sortPlDesc:"Return ↓",sortPlAsc:"Return ↑",sortMv:"Value",sortDayPct:"Price (Day %)",sortDayPL:"Day P/L",allSymbols:"All symbols",allTxnTypes:"All transactions",analysis:"Analysis",analysisTitle:"Portfolio Analysis",asOf:"As of",catWeight:"Asset allocation",overallPerf:"Overall performance",perfHint:"Portfolio TWR vs major indices over the same period",perfNote:"Indices are adjusted-price total return, for reference only",riskPerf:"Risk & performance",maxDrawdown:"Max drawdown",volatility:"Volatility (annualized)",sharpe:"Sharpe ratio",tradingDays:"trading days",metricsInsufficient:"Insufficient period ({n} trading days, need ≥30)",metricsNote:"Drawdown is based on the TWR curve (excludes cash flows); volatility annualized; Sharpe uses 4% risk-free rate; Beta vs SPY. For reference only.",corrTitle:"Asset correlation",corrInsufficient:"Need at least two holdings with sufficient history",corrNote:"Pearson correlation of daily returns over ~1 year. +1 (red) move together, -1 (blue) move opposite, 0 unrelated. Lower correlation means more effective diversification.",guruTitle:"Track investing gurus",guruHint:"Data from US SEC 13F public filings",pickGuru:"Choose a guru…",reportDate:"Filing quarter",guruTotal:"US long total",positions:"positions",guruFail:"Filing data temporarily unavailable",privacyLbl:"Privacy mode",privacyHint:"When on, amounts are hidden by default after each login; tap the total net assets anytime to toggle show/hide",plModeLbl:"P/L display",plModeHint:"Default P/L shown under the total card",plModeTotal:"Total P/L",plModeDaily:"Daily change",plDailyTag:"today",lblTotalPL:"Total P/L",lblDaily:"Daily",shareLbl:"Share return",shareHint:"Generate a card with returns only, no amounts",shareBtn:"Share",shareTitle:"Return snapshot",shareNote:"This snapshot contains returns only — no amounts — safe to share.",since:"Since",shareDisclaimer:"For reference only, not investment advice",shareSave:"Save image",imgSaved:"Image saved",imgFailed:"Save failed, try again",newsDisclaimer:"News is aggregated from third-party sources. This app provides headline indexing and links only — it does not reproduce article content. Copyright belongs to the original publishers; tapping a headline opens the source.",grpType:"Transaction type",grpSymbol:"Holdings",pickLoc:"Pick existing location",emptyWelcome:"Welcome to AlphaNexus! Add your first transaction, or load the demo portfolio to explore.",loadDemo:"Load demo",today:"today",mktValue:"Market value",avgCost:"Avg cost",plLbl:"P/L",noPositionNow:"No current position (history closed)",dataSrcLbl:"Source",txnHistory:"Transaction history",sparkLoading:"Loading price history…",sparkUnavailable:"Price history unavailable for this asset",sparkOffline:"No live chart in offline mode",delAllOfSym:"Delete all txns of this asset",delAllShort:"Delete all",newTxnShort:"Add",confirmDelAll:"Delete ALL transactions of {sym}? This cannot be undone",close:"Close",noTxn:"No transactions yet",noNews:"No related news",
 confirmDel:"Delete this transaction?",saved:"Saved",deleted:"Deleted",cleared:"All data cleared",seeded:"Demo portfolio loaded",
 profile:"Profile",nickname:"Nickname",avatar:"Avatar",oldPwd:"Old password",newPwd:"New password",pwdChanged:"Password updated",pwdWrong:"Old password incorrect",
 guestMode:"Guest mode (data stays on this device)",memberMode:"Signed in",fillEmail:"Please enter email and password",liveData:"Live data",simData:"Simulated data",loading:"Loading…",pwdTooShort:"Password too short (min 4)",tDividend:"Dividend",tInterest:"Interest",fee:"Fee",customSrc:"Custom data sources",tFee:"Fee",verifyTitle:"A verification code was sent to your email; enter it within 15 minutes",verifyBtn:"Verify & register",resendBtn:"Resend",resendOk:"Code resent",resendWait:"Please wait 60s before resending",codeWrong:"Incorrect code",codeExpired:"Code expired, please resend",codeTooMany:"Too many attempts, please register again",mailFailed:"Failed to send email, try again later",tLiability:"Liability",expHint:"Fees/liabilities are deducted from cash and naturally reduce returns (not external flows)",autoDivNote:"Estimated dividend auto-booked by the system; editing converts it to a manual record",confirmDelAutoDiv:"This is an auto-booked dividend (derived from a holding). After deletion, recalculation will not regenerate it. Delete?",confirmEditAutoDiv:"Editing converts this dividend to a MANUAL record; future recalculation will not overwrite it (including auto-adjustment when holdings change). Prefer auto-dividends to stay in sync. Continue?",transfer:"Transfer",transferHint:"Move part of a holding from one location to another (neutral internal transfer; no P/L or return impact). From the transfer date, each location computes its own subsequent dividends.",transferFrom:"From (source)",transferTo:"To (destination)",transferUnits:"Units to transfer",transferSameLoc:"Source and destination are the same",transferTooMuch:"Exceeds available units (max {n})",transferDone:"Transfer complete",confirmDelStockWithDiv:"After deleting this stock/bond transaction, the system recalculates this symbol's auto-dividends in that location based on the new holdings (amounts adjust if shares decrease; removed if they reach zero). Dividends you edited manually are unaffected. Delete?",confirmDelStockCutXfer:"Deleting this transaction would leave {n} transfer(s) without enough source shares; the system will also remove those transfers and recalculate auto-dividends in all affected locations. Manually edited dividends are unaffected. Delete?",moveLocWithDiv:"You changed this holding's location (from {from} to {to}). Move all auto-dividends of this symbol at {from} to {to} as well? (Manual dividend records are not moved.)",manualDivWarn:"Please confirm the system has not already auto-booked this dividend (holdings with a matching ex-date are booked automatically). Auto-dividends adjust when holdings change; manual entries must be maintained yourself. Add manually anyway?",grossLbl:"Gross",autoDivLbl:"Auto dividend booking",autoDivHint:"Booked on ex-date based on holdings (editable per entry)",divTaxLbl:"Dividend withholding tax",divTaxHint:"Auto dividends are booked net of tax; default 0%",divTaxApplied:"Auto dividends updated:",customSrcWarn:"This is a custom third-party source; data may break if the target site changes.",exclOpt:"Curve excludes options value",evDiv:"dividend",evSplit:"split",perShare:"sh",expenseTotalLbl:"Total fees/liabilities",customSrcHint:"Feed any API via JSONPath",customSrcDesc:"Provide an API URL plus JSONPath for dates/prices to track any fund, bond or product. After saving, use the symbol directly in transactions.",manage:"Manage",csvLbl:"Transactions CSV",csvHint:"Export a backup, or import from brokers/other apps",exportCsv:"Export",importCsv:"Import",exported:"Exported",importedN:"Imported",importReplaceQ:"OK = replace all existing transactions; Cancel = merge.",importBad:"Could not parse CSV",needLive:"Requires live-data mode (open via the server)",srcUrl:"API URL",datePath:"Date path (JSONPath)",pricePath:"Price path (JSONPath)",testBtn:"Test",testOk:"Parsed",rowsLbl:"rows",noCustomSrc:"No custom sources yet",feeOpt:"Fee (optional)",optional:"optional",incomeReceived:"Received",divTTM:"TTM div ≈",incomeTotalLbl:"Total dividend/interest income",divHint:"Dividends/interest are added to cash and reflected in TWR/MWR (not treated as external flows)",
@@ -1528,7 +1533,7 @@ function openShareSnapshot(){
     <div class="tiny" style="margin-bottom:12px">${T("shareNote")}</div>
     <div id="shareCard" style="background:linear-gradient(135deg,#1a2940,#0d1626);color:#fff;border-radius:14px;padding:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-weight:700;letter-spacing:.5px">WealthLens</div>
+        <div style="font-weight:700;letter-spacing:.5px">AlphaNexus</div>
         <div style="font-size:11px;opacity:.6">${T("since")} ${since}</div>
       </div>
       <svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:70px;margin:4px 0 12px"><path d="${dpath}" fill="none" stroke="${pts[pts.length-1]>=0?"#3EC28F":"#E5616B"}" stroke-width="2"/></svg>
@@ -1549,7 +1554,7 @@ function openShareSnapshot(){
       const file=new File([blob],"wealthlens-return.png",{type:"image/png"});
       // 優先系統分享面板(iOS/Android 可選「儲存影像/加入相簿」)
       if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:"WealthLens",text:T("shareDisclaimer")});
+        await navigator.share({files:[file],title:"AlphaNexus",text:T("shareDisclaimer")});
       }else{
         // 退回:直接下載 PNG
         const url=URL.createObjectURL(blob);
@@ -1578,7 +1583,7 @@ function renderSnapshotPNG({rows,pts,since,green}){
     const up="#3EC28F", dn="#E5616B";
     // 標題列
     x.fillStyle="#fff"; x.font="700 17px sans-serif"; x.textAlign="left"; x.textBaseline="alphabetic";
-    x.fillText("WealthLens",20,34);
+    x.fillText("AlphaNexus",20,34);
     x.fillStyle="rgba(255,255,255,.6)"; x.font="11px sans-serif"; x.textAlign="right";
     x.fillText(T("since")+" "+since,W-20,33);
     // 迷你曲線
@@ -4639,8 +4644,7 @@ function bindMe(){
     else if(state.user&&state.user.guest){ await kvSet("app_settings_guest",state.settings); await kvSet("app_txns_guest",state.txns) }
     // 3. 清空 state → 預設值
     if(LIVE&&state.token)apiPost("/api/auth/logout",{}).catch(()=>{});
-    state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
-    state.chart.comps=[];renderCmpTags();
+    state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
     await kvSet("app_token",null);
     state.privacyOn=true;
     applyTheme();applyI18n();
@@ -4656,8 +4660,7 @@ function bindMe(){
         // 清除用戶專屬設定
         const em=currentUserEmail();
         if(em){ await kvSet(userKey(em),null); await kvSet(txnsKey(em),null) }
-        state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
-        state.chart.comps=[];renderCmpTags();
+        state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
         await kvSet("app_token",null);
         state.privacyOn=true;
         applyTheme();applyI18n();
@@ -4724,19 +4727,20 @@ function onChartLocPick(val){
 function applySettingsSideEffects(){
   state.privacyOn=state.settings.privacy!==false;
   state.chart.ctype=state.settings.ctype;
-  // 還原持久化的比較項(去重、限上限),讓用戶不必每次登入重加
-  if(Array.isArray(state.settings.chartComps)){
-    state.chart.comps=[...new Set(state.settings.chartComps)].slice(0,CMP_MAX);
-  }
   syncChartType();
+}
+/* 從 settings 還原比較項到執行時的 state.chart.comps。只在「載入用戶資料時」呼叫一次,
+   不放在每次重繪的 applySettingsSideEffects,避免覆蓋用戶剛做的增刪。去重、限上限。 */
+function restoreChartComps(){
+  state.chart.comps=Array.isArray(state.settings.chartComps)
+    ?[...new Set(state.settings.chartComps)].slice(0,CMP_MAX):[];
 }
 function refreshAllCore(){
   applySettingsSideEffects();
   applyTheme();applyI18n();
-  renderCmpTags();
   renderAssets();
   renderLocChips("locFilterChart",state.chart.locFilter,onChartLocPick);
-  refreshChartCore();renderNews();renderMe();updateLiveBadge();
+  refreshChartCore();renderCmpTags();renderNews();renderMe();updateLiveBadge();
 }
 function refreshAll(){refreshAllCore();scheduleLive()}
 async function init(){
@@ -4831,7 +4835,7 @@ async function init(){
         state.settings={...DEFAULT_SETTINGS,...localSt};
       }
     }catch(e){}
-    applySettingsSideEffects();
+    applySettingsSideEffects();restoreChartComps();
     await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
   }
   $("#btnLogin").onclick=async()=>{
@@ -4865,7 +4869,7 @@ async function init(){
     else state.settings={...DEFAULT_SETTINGS};
     const localTx=await kvGet("app_txns_"+b64enc(em));
     if(localTx)state.txns=localTx;
-    applySettingsSideEffects();
+    applySettingsSideEffects();restoreChartComps();
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
   $("#btnVerify").onclick=async()=>{
@@ -4900,10 +4904,10 @@ async function init(){
     else{state.txns=[];seedDemo()}
     applySettingsSideEffects();
     await kvSet("app_last_user","guest");
-    applyTheme();applyI18n();
+    applyTheme();applyI18n();restoreChartComps();
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
-  if(state.user){$("#authScreen").style.display="none";refreshAll()}
+  if(state.user){restoreChartComps();$("#authScreen").style.display="none";refreshAll()}
   switchTab("assets");
 }
 init();

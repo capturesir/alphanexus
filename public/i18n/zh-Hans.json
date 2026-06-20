@@ -1,5 +1,5 @@
 {
- "appName": "WealthLens",
+ "appName": "AlphaNexus",
  "appTag": "跨平台投资组合追踪 · TWR / MWR",
  "email": "邮箱",
  "password": "密码",
@@ -165,7 +165,7 @@
  "grpType": "交易类型",
  "grpSymbol": "持仓代码",
  "pickLoc": "选取已有位置",
- "emptyWelcome": "欢迎使用 WealthLens！添加第一笔交易,或载入示范组合开始体验",
+ "emptyWelcome": "欢迎使用 AlphaNexus！添加第一笔交易,或载入示范组合开始体验",
  "loadDemo": "载入示范",
  "today": "今日",
  "mktValue": "市值",

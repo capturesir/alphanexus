@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* =========================================================================
-   WealthLens Server v0.1 — 零依賴 Node.js (>=18) 後端
+   AlphaNexus Server v0.1 — 零依賴 Node.js (>=18) 後端
    本版升級(借鏡 Ghostfolio / Portfolio Performance 架構):
    1. 數據源抽象層 + 備援鏈:
         歷史價  : Yahoo Finance(主) → Stooq(備,美/港/日股)→ 過期庫存
@@ -331,7 +331,7 @@ const GURUS = [
   { id: "appaloosa", name: "Appaloosa", who: "David Tepper", cik: "0001656456" },
   { id: "duquesne", name: "Duquesne Family Office", who: "Stanley Druckenmiller", cik: "0001536411" }
 ];
-const SEC_UA = process.env.SEC_UA || "WealthLens portfolio-tracker contact@example.com";
+const SEC_UA = process.env.SEC_UA || "AlphaNexus portfolio-tracker contact@example.com";
 async function secFetch(url, asText) {
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 12000);
@@ -697,13 +697,13 @@ const mailer = {
       let buf = "", step = 0;
       const b64 = s => Buffer.from(s).toString("base64");
       const msg = [
-        `From: WealthLens <${SMTP.from}>`, `To: <${to}>`,
+        `From: AlphaNexus <${SMTP.from}>`, `To: <${to}>`,
         `Subject: =?UTF-8?B?${b64(subject)}?=`,
         `MIME-Version: 1.0`, `Content-Type: text/plain; charset=utf-8`, ``,
         text, ``
       ].join("\r\n");
       const steps = [
-        { expect: 220, cmd: `EHLO wealthlens` },
+        { expect: 220, cmd: `EHLO alphanexus` },
         { expect: 250, cmd: `AUTH LOGIN` },
         { expect: 334, cmd: b64(SMTP.user) },
         { expect: 334, cmd: b64(SMTP.pass) },
@@ -773,8 +773,8 @@ const genCode = () => String(crypto.randomInt(100000, 1000000));
 async function sendVerifyCode(email, code) {
   await mailer.send({
     to: email,
-    subject: "WealthLens 註冊驗證碼 / Verification Code",
-    text: `您的 WealthLens 註冊驗證碼為:${code}\n15 分鐘內有效。若非本人操作請忽略本郵件。\n\nYour WealthLens verification code is: ${code}\nIt expires in 15 minutes.`
+    subject: "AlphaNexus 註冊驗證碼 / Verification Code",
+    text: `您的 AlphaNexus 註冊驗證碼為:${code}\n15 分鐘內有效。若非本人操作請忽略本郵件。\n\nYour AlphaNexus verification code is: ${code}\nIt expires in 15 minutes.`
   });
 }
 
@@ -1109,7 +1109,7 @@ server.requestTimeout = 30000;   // 慢速請求(slowloris)防護
 server.headersTimeout = 35000;
 
 if (require.main === module) {
-  server.listen(PORT, () => log(`WealthLens server v0.1 listening on http://localhost:${PORT}`));
+  server.listen(PORT, () => log(`AlphaNexus server v0.1 listening on http://localhost:${PORT}`));
   if (PREFETCH_HOUR >= 0) setInterval(() => {
     const now = new Date(), day = now.toISOString().slice(0, 10);
     if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {

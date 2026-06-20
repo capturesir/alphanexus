@@ -1,5 +1,5 @@
 {
- "appName": "WealthLens",
+ "appName": "AlphaNexus",
  "appTag": "跨平台投資組合追蹤 · TWR / MWR",
  "email": "電郵",
  "password": "密碼",
@@ -165,7 +165,7 @@
  "grpType": "交易類型",
  "grpSymbol": "持倉代碼",
  "pickLoc": "選取已有位置",
- "emptyWelcome": "歡迎使用 WealthLens！新增第一筆交易,或載入示範組合開始體驗",
+ "emptyWelcome": "歡迎使用 AlphaNexus！新增第一筆交易,或載入示範組合開始體驗",
  "loadDemo": "載入示範",
  "today": "今日",
  "mktValue": "市值",

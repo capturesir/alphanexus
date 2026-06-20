@@ -4372,9 +4372,9 @@ function renderDivCalendar(){
   months.forEach((v,i)=>{
     const h=Math.round(v/maxV*100);
     const cur=i===curMon;
-    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;overflow:hidden">
-      <div class="tiny num" style="font-size:clamp(6px,2vw,8px);color:var(--ink3);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${v>0?fmtMoney(v,base,true):""}</div>
-      <div style="width:100%;height:${h}%;min-height:${v>0?3:0}px;background:${cur?"var(--blue)":"var(--line2,#c9d2e3)"};border-radius:3px 3px 0 0" title="${monNames[i]}月: ${fmtMoney(v,base)}"></div>
+    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0">
+      <div class="tiny num" style="font-size:clamp(6px,1.8vw,8px);color:var(--ink3);margin-bottom:2px;white-space:nowrap">${v>0?fmtMoney(v,base,true):""}</div>
+      <div style="width:80%;height:${h}%;min-height:${v>0?3:0}px;background:${cur?"var(--blue)":"var(--line2,#c9d2e3)"};border-radius:3px 3px 0 0" title="${monNames[i]}月: ${fmtMoney(v,base)}"></div>
       <div class="tiny" style="font-size:clamp(7px,2.5vw,9px);margin-top:3px;color:${cur?"var(--blue)":"var(--ink3)"};font-weight:${cur?"700":"400"}">${monNames[i]}</div>
     </div>`;
   });

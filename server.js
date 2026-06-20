@@ -487,7 +487,7 @@ async function getGuru(id) {
   const total = rows.reduce((s, r) => s + r.value, 0);
   const top = rows.slice(0, 10).map(r => ({ name: r.name, value: r.value, shares: r.shares, pct: total > 0 ? r.value / total : 0 }));
   const out = {
-    id, name: guru.name, who: guru.who, reportDate,
+    id, name: guru.name, who: guru.who, cik: guru.cik, reportDate,
     totalValue: total, holdings: rows.length, top,
     note: "僅美股多頭,不含現金/債券/海外/做空;季末後最多 45 天公布"
   };

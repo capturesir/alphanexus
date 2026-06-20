@@ -170,7 +170,7 @@ async function run() {
   const multi = S5.parseInfoTable(`<infoTable><nameOfIssuer>A</nameOfIssuer><value>100</value></infoTable><infoTable><nameOfIssuer>B</nameOfIssuer><value>200</value></infoTable>`);
   ok(multi.length === 2 && multi[1].value === 200, "F2 parseInfoTable 解析多筆");
   ok(Array.isArray(S5.GURUS) && S5.GURUS.some(g => g.who === "Warren Buffett"), "F3 大師清單含巴菲特");
-  ok(S5.GURUS.length === 10 && S5.GURUS.every(g => g.tag && g.warn), "F4 大師擴充至10位且皆有風格標籤與失真警告等級");
+  ok(S5.GURUS.length === 13 && S5.GURUS.every(g => g.tag && g.warn), "F4 大師擴充至13位且皆有風格標籤與失真警告等級");
   ok(S5.GURUS.some(g => g.id === "citadel" && g.warn === "high") && S5.GURUS.some(g => g.id === "himalaya" && g.warn === "low"), "F4 高周轉標 high、長期價值標 low");
   // 大師檔案讀寫工具
   ok(S5.guruWrite("testguru", "holdings", { q: ["2025Q1"], data: [1, 2] }) === true, "F5 guruWrite 寫入");
@@ -258,10 +258,10 @@ async function run() {
   })();
 
   // ---- F8. CUSIP → ticker 對映 ----
-  ok(S5.cusipToTicker("037833100", "APPLE INC") === "AAPL", "F8 已知 CUSIP 對到 ticker");
-  ok(S5.cusipToTicker("594918104", "MICROSOFT CORP") === "MSFT", "F8 CUSIP 前6碼對映");
-  ok(S5.cusipToTicker("999999999", "冷門小股") === null, "F8 未知 CUSIP 回 null(計入未涵蓋)");
-  ok(S5.cusipToTicker("", "無CUSIP") === null, "F8 空 CUSIP 回 null");
+  ok((await S5.cusipToTicker("037833100", "APPLE INC")) === "AAPL", "F8 已知 CUSIP 對到 ticker");
+  ok((await S5.cusipToTicker("594918104", "MICROSOFT CORP")) === "MSFT", "F8 CUSIP 前6碼對映");
+  ok((await S5.cusipToTicker("999999999", "冷門小股")) === null, "F8 未知 CUSIP 回 null(計入未涵蓋)");
+  ok((await S5.cusipToTicker("", "無CUSIP")) === null, "F8 空 CUSIP 回 null");
   ok(Object.keys(S5.CUSIP_TICKER).length >= 50, "F8 對照表涵蓋常見大型股(≥50)");
 
   // ---- G. 儲存層(Store)介面契約 ----

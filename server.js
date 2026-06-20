@@ -336,7 +336,10 @@ const GURUS = [
   { id: "citadel", name: "Citadel Advisors", who: "Ken Griffin", cik: "0001423053", tag: "macro", warn: "high" },
   { id: "point72", name: "Point72", who: "Steven Cohen", cik: "0001603466", tag: "macro", warn: "high" },
   { id: "tiger", name: "Tiger Global", who: "Chase Coleman", cik: "0001167483", tag: "growth", warn: "high" },
-  { id: "ark", name: "ARK Investment", who: "Cathie Wood", cik: "0001697748", tag: "growth", warn: "high" }
+  { id: "ark", name: "ARK Investment", who: "Cathie Wood", cik: "0001697748", tag: "growth", warn: "high" },
+  { id: "bridgewater", name: "Bridgewater Associates", who: "Ray Dalio", cik: "0001350694", tag: "macro", warn: "mid" },
+  { id: "thirdpoint", name: "Third Point", who: "Dan Loeb", cik: "0001040273", tag: "value", warn: "mid" },
+  { id: "baupost", name: "Baupost Group", who: "Seth Klarman", cik: "0001061768", tag: "value", warn: "low" }
 ];
 const SEC_UA = process.env.SEC_UA || "AlphaNexus portfolio-tracker contact@example.com";
 async function secFetch(url, asText) {
@@ -494,10 +497,80 @@ async function getGuru(id) {
 
 /* 抓某大師某一期 13F 的持倉(回 [{name,cusip,shares,value}] 與 reportDate)。
    accessionIdx:在 recent.form 中第幾個 13F-HR(0=最新)。供多季抓取。 */
-/* CUSIP → ticker 對照表(做法4):涵蓋大師最常持有的大型股。
-   13F 用 CUSIP,抓價需 ticker;此表 + 名稱輔助比對解析 ticker。
-   涵蓋不到的冷門股計入「未涵蓋比例」(由 computeGuruNavSeries 的涵蓋率機制處理)。
-   實機可逐步擴充此表以提高涵蓋率。CUSIP 取前 8 碼(發行體),忽略末碼。 */
+/* CUSIP → ticker 自動解析(三層查找):
+   ① 9碼快取(cusip_cache.json,自動累積)
+   ② 6碼硬編碼對照表(CUSIP_TICKER,兜底)
+   ③ OpenFIGI API(免費,自動查詢+快取)
+   快取檔: data/cusip_cache.json */
+const CUSIP_CACHE_PATH = (() => {
+  const p = require("path");
+  const dataDir = process.env.WL_DATA_DIR || p.join(process.cwd(), "data");
+  return p.join(dataDir, "cusip_cache.json");
+})();
+let _cusipCache = null;
+function cusipCacheLoad() {
+  if (_cusipCache) return _cusipCache;
+  try { _cusipCache = JSON.parse(require("fs").readFileSync(CUSIP_CACHE_PATH, "utf8")); }
+  catch { _cusipCache = {}; }
+  return _cusipCache;
+}
+function cusipCacheSave() {
+  if (!_cusipCache) return;
+  try { require("fs").writeFileSync(CUSIP_CACHE_PATH, JSON.stringify(_cusipCache, null, 2)); }
+  catch { /* ignore write errors */ }
+}
+/* OpenFIGI rate limiter: max 20 req/min for free tier */
+let _figiQueue = [], _figiLast = 0;
+async function openFigiResolve(cusip9) {
+  if (!cusip9 || cusip9.length < 6) return null;
+  const cache = cusipCacheLoad();
+  if (cache[cusip9]) return cache[cusip9];
+  // Rate limit: wait if needed
+  const now = Date.now();
+  const wait = Math.max(0, 3100 - (now - _figiLast)); // ~20/min
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  _figiLast = Date.now();
+  try {
+    const ctl = new AbortController();
+    const tm = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch("https://api.openfigi.com/v3/mapping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{ idType: "ID_CUSIP", idValue: cusip9 }]),
+      signal: ctl.signal
+    });
+    clearTimeout(tm);
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (data && data[0] && data[0].data && data[0].data[0]) {
+      const ticker = data[0].data[0].ticker;
+      if (ticker) {
+        cache[cusip9] = ticker;
+        cusipCacheSave();
+        return ticker;
+      }
+    }
+  } catch { /* timeout or network error */ }
+  return null;
+}
+/* 由 CUSIP(9碼) + 名稱推 ticker。三層查找。 */
+async function cusipToTicker(cusip, name) {
+  if (!cusip) return null;
+  const c9 = cusip.replace(/\s/g, "").toUpperCase();
+  const c6 = c9.slice(0, 6);
+  // ① 9碼快取
+  const cache = cusipCacheLoad();
+  if (cache[c9]) return cache[c9];
+  // ② 6碼硬編碼表
+  const t = CUSIP_TICKER[c6];
+  if (t && t.trim()) return t.trim();
+  // ③ OpenFIGI 自動查詢(非同步,僅美股/ETF CUSIP)
+  if (/^[0-9]/.test(c9) && c9.length >= 9) {
+    const resolved = await openFigiResolve(c9);
+    if (resolved) return resolved;
+  }
+  return null;
+}
 const CUSIP_TICKER = {
   "037833": "AAPL", "594918": "MSFT", "023135": "AMZN", "02079K": "GOOGL", "30303M": "META",
   "67066G": "NVDA", "88160R": "TSLA", "084670": "BRK.B", "478160": "JNJ", "46625H": "JPM",
@@ -505,22 +578,26 @@ const CUSIP_TICKER = {
   "92343V": "VZ", "166764": "CVX", "30231G": "XOM", "931142": "WMT", "458140": "INTC",
   "00206R": "T", "713448": "PEP", "191216": "KO", "532457": "LLY", "002824": "ABBV",
   "58933Y": "MRK", "717081": "PFE", "68389X": "ORCL", "11135F": "AVGO", "20030N": "CMCSA",
-  "254687": "DIS", "17275R": "CSCO", "883556": "TMO", "01609W": "BABA", "87403B": "TSM",
-  "771049": "RACE", "152434": "CMG", "76131D": "RBLX", "29786A": "ETSY", "G29183": "QGEN",
+  "254687": "DIS", "17275R": "CSCO", "883556": "TMO", "01609W": "BABA", "874039": "TSM",
+  "771049": "RACE", "152434": "CMG",  "76131D": "QSR","29786A": "ETSY", "G29183": "QGEN",
   "75513E": "RH", "302130": "EXPE", "00507V": " ", "045167": "ASML", "747525": "QCOM",
   "025816": "AXP", "172967": "C", "949746": "WFC", "38141G": "GS", "617446": "MS",
   "70450Y": "PYPL", "82509L": "SHOP", "G87110": "TLW", "98980L": "ZM", "01609B": "BABA",
   "459200": "IBM", "12508E": "CDAY", "55024U": "LULU", "278642": "EBAY", "278658": "ECL",
   "92556H": "VICI", "16119P": "CHTR", "G0750C": "ACN", "44890M": "HUBS", "983134": "WYNN",
-  "126650": "CVS", "452308": " ", "00724F": "ADBE", "79466L": "CRM", "L8681T": "STLA"
+  "126650": "CVS", "452308": " ", "00724F": "ADBE", "79466L": "CRM", "L8681T": "STLA",
+  "78462F": "SPY", "464287": "IVV", "464286": "IWM", "464288": "AGG",
+  "595112": "MU", "36828A": "GEV", "907818": "UNP", "036752": "ELV",
+  "235851": "DHR", "007903": "AMD", "573874": "MRVL", "038222": "AMAT",
+  "512807": "LRCX", "482480": "KLAC", "040413": "ANET", "651639": "NEM",
+  "144285": "CRS", "538034": "LYV", "893641": "TDG", "655844": "NSC",
+  "14040H": "COF", "95082P": "WCC", "879369": "TFX", "26969P": "EXP",
+  "372460": "GPC", "438516": "HON", "37940X": "GPN", "285512": "EA",
+  "76954A": "RIVN", "47215P": "JD", "69608A": "PLTR", "91324P": "UNH",
+  "375558": "GILD", "21873S": "CRWV", "44812J": "HUT", "879433": "TDS",
+  "81369Y": "XLK", "78463V": "GLD", "874039": "TSM", "76131D": "QSR"
 };
-/* 由 CUSIP(9碼)+ 名稱推 ticker。先查 CUSIP 前6碼;查不到回 null(計入未涵蓋)。 */
-function cusipToTicker(cusip, name) {
-  if (!cusip) return null;
-  const c6 = cusip.replace(/\s/g, "").slice(0, 6).toUpperCase();
-  const t = CUSIP_TICKER[c6];
-  return (t && t.trim()) ? t.trim() : null;
-}
+
 
 async function fetchGuru13F(guru, recent, formIdx) {
   const accession = recent.accessionNumber[formIdx].replace(/-/g, "");
@@ -543,7 +620,7 @@ async function fetchGuru13F(guru, recent, formIdx) {
   // 轉成 pct(占比),取前 20 大(避免長尾雜訊),pct 重新正規化
   const top = list.slice(0, 20);
   const topTotal = top.reduce((s, r) => s + r.value, 0) || 1;
-  return { reportDate, holdings: top.map(r => ({ name: r.name, cusip: r.cusip, sym: cusipToTicker(r.cusip, r.name), pct: r.value / topTotal })) };
+  return { reportDate, holdings: await Promise.all(top.map(async r => ({ name: r.name, cusip: r.cusip, sym: await cusipToTicker(r.cusip, r.name), pct: r.value / topTotal }))) };
 }
 
 /* 階段2:抓某大師過去 ~3 年(最多 quartersWanted 季)13F 持倉,存 holdings 檔。

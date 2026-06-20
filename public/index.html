@@ -321,7 +321,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     </div>
     <div class="card" id="newsList"></div>
     <div id="divCal" style="display:none"></div>
-    <div class="tiny" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6" data-i18n="newsDisclaimer">新聞由第三方來源聚合,本平台僅提供標題索引與原文連結,不轉載內文;版權歸原出版者所有,點擊將前往原始出處。</div>
+    <div class="tiny" id="newsDisclaimer" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6" data-i18n="newsDisclaimer">新聞由第三方來源聚合,本平台僅提供標題索引與原文連結,不轉載內文;版權歸原出版者所有,點擊將前往原始出處。</div>
   </section>
 
   <!-- 4. 個人中心 -->
@@ -4419,8 +4419,7 @@ function renderDivCalendar(){
       <div style="max-height:50vh;overflow-y:auto">${timeline}</div>
     </div>
     <div class="tiny" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6">${T("divCalDisclaimer")}</div>`;
-  // 預設定位到最接近現在的除淨日
-  setTimeout(()=>{const a=$("#divTlAnchor");if(a)a.scrollIntoView({block:"center"})},50);
+  // 不自動滾動,讓用戶從頂部自然瀏覽月度圖表
 }
 
 function renderNews(){
@@ -4877,6 +4876,7 @@ async function init(){
     const isDiv=state.newsTab==="div";
     $("#newsList").style.display=isDiv?"none":"";
     $("#divCal").style.display=isDiv?"block":"none";
+    $("#newsDisclaimer").style.display=isDiv?"none":"";
     if(isDiv)renderDivCalendar(); else renderNews();
   });
   Chart.init();bindChartUI();bindMe();syncChartType();renderCmpTags();

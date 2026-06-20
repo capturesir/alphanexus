@@ -23,7 +23,7 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Multi-market & multi-currency**: US stocks/ETFs, HK, China A-shares, Japan, crypto; balances auto-converted to a base currency using historical FX.
 - **Industry-standard accounting**: raw-price valuation + transaction restatement + internal cash transfers — correctly handles dividends, splits and fees, avoiding NAV distortion and double counting.
 - **Resilient data layer**: multi-source fallback, local persistence + incremental updates, post-market prefetch, request coalescing, gzip.
-- **Real account system**: scrypt password hashing, Bearer tokens, optional email verification, cloud portfolio sync.
+- **Real account system**: scrypt password hashing, Bearer tokens, optional email verification, optional 2FA (TOTP), cloud portfolio sync.
 - **Privacy & sharing**: one-tap privacy mode hides all amounts; share a returns-only (no amounts) performance card.
 - **Zero dependencies**: backend uses only Node.js built-ins — no `npm install`.
 
@@ -43,15 +43,22 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 ### Portfolio Analysis
 - **Asset allocation**: pie chart of cash / stocks / bonds / other, with weights and amounts.
 - **Overall performance**: portfolio TWR vs major indices (SPY, VT) over the same period.
-- **Track investing gurus**: powered by US SEC EDGAR 13F public filings — shows the latest-quarter top-10 holdings (name / value / weight) of gurus such as Buffett, Burry, Ackman, Dalio, Tepper and Druckenmiller; clearly noting limitations (US long positions only, up to 45-day lag after quarter-end, no cash).
+- **Track investing gurus**: powered by US SEC EDGAR 13F public filings — shows the latest-quarter top-10 holdings (name / value / weight) of 13 gurus: Buffett (Berkshire), Li Lu (Himalaya), Tepper (Appaloosa), Ackman (Pershing), Druckenmiller (Duquesne), Burry (Scion), Griffin (Citadel), Cohen (Point72), Coleman (Tiger Global), Wood (ARK), **Dalio (Bridgewater)**, **Loeb (Third Point)**, **Klarman (Baupost)**. CUSIPs are auto-resolved to tickers via the OpenFIGI API, with coverage up to 100%. Clearly notes limitations: US long positions only, up to 45-day lag after quarter-end, no cash.
+- **Dividend calendar**: monthly dividend estimates (based on trailing-12-month actual payouts), ex-dividend timeline (past-year real corporate actions above, hypothetical future ex-dates below).
 
 ### Performance Chart
 - Three metrics: NAV, TWR (time-weighted), MWR (money-weighted) — TWR and MWR share a cumulative basis and coincide when there are no external cash flows.
 - Four chart types: line, smooth curve, candlestick (daily/weekly/monthly/yearly aggregation).
 - **Gestures**: pinch-zoom, single-finger pan, long-press scrub (shows date + portfolio + every comparison series), lingering readout on release.
 - **Benchmark comparison**: add any ETF/stock (e.g. VT, SPY) overlaid as a total-return (adjusted-price) curve.
+- **Guru hypothetical curves**: select a guru to overlay a simulated NAV curve based on their quarterly 13F holdings; the disclaimer area provides a calculation methodology explanation and expandable latest holdings detail with SEC filing links.
 - **Event markers**: ex-dividend (💰) and split (✂️) icons on the X-axis; crosshair reveals details.
 - **Periods**: 1M / 3M / 6M / YTD / 1Y / 3Y / ALL, filterable by asset location.
+- **Interactive chart**: tap the chart icon next to any holding to enter; supports candlestick charts with 12 technical indicators.
+  - Indicator toolbox panel: toggle on/off and configure parameters; supports overlays (e.g. SMA) and separate panels (e.g. RSI).
+  - Indicators: SMA, EMA, RSI, MACD, Bollinger Bands, Stochastic/KD, VWAP, ATR, OBV, ADX, Parabolic SAR, Ichimoku Cloud.
+  - Crosshair sync: all indicator panels display values for the hovered trading day simultaneously.
+  - Indicator data range follows the main chart view range.
 - Options are excluded from the curve; the chart notes "excludes options value ±X".
 
 ### News
@@ -84,6 +91,7 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Persistence + incremental updates**: history stored in `data/market/`, served from store within 30 min, otherwise only the gap is fetched; full refetch only when a new split is detected.
 - **Post-market prefetch**: daily at 05:00 Taipei (`PREFETCH_HOUR`), refreshing all holdings and custom sources.
 - **Custom data sources**: feed any API via JSONPath (auto date detection, SSRF protection, repeated-failure alerts).
+- **Guru CUSIP auto-resolution**: SEC 13F CUSIPs are automatically resolved to stock tickers via the OpenFIGI API, with results cached in `data/cusip_cache.json` (zero maintenance, grows automatically).
 - **Pluggable news layer (auto-routed by market)**: **HK (.HK), China A-shares (.SS/.SZ) and Taiwan (.TW) tickers auto-query Google News in Chinese, Japan (.T) in Japanese, while US stays on Yahoo (English)** — all by company name — works with no configuration, attribution kept, no content reproduced. You can also set `NEWS_PROVIDER=rss` to force RSS for all, or `NEWS_PROVIDER=newsapi|marketaux` + `NEWS_API_KEY` for licensed sources. News is cached **per symbol** with request coalescing — each symbol is fetched at most once per cycle site-wide, regardless of user count.
 
 ## Project Structure
@@ -99,7 +107,7 @@ wealthlens/
 ├── package.json
 ├── README.md / README.en.md
 ├── DEPLOY.md              # VPS deployment guide
-└── data/                  # auto-created at runtime: users, portfolios, market cache
+└── data/                  # auto-created at runtime: users, portfolios, market cache, guru data, CUSIP cache
 ```
 
 ## Quick Start
@@ -112,6 +120,14 @@ PORT=3000 node server.js  # custom port
 ```
 
 Open `http://localhost:8080`. On first run, choose Guest mode and load the demo portfolio to explore instantly.
+
+### Building Guru Data
+
+Before using the investing gurus feature, run the one-time build on the server (fetches SEC 13F data + historical prices):
+
+```bash
+node server.js --build-gurus   # builds all gurus (~10–15 min)
+```
 
 ### Environment Variables
 
@@ -128,10 +144,10 @@ Open `http://localhost:8080`. On first run, choose Guest mode and load the demo 
 ## Testing
 
 ```bash
-npm test                  # engine (15) + backend (14) = 29 checks
+npm test                  # engine (75) + backend (57) = 132 checks
 ```
 
-Covers: ex-date NAV invariance, split restatement, option neutrality, fee handling, auto-dividends, cumulative MWR, quote fallback chain, incremental merge, JSONPath, CoinGecko, request coalescing, email verification.
+Covers: ex-date NAV invariance, split restatement, option neutrality, fee handling, auto-dividends, cumulative MWR, quote fallback chain, incremental merge, JSONPath, CoinGecko, request coalescing, email verification, settings isolation, CUSIP mapping.
 
 ## Deployment
 

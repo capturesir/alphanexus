@@ -4640,6 +4640,7 @@ function bindMe(){
     // 3. 清空 state → 預設值
     if(LIVE&&state.token)apiPost("/api/auth/logout",{}).catch(()=>{});
     state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
+    state.chart.comps=[];renderCmpTags();
     await kvSet("app_token",null);
     state.privacyOn=true;
     applyTheme();applyI18n();
@@ -4656,6 +4657,7 @@ function bindMe(){
         const em=currentUserEmail();
         if(em){ await kvSet(userKey(em),null); await kvSet(txnsKey(em),null) }
         state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};
+        state.chart.comps=[];renderCmpTags();
         await kvSet("app_token",null);
         state.privacyOn=true;
         applyTheme();applyI18n();
@@ -4731,6 +4733,7 @@ function applySettingsSideEffects(){
 function refreshAllCore(){
   applySettingsSideEffects();
   applyTheme();applyI18n();
+  renderCmpTags();
   renderAssets();
   renderLocChips("locFilterChart",state.chart.locFilter,onChartLocPick);
   refreshChartCore();renderNews();renderMe();updateLiveBadge();

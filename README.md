@@ -186,4 +186,4 @@ npm test                  # 引擎回歸(75)+ 後端(57),共 132 項
 
 ## 授權
 
-MIT License — 詳見 [LICENSE](LICENSE)。
+PolyForm Noncommercial License 1.0.0 — 非商用免費開源,商用需取得作者同意。詳見 [LICENSE](LICENSE)。

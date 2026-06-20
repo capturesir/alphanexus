@@ -186,4 +186,4 @@ Architecture inspired by two excellent open-source projects (concepts only, no c
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+PolyForm Noncommercial License 1.0.0 — free and open source for noncommercial use; commercial use requires the author's permission. See [LICENSE](LICENSE).

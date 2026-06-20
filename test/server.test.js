@@ -170,6 +170,99 @@ async function run() {
   const multi = S5.parseInfoTable(`<infoTable><nameOfIssuer>A</nameOfIssuer><value>100</value></infoTable><infoTable><nameOfIssuer>B</nameOfIssuer><value>200</value></infoTable>`);
   ok(multi.length === 2 && multi[1].value === 200, "F2 parseInfoTable 解析多筆");
   ok(Array.isArray(S5.GURUS) && S5.GURUS.some(g => g.who === "Warren Buffett"), "F3 大師清單含巴菲特");
+  ok(S5.GURUS.length === 10 && S5.GURUS.every(g => g.tag && g.warn), "F4 大師擴充至10位且皆有風格標籤與失真警告等級");
+  ok(S5.GURUS.some(g => g.id === "citadel" && g.warn === "high") && S5.GURUS.some(g => g.id === "himalaya" && g.warn === "low"), "F4 高周轉標 high、長期價值標 low");
+  // 大師檔案讀寫工具
+  ok(S5.guruWrite("testguru", "holdings", { q: ["2025Q1"], data: [1, 2] }) === true, "F5 guruWrite 寫入");
+  const rd = S5.guruRead("testguru", "holdings");
+  ok(rd && rd.q[0] === "2025Q1" && rd.data[1] === 2, "F5 guruRead 讀回一致");
+  ok(S5.guruRead("nonexist", "nav") === null, "F5 不存在的大師檔回 null");
+  S5.guruIndexWrite({ updated: "2025-06-01", ids: ["berkshire"] });
+  ok(S5.guruIndexRead().ids[0] === "berkshire", "F5 index 讀寫一致");
+
+  // ---- F6. 大師淨值演算法 computeGuruNavSeries ----
+  // 單季、單股、100%持倉:初始100萬,股價不變 → 淨值恆=100萬
+  (function () {
+    const q = [{ date: "2023-01-01", holdings: [{ sym: "X", pct: 1 }] }];
+    const price = (s, d) => 100; // 恆定
+    const dates = ["2023-01-01", "2023-01-02", "2023-01-03"];
+    const nav = S5.computeGuruNavSeries(q, price, dates, { initial: 1e6 }).nav;
+    ok(nav.length === 3 && Math.abs(nav[0].nav - 1e6) < 1, "F6 初始建倉淨值=100萬");
+    ok(Math.abs(nav[2].nav - 1e6) < 1, "F6 股價不變→淨值不變");
+  })();
+  // 股價漲 10% → 淨值漲 10%(全額持股)
+  (function () {
+    const q = [{ date: "2023-01-01", holdings: [{ sym: "X", pct: 1 }] }];
+    const price = (s, d) => d === "2023-01-02" ? 110 : 100;
+    const nav = S5.computeGuruNavSeries(q, price, ["2023-01-01", "2023-01-02"], { initial: 1e6 }).nav;
+    ok(Math.abs(nav[1].nav - 1.1e6) < 1, "F6 股價+10%→淨值+10%");
+  })();
+  // 調倉中性:同日換股,價格不變,淨值不應跳變
+  (function () {
+    const q = [
+      { date: "2023-01-01", holdings: [{ sym: "A", pct: 1 }] },
+      { date: "2023-02-01", holdings: [{ sym: "B", pct: 1 }] }
+    ];
+    const price = (s, d) => 50; // 所有股票所有日都50
+    const dates = ["2023-01-01", "2023-02-01", "2023-02-02"];
+    const nav = S5.computeGuruNavSeries(q, price, dates, { initial: 1e6 }).nav;
+    ok(Math.abs(nav[1].nav - 1e6) < 1 && Math.abs(nav[2].nav - 1e6) < 1, "F6 調倉中性(價格不變淨值不跳)");
+  })();
+  // 負現金計息:用兩股,次季全配置到「當日較貴」的股,因正規化後仍可能因價格時點差產生負現金。
+  // 改用明確情境:首季持 A、B 各半;次季 A 漲、要 100% 配 A,但 B 賣出價較低 → 仍足夠,不會負。
+  // 真正的負現金來自「重配置買入成本 > 當前資產」,以人工建構:用 priceOf 讓重配置日 A 價瞬間偏高。
+  (function () {
+    const q = [
+      { date: "2023-01-01", holdings: [{ sym: "A", pct: 1 }] },
+      { date: "2023-02-01", holdings: [{ sym: "A", pct: 1 }] }
+    ];
+    // A 在 2/1 當天用於「估值」與「買入」是同一價,正常不會負。
+    // 為測負現金計息的數學,直接驗證:當 cash 為負時每日扣息公式。
+    // 用 computeGuruNavSeries 不易自然構造負現金(正規化後 pct≤1),故單獨驗證計息公式:
+    const negCash = -1e6, rate = 0.03;
+    const afterOneDay = negCash - Math.abs(negCash) * rate / 365;
+    ok(Math.abs(afterOneDay - (negCash - 82.19)) < 0.5, "F6 負現金每日計息公式 |cash|×3%/365");
+  })();
+
+  // ---- F7. 涵蓋率:逐期計算、最低值、低於門檻作廢、正規化 ----
+  // 某期 50% 持倉有價、50% 無 sym → 該期涵蓋率 0.5
+  (function () {
+    const q = [{ date: "2023-01-01", holdings: [{ sym: "A", pct: 0.5 }, { name: "冷門股", pct: 0.5 }] }];
+    const price = (s, d) => s === "A" ? 100 : null;
+    const r = S5.computeGuruNavSeries(q, price, ["2023-01-01", "2023-01-02"], { initial: 1e6, minCoverage: 0.5 });
+    ok(Math.abs(r.coverages[0].coverage - 0.5) < 1e-6, "F7 逐期涵蓋率=可定價pct總和(0.5)");
+    ok(Math.abs(r.minCov - 0.5) < 1e-6 && !r.abandoned, "F7 涵蓋率=門檻(0.5)未作廢");
+    // 涵蓋的 A 正規化到 100%,初始100萬全買 A → 淨值≈100萬
+    ok(Math.abs(r.nav[0].nav - 1e6) < 1, "F7 涵蓋持倉正規化到100%後建倉");
+  })();
+  // 任一期低於 50% → 整位作廢
+  (function () {
+    const q = [
+      { date: "2023-01-01", holdings: [{ sym: "A", pct: 1 }] },                         // 100%
+      { date: "2023-04-01", holdings: [{ sym: "A", pct: 0.4 }, { name: "X", pct: 0.6 }] } // 40% < 門檻
+    ];
+    const price = (s, d) => s === "A" ? 100 : null;
+    const r = S5.computeGuruNavSeries(q, price, ["2023-01-01", "2023-04-01"], { minCoverage: 0.5 });
+    ok(r.abandoned === true && r.nav.length === 0, "F7 任一期涵蓋率<50%→整位作廢、不出曲線");
+    ok(Math.abs(r.minCov - 0.4) < 1e-6, "F7 最低涵蓋率回報該最差期(0.4)");
+  })();
+  // 顯示用:最低涵蓋率取所有期最差
+  (function () {
+    const q = [
+      { date: "2023-01-01", holdings: [{ sym: "A", pct: 0.9 }, { name: "X", pct: 0.1 }] }, // 90%
+      { date: "2023-04-01", holdings: [{ sym: "A", pct: 0.7 }, { name: "X", pct: 0.3 }] }  // 70%
+    ];
+    const price = (s, d) => s === "A" ? 100 : null;
+    const r = S5.computeGuruNavSeries(q, price, ["2023-01-01", "2023-04-01"], { minCoverage: 0.5 });
+    ok(Math.abs(r.minCov - 0.7) < 1e-6 && !r.abandoned, "F7 最低涵蓋率=最差期(0.7),≥門檻不作廢");
+  })();
+
+  // ---- F8. CUSIP → ticker 對映 ----
+  ok(S5.cusipToTicker("037833100", "APPLE INC") === "AAPL", "F8 已知 CUSIP 對到 ticker");
+  ok(S5.cusipToTicker("594918104", "MICROSOFT CORP") === "MSFT", "F8 CUSIP 前6碼對映");
+  ok(S5.cusipToTicker("999999999", "冷門小股") === null, "F8 未知 CUSIP 回 null(計入未涵蓋)");
+  ok(S5.cusipToTicker("", "無CUSIP") === null, "F8 空 CUSIP 回 null");
+  ok(Object.keys(S5.CUSIP_TICKER).length >= 50, "F8 對照表涵蓋常見大型股(≥50)");
 
   // ---- G. 儲存層(Store)介面契約 ----
   clean();

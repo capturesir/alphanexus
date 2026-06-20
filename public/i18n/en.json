@@ -142,6 +142,8 @@
  "guruTotal": "US long total",
  "positions": "positions",
  "guruFail": "Filing data temporarily unavailable",
+ "guruPickCmp": "＋ Add a guru hypothetical curve…",
+ "guruCmpNote": "Guru curves are hypothetical NAVs from quarterly 13F holdings (US long positions only, ~45-day lag, excludes cash/shorts/derivatives; the percentage is the lowest quarterly coverage). For reference only.",
  "privacyLbl": "Privacy mode",
  "privacyHint": "When on, amounts are hidden by default after each login; tap the total net assets anytime to toggle show/hide",
  "plModeLbl": "P/L display",

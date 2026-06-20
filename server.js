@@ -26,7 +26,8 @@ const DATA = process.env.WL_DATA_DIR ? path.resolve(process.env.WL_DATA_DIR) : p
 const CACHE_DIR = path.join(DATA, "cache");    // 短效快取(搜尋/新聞)
 const MARKET_DIR = path.join(DATA, "market");  // 市場數據持久庫(歷史價/匯率)
 const PORT_DIR = path.join(DATA, "portfolios");
-for (const d of [DATA, CACHE_DIR, MARKET_DIR, PORT_DIR]) fs.mkdirSync(d, { recursive: true });
+const GURU_DIR = path.join(DATA, "gurus");      // 投資大師持倉/淨值持久化(市場數據類,全站共用、唯讀)
+for (const d of [DATA, CACHE_DIR, MARKET_DIR, PORT_DIR, GURU_DIR]) fs.mkdirSync(d, { recursive: true });
 
 /* ---------------------- 小工具 ---------------------- */
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -323,13 +324,19 @@ async function customHistory(symbol, cfg) {
    公開資訊(美國政府資料,免費可引用)。限制:① 季末後最多 45 天才公布,故有延遲;
    ② 僅美股多頭,不含現金/債券/海外/做空。我們解析最近一期 13F-HR 的 information table。
    數據源需 User-Agent(SEC 規定),禮貌性快取 24 小時。 */
+// 投資大師名單。tag:風格分組;warn:13F 模擬失真等級(high=多空/高周轉,13F 只揭露多頭,失真大)。
+// 註:新增 4 位(citadel/point72/tiger/himalaya/ark)的 CIK 待實機(VPS)驗證,如抓不到請核對 SEC CIK。
 const GURUS = [
-  { id: "berkshire", name: "Berkshire Hathaway", who: "Warren Buffett", cik: "0001067983" },
-  { id: "scion", name: "Scion Asset Mgmt", who: "Michael Burry", cik: "0001649339" },
-  { id: "pershing", name: "Pershing Square", who: "Bill Ackman", cik: "0001336528" },
-  { id: "bridgewater", name: "Bridgewater", who: "Ray Dalio", cik: "0001350694" },
-  { id: "appaloosa", name: "Appaloosa", who: "David Tepper", cik: "0001656456" },
-  { id: "duquesne", name: "Duquesne Family Office", who: "Stanley Druckenmiller", cik: "0001536411" }
+  { id: "berkshire", name: "Berkshire Hathaway", who: "Warren Buffett", cik: "0001067983", tag: "value", warn: "low" },
+  { id: "himalaya", name: "Himalaya Capital", who: "Li Lu", cik: "0001709323", tag: "value", warn: "low" },
+  { id: "appaloosa", name: "Appaloosa", who: "David Tepper", cik: "0001656456", tag: "value", warn: "mid" },
+  { id: "pershing", name: "Pershing Square", who: "Bill Ackman", cik: "0001336528", tag: "value", warn: "mid" },
+  { id: "duquesne", name: "Duquesne Family Office", who: "Stanley Druckenmiller", cik: "0001536411", tag: "macro", warn: "mid" },
+  { id: "scion", name: "Scion Asset Mgmt", who: "Michael Burry", cik: "0001649339", tag: "value", warn: "mid" },
+  { id: "citadel", name: "Citadel Advisors", who: "Ken Griffin", cik: "0001423053", tag: "macro", warn: "high" },
+  { id: "point72", name: "Point72", who: "Steven Cohen", cik: "0001603466", tag: "macro", warn: "high" },
+  { id: "tiger", name: "Tiger Global", who: "Chase Coleman", cik: "0001167483", tag: "growth", warn: "high" },
+  { id: "ark", name: "ARK Investment", who: "Cathie Wood", cik: "0001697748", tag: "growth", warn: "high" }
 ];
 const SEC_UA = process.env.SEC_UA || "AlphaNexus portfolio-tracker contact@example.com";
 async function secFetch(url, asText) {
@@ -360,6 +367,82 @@ function parseInfoTable(xml) {
   }
   return rows;
 }
+/* 大師資料檔案存取(data/gurus/)。holdings=多季持倉,nav=每日淨值,index=名單與更新時間。 */
+function guruPath(id, kind) { return path.join(GURU_DIR, id + "." + kind + ".json"); }
+function guruRead(id, kind) {
+  try { return JSON.parse(fs.readFileSync(guruPath(id, kind), "utf8")) } catch (e) { return null }
+}
+function guruWrite(id, kind, data) {
+  try { fs.writeFileSync(guruPath(id, kind), JSON.stringify(data)); return true } catch (e) { return false }
+}
+function guruIndexRead() {
+  try { return JSON.parse(fs.readFileSync(path.join(GURU_DIR, "index.json"), "utf8")) } catch (e) { return null }
+}
+function guruIndexWrite(data) {
+  try { fs.writeFileSync(path.join(GURU_DIR, "index.json"), JSON.stringify(data)); return true } catch (e) { return false }
+}
+
+/* 大師假想淨值計算(純函式,便於測試)。
+   quarters: [{date:'YYYY-MM-DD', holdings:[{sym, pct}]}],按季排序(pct=該股市值占比,和約為1)。
+   priceOf(sym, dateStr): 回傳該股某日收盤價,無則 null。
+   dates: 要計算淨值的每日日期序列(升序,涵蓋首季到末日)。
+   opts: {initial=1e6, negRate=0.03}。負現金按 negRate 年利率每日計息(正現金無回報)。
+   演算法:
+     · 首季首日:用 initial 按 pct 買入各股(股數=initial*pct/價);剩餘為現金。
+     · 每逢新季度生效日:以當前總資產(持股市值+現金)按新 pct 重配置,
+       資金差距 → 現金增減(允許負,代表調用外部資金)。
+     · 每日:負現金計息(現金 -= |現金|*negRate/365);淨值 = Σ(股數×當日價) + 現金。
+   回傳 [{date, nav}]。 */
+function computeGuruNavSeries(quarters, priceOf, dates, opts) {
+  opts = opts || {};
+  const initial = opts.initial || 1e6, negRate = opts.negRate != null ? opts.negRate : 0.03;
+  const minCoverage = opts.minCoverage != null ? opts.minCoverage : 0.5; // 逐期硬門檻
+  if (!quarters.length || !dates.length) return { nav: [], coverages: [], minCov: 0, abandoned: true };
+  // 逐期涵蓋率:該期「可定價持倉」的 pct 總和(以該季生效日的價格可得性判定)。
+  // 涵蓋的持倉按比例正規化到 100% 後參與配置。
+  const coverages = [];
+  const normQuarters = quarters.map(q => {
+    const covered = q.holdings.filter(h => h.sym && priceOf(h.sym, q.date) != null);
+    const covPct = covered.reduce((s, h) => s + h.pct, 0);
+    coverages.push({ date: q.date, coverage: +covPct.toFixed(4) });
+    const norm = covPct > 1e-9 ? covered.map(h => ({ sym: h.sym, pct: h.pct / covPct })) : [];
+    return { date: q.date, holdings: norm };
+  });
+  const minCov = coverages.reduce((m, c) => Math.min(m, c.coverage), 1);
+  // 任何一期涵蓋率低於門檻 → 整位作廢(連續曲線只要一段嚴重失真即不可信)
+  if (minCov < minCoverage) return { nav: [], coverages, minCov: +minCov.toFixed(4), abandoned: true };
+
+  let qi = 0, shares = {}, cash = 0, started = false;
+  const out = [];
+  const priceAtOr = (sym, d) => { const p = priceOf(sym, d); return (p != null && isFinite(p) && p > 0) ? p : null; };
+  const allocate = (q, d, totalAsset) => {
+    const newShares = {}; let spent = 0;
+    for (const h of q.holdings) {
+      const px = priceAtOr(h.sym, d); if (!px) continue;
+      const u = totalAsset * h.pct / px; newShares[h.sym] = u; spent += u * px;
+    }
+    shares = newShares; cash = totalAsset - spent;
+  };
+  for (const d of dates) {
+    while (qi < normQuarters.length && normQuarters[qi].date <= d) {
+      if (!started) { allocate(normQuarters[qi], d, initial); started = true; }
+      else {
+        const totalAsset = Object.keys(shares).reduce((s, sym) => {
+          const px = priceAtOr(sym, d); return s + (px ? shares[sym] * px : 0);
+        }, cash);
+        allocate(normQuarters[qi], d, totalAsset);
+      }
+      qi++;
+    }
+    if (!started) continue;
+    if (cash < 0) cash -= Math.abs(cash) * negRate / 365;
+    let nav = cash;
+    for (const sym in shares) { const px = priceAtOr(sym, d); if (px) nav += shares[sym] * px; }
+    out.push({ date: d, nav: +nav.toFixed(2) });
+  }
+  return { nav: out, coverages, minCov: +minCov.toFixed(4), abandoned: false };
+}
+
 async function getGuru(id) {
   const guru = GURUS.find(g => g.id === id);
   if (!guru) throw new Error("unknown_guru");
@@ -406,6 +489,138 @@ async function getGuru(id) {
   };
   cacheSet(key, out);
   return out;
+}
+
+/* 抓某大師某一期 13F 的持倉(回 [{name,cusip,shares,value}] 與 reportDate)。
+   accessionIdx:在 recent.form 中第幾個 13F-HR(0=最新)。供多季抓取。 */
+/* CUSIP → ticker 對照表(做法4):涵蓋大師最常持有的大型股。
+   13F 用 CUSIP,抓價需 ticker;此表 + 名稱輔助比對解析 ticker。
+   涵蓋不到的冷門股計入「未涵蓋比例」(由 computeGuruNavSeries 的涵蓋率機制處理)。
+   實機可逐步擴充此表以提高涵蓋率。CUSIP 取前 8 碼(發行體),忽略末碼。 */
+const CUSIP_TICKER = {
+  "037833": "AAPL", "594918": "MSFT", "023135": "AMZN", "02079K": "GOOGL", "30303M": "META",
+  "67066G": "NVDA", "88160R": "TSLA", "084670": "BRK.B", "478160": "JNJ", "46625H": "JPM",
+  "92826C": "V", "57636Q": "MA", "742718": "PG", "437076": "HD", "060505": "BAC",
+  "92343V": "VZ", "166764": "CVX", "30231G": "XOM", "931142": "WMT", "458140": "INTC",
+  "00206R": "T", "713448": "PEP", "191216": "KO", "532457": "LLY", "002824": "ABBV",
+  "58933Y": "MRK", "717081": "PFE", "68389X": "ORCL", "11135F": "AVGO", "20030N": "CMCSA",
+  "254687": "DIS", "17275R": "CSCO", "883556": "TMO", "01609W": "BABA", "87403B": "TSM",
+  "771049": "RACE", "152434": "CMG", "76131D": "RBLX", "29786A": "ETSY", "G29183": "QGEN",
+  "75513E": "RH", "302130": "EXPE", "00507V": " ", "045167": "ASML", "747525": "QCOM",
+  "025816": "AXP", "172967": "C", "949746": "WFC", "38141G": "GS", "617446": "MS",
+  "70450Y": "PYPL", "82509L": "SHOP", "G87110": "TLW", "98980L": "ZM", "01609B": "BABA",
+  "459200": "IBM", "12508E": "CDAY", "55024U": "LULU", "278642": "EBAY", "278658": "ECL",
+  "92556H": "VICI", "16119P": "CHTR", "G0750C": "ACN", "44890M": "HUBS", "983134": "WYNN",
+  "126650": "CVS", "452308": " ", "00724F": "ADBE", "79466L": "CRM", "L8681T": "STLA"
+};
+/* 由 CUSIP(9碼)+ 名稱推 ticker。先查 CUSIP 前6碼;查不到回 null(計入未涵蓋)。 */
+function cusipToTicker(cusip, name) {
+  if (!cusip) return null;
+  const c6 = cusip.replace(/\s/g, "").slice(0, 6).toUpperCase();
+  const t = CUSIP_TICKER[c6];
+  return (t && t.trim()) ? t.trim() : null;
+}
+
+async function fetchGuru13F(guru, recent, formIdx) {
+  const accession = recent.accessionNumber[formIdx].replace(/-/g, "");
+  const reportDate = recent.reportDate ? recent.reportDate[formIdx] : (recent.filingDate ? recent.filingDate[formIdx] : "");
+  const dir = `https://www.sec.gov/Archives/edgar/data/${parseInt(guru.cik, 10)}/${accession}`;
+  const listing = await secFetch(dir + "/", true).catch(() => "");
+  const fm = [...listing.matchAll(/href="[^"]*?\/([^"\/]+\.xml)"/gi)].map(x => x[1]);
+  const xmlFile = fm.find(f => /info|table|13f/i.test(f) && !/primary_doc/i.test(f)) || fm.find(f => !/primary_doc/i.test(f));
+  if (!xmlFile) return null;
+  const xml = await secFetch(dir + "/" + xmlFile, true);
+  const rows = parseInfoTable(xml);
+  const merged = {};
+  for (const r of rows) {
+    const k = (r.cusip || r.name) + "|" + (r.cls || "");
+    if (!merged[k]) merged[k] = { name: r.name, cusip: r.cusip, value: 0, shares: 0 };
+    merged[k].value += r.value; if (r.shares) merged[k].shares += r.shares;
+  }
+  const list = Object.values(merged).sort((a, b) => b.value - a.value);
+  const total = list.reduce((s, r) => s + r.value, 0);
+  // 轉成 pct(占比),取前 20 大(避免長尾雜訊),pct 重新正規化
+  const top = list.slice(0, 20);
+  const topTotal = top.reduce((s, r) => s + r.value, 0) || 1;
+  return { reportDate, holdings: top.map(r => ({ name: r.name, cusip: r.cusip, sym: cusipToTicker(r.cusip, r.name), pct: r.value / topTotal })) };
+}
+
+/* 階段2:抓某大師過去 ~3 年(最多 quartersWanted 季)13F 持倉,存 holdings 檔。
+   (需外網/SEC,沙箱無法執行;邏輯供 VPS 實機跑。) */
+async function buildGuruHoldings(id, quartersWanted) {
+  const guru = GURUS.find(g => g.id === id);
+  if (!guru) throw new Error("unknown_guru");
+  quartersWanted = quartersWanted || 12;
+  const subs = await secFetch(`https://data.sec.gov/submissions/CIK${guru.cik}.json`);
+  const recent = subs.filings && subs.filings.recent;
+  if (!recent) throw new Error("no_filings");
+  const idxs = [];
+  for (let i = 0; i < recent.form.length && idxs.length < quartersWanted; i++) {
+    if (recent.form[i] === "13F-HR") idxs.push(i);
+  }
+  const quarters = [];
+  for (const fi of idxs) {
+    const q = await fetchGuru13F(guru, recent, fi).catch(() => null);
+    if (q && q.holdings.length) quarters.push({ date: q.reportDate, holdings: q.holdings });
+  }
+  quarters.sort((a, b) => a.date < b.date ? -1 : 1); // 升序
+  const doc = { id, who: guru.who, name: guru.name, quarters, builtAt: Date.now() };
+  guruWrite(id, "holdings", doc);
+  return doc;
+}
+
+/* 階段2:用已存的 holdings + 各股每日股價,算每日 nav 並存檔。
+   注意:13F 用 CUSIP,需對映到可抓價的 ticker。此處假設 holdings 已帶 sym(ticker);
+   實機建檔時需先補 CUSIP→ticker 對映(待階段3處理或用 SEC ticker 對照表)。
+   (需外網抓股價,沙箱無法執行。) */
+async function buildGuruNav(id) {
+  const doc = guruRead(id, "holdings");
+  if (!doc || !doc.quarters || !doc.quarters.length) throw new Error("no_holdings");
+  // 收集所有出現過的 ticker
+  const syms = [...new Set(doc.quarters.flatMap(q => q.holdings.map(h => h.sym).filter(Boolean)))];
+  // 抓各股歷史(每日收盤),建立 priceOf(sym,date)
+  const priceMap = {};
+  for (const s of syms) {
+    try { const h = await smartHistory(s); priceMap[s] = {}; (h.dates || []).forEach((d, i) => priceMap[s][d] = h.raw[i]); }
+    catch (e) { priceMap[s] = {}; }
+  }
+  const priceOf = (sym, d) => (priceMap[sym] && priceMap[sym][d] != null) ? priceMap[sym][d] : null;
+  // 日期序列:從首季到今天(用任一有資料股票的交易日)
+  const allDates = new Set();
+  for (const s of syms) for (const d in (priceMap[s] || {})) allDates.add(d);
+  const start = doc.quarters[0].date;
+  const dates = [...allDates].filter(d => d >= start).sort();
+  const quartersWithSym = doc.quarters.map(q => ({ date: q.date, holdings: q.holdings.filter(h => h.sym).map(h => ({ sym: h.sym, pct: h.pct })) }));
+  const res = computeGuruNavSeries(quartersWithSym, priceOf, dates, { initial: 1e6, negRate: 0.03, minCoverage: 0.5 });
+  const out = {
+    id, who: doc.who, name: doc.name,
+    nav: res.nav, coverages: res.coverages, minCoverage: res.minCov, abandoned: res.abandoned,
+    builtAt: Date.now(),
+    note: "13F 季度模擬,僅美股多頭、45天延遲、不含現金/做空/衍生品/非美股,僅供參考"
+  };
+  guruWrite(id, "nav", out);
+  return out;
+}
+
+/* 階段3:建檔編排——抓所有大師多季持倉→算 nav→寫 index。供部署後手動初始化與每日排程。
+   (需外網,沙箱無法執行;在 VPS 上跑:node server.js --build-gurus) */
+async function buildAllGurus(opts) {
+  opts = opts || {};
+  const ids = opts.ids || GURUS.map(g => g.id);
+  const results = [];
+  for (const id of ids) {
+    try {
+      await buildGuruHoldings(id, opts.quarters || 12);
+      const nav = await buildGuruNav(id);
+      results.push({ id, ok: true, minCoverage: nav.minCoverage, abandoned: nav.abandoned, points: nav.nav.length });
+      log(`guru built: ${id} cov=${nav.minCoverage} abandoned=${nav.abandoned} pts=${nav.nav.length}`);
+    } catch (e) {
+      results.push({ id, ok: false, error: String(e.message || e) });
+      log(`guru build failed: ${id} — ${e.message || e}`);
+    }
+  }
+  guruIndexWrite({ updatedAt: Date.now(), results });
+  return results;
 }
 
 async function coingeckoHistory(symbol) {
@@ -885,7 +1100,26 @@ const server = http.createServer(async (req, res) => {
       return send(req, res, 200, out);
     }
     if (p === "/api/gurus") {
-      return send(req, res, 200, { gurus: GURUS.map(g => ({ id: g.id, name: g.name, who: g.who })) });
+      // 帶上已建檔的 nav 摘要(最低涵蓋率、是否作廢、最新淨值點),供前端列出可選大師
+      const list = GURUS.map(g => {
+        const nav = guruRead(g.id, "nav");
+        const has = nav && !nav.abandoned && nav.nav && nav.nav.length;
+        return {
+          id: g.id, name: g.name, who: g.who, tag: g.tag, warn: g.warn,
+          available: !!has,
+          minCoverage: nav ? nav.minCoverage : null,
+          abandoned: nav ? !!nav.abandoned : null,
+          builtAt: nav ? nav.builtAt : null
+        };
+      });
+      return send(req, res, 200, { gurus: list });
+    }
+    if (p === "/api/guru-nav") {
+      const id = (u.searchParams.get("id") || "").trim();
+      const nav = guruRead(id, "nav");
+      if (!nav) return send(req, res, 404, { error: "not_built", hint: "需先在伺服器執行建檔(buildAllGurus)" });
+      if (nav.abandoned) return send(req, res, 200, { id, abandoned: true, minCoverage: nav.minCoverage, nav: [] });
+      return send(req, res, 200, { id, who: nav.who, name: nav.name, minCoverage: nav.minCoverage, nav: nav.nav, note: nav.note });
     }
     if (p === "/api/guru") {
       const id = (u.searchParams.get("id") || "").trim();
@@ -1109,14 +1343,25 @@ server.requestTimeout = 30000;   // 慢速請求(slowloris)防護
 server.headersTimeout = 35000;
 
 if (require.main === module) {
-  server.listen(PORT, () => log(`AlphaNexus server v0.1 listening on http://localhost:${PORT}`));
-  if (PREFETCH_HOUR >= 0) setInterval(() => {
-    const now = new Date(), day = now.toISOString().slice(0, 10);
-    if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {
-      lastPrefetchDay = day;
-      prefetchAll().catch(e => log("prefetch err", e.message));
-    }
-  }, 10 * 60e3);
+  // CLI:node server.js --build-gurus [id1,id2...] —— 部署後手動初始化大師資料
+  if (process.argv.includes("--build-gurus")) {
+    const arg = process.argv[process.argv.indexOf("--build-gurus") + 1];
+    const ids = arg && !arg.startsWith("--") ? arg.split(",").map(s => s.trim()).filter(Boolean) : null;
+    log("building gurus" + (ids ? " " + ids.join(",") : " (all)") + " ...");
+    buildAllGurus(ids ? { ids } : {}).then(r => { log("guru build done", JSON.stringify(r)); process.exit(0); })
+      .catch(e => { log("guru build error", e.message); process.exit(1); });
+  } else {
+    server.listen(PORT, () => log(`AlphaNexus server v0.1 listening on http://localhost:${PORT}`));
+    if (PREFETCH_HOUR >= 0) setInterval(() => {
+      const now = new Date(), day = now.toISOString().slice(0, 10);
+      if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {
+        lastPrefetchDay = day;
+        prefetchAll().catch(e => log("prefetch err", e.message));
+        // 收市後順帶更新大師 nav 尾端(每日)
+        buildAllGurus({}).catch(e => log("guru refresh err", e.message));
+      }
+    }, 10 * 60e3);
+  }
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, parseRssItems, newsForSymbol, USE_RSS };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };
 }

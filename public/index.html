@@ -786,9 +786,7 @@ function dividendMonthly(base){
   const today=fmtD(TODAY);
   const yAgo=new Date(TODAY); yAgo.setFullYear(yAgo.getFullYear()-1);
   const yAgoStr=fmtD(yAgo);
-  // 只取當前有持倉(>0)的股票
-  const H=holdingsDetail(null);
-  const syms=H.list.filter(h=>h.units>1e-9).map(h=>h.sym);
+  const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other")).map(t=>t.sym))];
   for(const sym of syms){
     const ev=LIVE&&REAL.events[sym]; if(!ev||!ev.dividends)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD";
@@ -816,9 +814,7 @@ function dividendTimeline(){
   const today=fmtD(TODAY);
   const yAgo=new Date(TODAY); yAgo.setFullYear(yAgo.getFullYear()-1); const yAgoStr=fmtD(yAgo);
   const yFwd=new Date(TODAY); yFwd.setFullYear(yFwd.getFullYear()+1); const yFwdStr=fmtD(yFwd);
-  // 只取當前有持倉(>0)的股票
-  const H=holdingsDetail(null);
-  const syms=H.list.filter(h=>h.units>1e-9).map(h=>h.sym);
+  const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other")).map(t=>t.sym))];
   for(const sym of syms){
     const ev=LIVE&&REAL.events[sym]; if(!ev)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD"; const nm=o?(o.z||o.n||sym):sym;

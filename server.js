@@ -1215,6 +1215,36 @@ const server = http.createServer(async (req, res) => {
       try { return send(req, res, 200, await getGuru(id)) }
       catch (e) { return send(req, res, 502, { error: "guru_failed", detail: String(e.message || e) }) }
     }
+    if (p === "/api/guru-diff") {
+      const id = (u.searchParams.get("id") || "").trim();
+      const n = Math.min(Math.max(parseInt(u.searchParams.get("quarters") || "3", 10) || 3, 2), 8);
+      const doc = guruRead(id, "holdings");
+      if (!doc || !doc.quarters || !doc.quarters.length) return send(req, res, 404, { error: "no_holdings" });
+      const qs = doc.quarters.slice(-n); // 最近 n 季(已升序)
+      const diffs = [];
+      for (let i = 1; i < qs.length; i++) {
+        const prev = qs[i - 1], cur = qs[i];
+        const prevMap = {}, curMap = {};
+        for (const h of prev.holdings) { const k = h.sym || h.name; prevMap[k] = h.pct; }
+        for (const h of cur.holdings) { const k = h.sym || h.name; curMap[k] = h.pct; }
+        const allKeys = [...new Set([...Object.keys(prevMap), ...Object.keys(curMap)])];
+        const changes = [];
+        for (const k of allKeys) {
+          const p0 = prevMap[k] || 0, p1 = curMap[k] || 0;
+          const delta = p1 - p0;
+          if (Math.abs(delta) < 0.001) continue;
+          let type;
+          if (p0 === 0) type = "new";
+          else if (p1 === 0) type = "closed";
+          else if (delta > 0) type = "increased";
+          else type = "decreased";
+          changes.push({ sym: k, pct: p1, delta: +delta.toFixed(4), type });
+        }
+        changes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+        diffs.push({ from: prev.date, to: cur.date, changes });
+      }
+      return send(req, res, 200, { id, who: doc.who, name: doc.name, quarters: qs.map(q => q.date), diffs });
+    }
     if (p === "/api/news") {
       const syms = (u.searchParams.get("symbols") || "").split(",").map(s => s.trim()).filter(Boolean);
       try { return send(req, res, 200, await getNews(syms)) }

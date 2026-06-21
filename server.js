@@ -478,14 +478,18 @@ async function getGuru(id) {
   const merged = {};
   for (const r of rows) {
     const k = r.name + "|" + (r.cls || "");
-    if (!merged[k]) merged[k] = { name: r.name, value: 0, shares: 0, cls: r.cls };
+    if (!merged[k]) merged[k] = { name: r.name, cusip: r.cusip, value: 0, shares: 0, cls: r.cls };
     merged[k].value += r.value;
     if (r.shares) merged[k].shares += r.shares;
   }
   rows = Object.values(merged).sort((a, b) => b.value - a.value);
   // SEC 13F value 欄位:2023 年後為「美元」,之前為「千美元」。以總額啟發式判斷單位。
   const total = rows.reduce((s, r) => s + r.value, 0);
-  const top = rows.slice(0, 10).map(r => ({ name: r.name, value: r.value, shares: r.shares, pct: total > 0 ? r.value / total : 0 }));
+  const topRaw = rows.slice(0, 10);
+  const top = await Promise.all(topRaw.map(async r => ({
+    name: r.name, sym: await cusipToTicker(r.cusip, r.name).catch(() => null),
+    value: r.value, shares: r.shares, pct: total > 0 ? r.value / total : 0
+  })));
   const out = {
     id, name: guru.name, who: guru.who, cik: guru.cik, reportDate,
     totalValue: total, holdings: rows.length, top,
@@ -1221,16 +1225,18 @@ const server = http.createServer(async (req, res) => {
       const doc = guruRead(id, "holdings");
       if (!doc || !doc.quarters || !doc.quarters.length) return send(req, res, 404, { error: "no_holdings" });
       const qs = doc.quarters.slice(-n); // 最近 n 季(已升序)
+      // 每季完整持倉(供前端計算金額/股數變化)
+      const qHoldings = qs.map(q => q.holdings.map(h => ({ name: h.name, sym: h.sym || null, pct: h.pct })));
       const diffs = [];
       for (let i = 1; i < qs.length; i++) {
         const prev = qs[i - 1], cur = qs[i];
         const prevMap = {}, curMap = {};
-        for (const h of prev.holdings) { const k = h.sym || h.name; prevMap[k] = h.pct; }
-        for (const h of cur.holdings) { const k = h.sym || h.name; curMap[k] = h.pct; }
+        for (const h of prev.holdings) { const k = h.sym || h.name; prevMap[k] = { pct: h.pct, name: h.name }; }
+        for (const h of cur.holdings) { const k = h.sym || h.name; curMap[k] = { pct: h.pct, name: h.name }; }
         const allKeys = [...new Set([...Object.keys(prevMap), ...Object.keys(curMap)])];
         const changes = [];
         for (const k of allKeys) {
-          const p0 = prevMap[k] || 0, p1 = curMap[k] || 0;
+          const p0 = prevMap[k]?.pct || 0, p1 = curMap[k]?.pct || 0;
           const delta = p1 - p0;
           if (Math.abs(delta) < 0.001) continue;
           let type;
@@ -1238,12 +1244,13 @@ const server = http.createServer(async (req, res) => {
           else if (p1 === 0) type = "closed";
           else if (delta > 0) type = "increased";
           else type = "decreased";
-          changes.push({ sym: k, pct: p1, delta: +delta.toFixed(4), type });
+          const name = curMap[k]?.name || prevMap[k]?.name || k;
+          changes.push({ sym: k, name, pct: p1, delta: +delta.toFixed(4), type });
         }
         changes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
         diffs.push({ from: prev.date, to: cur.date, changes });
       }
-      return send(req, res, 200, { id, who: doc.who, name: doc.name, quarters: qs.map(q => q.date), diffs });
+      return send(req, res, 200, { id, who: doc.who, name: doc.name, quarters: qs.map(q => q.date), qHoldings, diffs });
     }
     if (p === "/api/news") {
       const syms = (u.searchParams.get("symbols") || "").split(",").map(s => s.trim()).filter(Boolean);

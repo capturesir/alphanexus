@@ -4374,6 +4374,14 @@ function renderCmpTags(){
             html+=`</table>`;
             // 持倉變動（最近三期差異）
             if(diff&&diff.diffs&&diff.diffs.length){
+              // 建立當前 top 持倉的 lookup(sym/name → {value, shares})
+              const topMap={};
+              for(const h of r.top){
+                const d={value:h.value,shares:h.shares};
+                if(h.sym)topMap[h.sym]=d;
+                if(h.name)topMap[h.name]=d;
+              }
+              const tv=total||1; // 總 AUM
               html+=`<div style="margin-top:10px;border-top:1px solid var(--brd,#e0e0e0);padding-top:8px">`;
               html+=`<div style="font-weight:600;font-size:13px;margin-bottom:6px">📊 ${T("guruDiffTitle")}</div>`;
               for(const d of diff.diffs){
@@ -4388,10 +4396,25 @@ function renderCmpTags(){
                   else{icon="▼";labelColor="var(--dn,#ef5350)"}
                   const sign=c.delta>0?"+":"";
                   const pctStr=(c.delta*100).toFixed(1)+"%";
+                  // 金額變化 = delta × AUM
+                  const valChg=c.delta*tv;
+                  const valSign=(c.type==="new"||c.type==="increased")?"+":"−";
+                  const valStr=valSign+fmt(Math.abs(valChg));
+                  // 股數變化:用當前 value/shares 算出單價,再推算
+                  let shStr="";
+                  const tm=topMap[c.sym]||topMap[c.name];
+                  if(tm&&tm.shares>0&&tm.value>0){
+                    const price=tm.value/tm.shares;
+                    const shDelta=Math.round(valChg/price);
+                    if(shDelta!==0)shStr=(shDelta>0?"+":"")+shDelta.toLocaleString();
+                  }
+                  // 名稱行:大名 + 代碼(小字)
+                  const nameLine=c.sym!==c.name?`<div>${c.name}</div><div style="font-size:10px;color:var(--ink3,#888)">${c.sym}</div>`:`<div>${c.name}</div>`;
                   html+=`<tr style="border-top:1px solid var(--brd,#eee)">`;
-                  html+=`<td style="padding:2px 4px;width:20px">${icon}</td>`;
-                  html+=`<td style="padding:2px 4px">${c.sym}</td>`;
-                  html+=`<td style="text-align:right;padding:2px 4px;color:${labelColor}">${sign}${pctStr}</td>`;
+                  html+=`<td style="padding:3px 4px;width:20px;vertical-align:top">${icon}</td>`;
+                  html+=`<td style="padding:3px 4px;line-height:1.3">${nameLine}</td>`;
+                  html+=`<td style="text-align:right;padding:3px 4px;vertical-align:top;color:${labelColor};white-space:nowrap">${sign}${pctStr}</td>`;
+                  html+=`<td style="text-align:right;padding:3px 4px;vertical-align:top;white-space:nowrap;font-size:11px">$${valStr}${shStr?`<br><span style="color:var(--ink3,#888)">${shStr} ${T("perShareUnit")}</span>`:""}</td>`;
                   html+=`</tr>`;
                 }
                 html+=`</table></div>`;

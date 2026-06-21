@@ -620,11 +620,9 @@ async function fetchGuru13F(guru, recent, formIdx) {
     merged[k].value += r.value; if (r.shares) merged[k].shares += r.shares;
   }
   const list = Object.values(merged).sort((a, b) => b.value - a.value);
-  const total = list.reduce((s, r) => s + r.value, 0);
-  // 轉成 pct(占比),取前 20 大(避免長尾雜訊),pct 重新正規化
-  const top = list.slice(0, 20);
-  const topTotal = top.reduce((s, r) => s + r.value, 0) || 1;
-  return { reportDate, holdings: await Promise.all(top.map(async r => ({ name: r.name, cusip: r.cusip, sym: await cusipToTicker(r.cusip, r.name), pct: r.value / topTotal, shares: r.shares || 0 }))) };
+  const total = list.reduce((s, r) => s + r.value, 0) || 1;
+  // 存全部持倉(不限 top N),確保 diff 有完整股數數據;前端 top 表由 /api/guru 自行截取
+  return { reportDate, holdings: await Promise.all(list.map(async r => ({ name: r.name, cusip: r.cusip, sym: await cusipToTicker(r.cusip, r.name), pct: r.value / total, shares: r.shares || 0 }))) };
 }
 
 /* 階段2:抓某大師過去 ~3 年(最多 quartersWanted 季)13F 持倉,存 holdings 檔。

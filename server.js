@@ -624,7 +624,7 @@ async function fetchGuru13F(guru, recent, formIdx) {
   // 轉成 pct(占比),取前 20 大(避免長尾雜訊),pct 重新正規化
   const top = list.slice(0, 20);
   const topTotal = top.reduce((s, r) => s + r.value, 0) || 1;
-  return { reportDate, holdings: await Promise.all(top.map(async r => ({ name: r.name, cusip: r.cusip, sym: await cusipToTicker(r.cusip, r.name), pct: r.value / topTotal }))) };
+  return { reportDate, holdings: await Promise.all(top.map(async r => ({ name: r.name, cusip: r.cusip, sym: await cusipToTicker(r.cusip, r.name), pct: r.value / topTotal, shares: r.shares || 0 }))) };
 }
 
 /* 階段2:抓某大師過去 ~3 年(最多 quartersWanted 季)13F 持倉,存 holdings 檔。
@@ -1226,7 +1226,7 @@ const server = http.createServer(async (req, res) => {
       if (!doc || !doc.quarters || !doc.quarters.length) return send(req, res, 404, { error: "no_holdings" });
       const qs = doc.quarters.slice(-n); // 最近 n 季(已升序)
       // 每季完整持倉(供前端計算金額/股數變化)
-      const qHoldings = qs.map(q => q.holdings.map(h => ({ name: h.name, sym: h.sym || null, pct: h.pct })));
+      const qHoldings = qs.map(q => q.holdings.map(h => ({ name: h.name, sym: h.sym || null, pct: h.pct, shares: h.shares || 0 })));
       const diffs = [];
       for (let i = 1; i < qs.length; i++) {
         const prev = qs[i - 1], cur = qs[i];

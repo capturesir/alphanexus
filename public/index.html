@@ -4374,17 +4374,19 @@ function renderCmpTags(){
             html+=`</table>`;
             // 持倉變動（最近三期差異）
             if(diff&&diff.diffs&&diff.diffs.length){
-              // 建立當前 top 持倉的 lookup(sym/name → {value, shares})
-              const topMap={};
-              for(const h of r.top){
-                const d={value:h.value,shares:h.shares};
-                if(h.sym)topMap[h.sym]=d;
-                if(h.name)topMap[h.name]=d;
-              }
               const tv=total||1; // 總 AUM
+              // 建立每季持倉 lookup(sym/name → shares)
+              const qMaps=(diff.qHoldings||[]).map(q=>{
+                const m={};
+                for(const h of q){const k=h.sym||h.name;if(k)m[k]=h.shares||0;}
+                return m;
+              });
               html+=`<div style="margin-top:10px;border-top:1px solid var(--brd,#e0e0e0);padding-top:8px">`;
               html+=`<div style="font-weight:600;font-size:13px;margin-bottom:6px">📊 ${T("guruDiffTitle")}</div>`;
-              for(const d of diff.diffs){
+              for(let di=0;di<diff.diffs.length;di++){
+                const d=diff.diffs[di];
+                const prevMap=qMaps[di]||{};
+                const curMap=qMaps[di+1]||{};
                 html+=`<div style="margin-bottom:8px">`;
                 html+=`<div style="font-size:11px;color:var(--ink3,#888);margin-bottom:4px">📅 ${d.from} → ${d.to}</div>`;
                 html+=`<table style="width:100%;font-size:12px;border-collapse:collapse">`;
@@ -4401,12 +4403,12 @@ function renderCmpTags(){
                   const valChg=c.delta*tv;
                   const valSign=(c.type==="new"||c.type==="increased")?"+":"−";
                   const valStr=valSign+fmt(Math.abs(valChg));
-                  // 股數變化:用當前 value/shares 算出單價,再推算
+                  // 股數變化:直接從 qHoldings 取實際股數差
                   let shStr="";
-                  const tm=topMap[c.sym]||topMap[c.name];
-                  if(tm&&tm.shares>0&&tm.value>0){
-                    const price=tm.value/tm.shares;
-                    const shDelta=Math.round(valChg/price);
+                  const k=c.sym||c.name;
+                  const sh0=prevMap[k]||0, sh1=curMap[k]||0;
+                  if(sh0||sh1){
+                    const shDelta=sh1-sh0;
                     if(shDelta!==0)shStr=(shDelta>0?"+":"")+shDelta.toLocaleString();
                   }
                   // 名稱行:大名 + 代碼(小字)

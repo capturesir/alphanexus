@@ -4388,7 +4388,8 @@ function renderCmpTags(){
                 html+=`<div style="margin-bottom:8px">`;
                 html+=`<div style="font-size:11px;color:var(--ink3,#888);margin-bottom:4px">📅 ${d.from} → ${d.to}</div>`;
                 html+=`<table style="width:100%;font-size:12px;border-collapse:collapse">`;
-                for(const c of d.changes){
+                const sorted=[...d.changes].sort((a,b)=>Math.abs(b.delta*tv)-Math.abs(a.delta*tv));
+                for(const c of sorted){
                   let icon,labelColor;
                   if(c.type==="new"){icon="🆕";labelColor="var(--accent,#4fc3f7)"}
                   else if(c.type==="closed"){icon="❌";labelColor="var(--dn,#ef5350)"}

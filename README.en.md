@@ -23,7 +23,7 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 - **Multi-market & multi-currency**: US stocks/ETFs, HK, China A-shares, Japan, crypto; balances auto-converted to a base currency using historical FX.
 - **Industry-standard accounting**: raw-price valuation + transaction restatement + internal cash transfers — correctly handles dividends, splits and fees, avoiding NAV distortion and double counting.
 - **Resilient data layer**: multi-source fallback, local persistence + incremental updates, post-market prefetch, request coalescing, gzip.
-- **Real account system**: scrypt password hashing, Bearer tokens, optional email verification, optional 2FA (TOTP), cloud portfolio sync.
+- **Real account system**: scrypt password hashing, Bearer tokens, optional email verification, cloud portfolio sync.
 - **Privacy & sharing**: one-tap privacy mode hides all amounts; share a returns-only (no amounts) performance card.
 - **Zero dependencies**: backend uses only Node.js built-ins — no `npm install`.
 

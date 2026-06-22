@@ -4581,7 +4581,7 @@ function renderDivCalendar(){
       if(e.kind==="split")label=`${T("splitEvent")} ${e.ratio||""}`;
       else label=`${e.name} · ${fmtMoney(e.perShare,e.ccy)}/${T("perShareUnit")}${e.units?` × ${(+e.units).toLocaleString()}`:""}`;
       const hypTag=isHyp?` <span style="color:var(--blue)">(${T("hypoApprox")})</span>`:"";
-      const dateShown=isHyp?`~${e.date.slice(0,7)}`:e.date;
+      const dateShown=isHyp?`~${e.date}`:e.date;
       return `<div id="${isAnchor?"divTlAnchor":""}" style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);${isAnchor?"background:var(--up-soft);border-radius:8px;padding-left:8px":""}">
         <div style="color:${col};font-size:12px;width:14px;text-align:center">${dot}</div>
         <div class="grow">

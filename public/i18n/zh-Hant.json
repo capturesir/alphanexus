@@ -321,5 +321,6 @@
  "icMax": "最大",
  "icTenkan": "轉換線",
  "icKijun": "基準線",
- "icSenkou": "先行帶"
+ "icSenkou": "先行帶",
+ "closeBtn": "關閉"
 }

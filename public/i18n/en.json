@@ -321,5 +321,6 @@
  "icMax": "Max",
  "icTenkan": "Tenkan",
  "icKijun": "Kijun",
- "icSenkou": "Senkou"
+ "icSenkou": "Senkou",
+ "closeBtn": "Close"
 }

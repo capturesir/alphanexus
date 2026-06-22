@@ -4603,7 +4603,8 @@ function renderDivCalendar(){
       <div style="max-height:50vh;overflow-y:auto">${timeline}</div>
     </div>
     <div class="tiny" style="text-align:center;margin-top:12px;color:var(--ink3);line-height:1.6">${T("divCalDisclaimer")}</div>`;
-  // 不自動滾動,讓用戶從頂部自然瀏覽月度圖表
+  const anchor=box.querySelector("#divTlAnchor");
+  if(anchor)anchor.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
 function renderNews(){

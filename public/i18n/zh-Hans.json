@@ -200,7 +200,7 @@
  "guestMode": "访客模式（数据仅保存在本机）",
  "memberMode": "已登录会员",
  "fillEmail": "请输入邮箱及密码",
- "liveData": "实时数据",
+ "liveData": "延迟数据",
  "simData": "模拟数据",
  "loading": "加载中…",
  "pwdTooShort": "密码至少 4 位",

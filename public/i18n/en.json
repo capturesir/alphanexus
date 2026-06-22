@@ -200,7 +200,7 @@
  "guestMode": "Guest mode (data stays on this device)",
  "memberMode": "Signed in",
  "fillEmail": "Please enter email and password",
- "liveData": "Live data",
+ "liveData": "Delayed data",
  "simData": "Simulated data",
  "loading": "Loading…",
  "pwdTooShort": "Password too short (min 4)",

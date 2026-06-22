@@ -1,6 +1,6 @@
 # AlphaNexus — Portfolio Management Platform
 
-[中文](README.md) | **English**
+[中文](README.md) | [简体中文](README.zh-CN.md) | **English** | [日本語](README.ja.md)
 
 AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **single-file HTML frontend + zero-dependency Node.js backend**, focused on accurate cross-market, multi-currency accounting and performance analytics. It runs on an entry-level VPS, or offline via `file://`.
 
@@ -19,7 +19,7 @@ AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **si
 ## Highlights
 
 - **Mobile-first**: ≥44dp touch targets, gesture-driven chart, bottom tab navigation; also works on tablet and desktop.
-- **Multilingual**: Traditional Chinese, Simplified Chinese, English — instant switching (external JSON language packs with embedded fallback for offline use).
+- **Multilingual**: Traditional Chinese, Simplified Chinese, English, Japanese — instant switching (external JSON language packs with embedded fallback for offline use).
 - **Multi-market & multi-currency**: US stocks/ETFs, HK, China A-shares, Japan, crypto; balances auto-converted to a base currency using historical FX.
 - **Industry-standard accounting**: raw-price valuation + transaction restatement + internal cash transfers — correctly handles dividends, splits and fees, avoiding NAV distortion and double counting.
 - **Resilient data layer**: multi-source fallback, local persistence + incremental updates, post-market prefetch, request coalescing, gzip.
@@ -101,11 +101,11 @@ wealthlens/
 ├── server.js              # zero-dependency Node.js backend (>= Node 18)
 ├── public/
 │   ├── index.html         # frontend (single file, all CSS/JS)
-│   └── i18n/              # language packs zh-Hant / zh-Hans / en
+│   └── i18n/              # language packs zh-Hant / zh-Hans / en / ja
 ├── test/                  # regression tests (engine + backend)
 ├── docs/screenshots/
 ├── package.json
-├── README.md / README.en.md
+├── README.md / README.en.md / README.ja.md / README.zh-CN.md
 ├── DEPLOY.md              # VPS deployment guide
 └── data/                  # auto-created at runtime: users, portfolios, market cache, guru data, CUSIP cache
 ```

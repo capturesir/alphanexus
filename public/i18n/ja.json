@@ -322,5 +322,10 @@
  "icTenkan": "転換線",
  "icKijun": "基準線",
  "icSenkou": "先行",
- "closeBtn": "閉じる"
+ "closeBtn": "閉じる",
+ "emptyWelcomeTitle": "ポートフォリオの追跡を開始",
+ "emptyWelcomeDesc": "最初の取引を記録すると、システムが自動的に計算します：",
+ "emptyFeatPerf": "TWR / MWR リターン",
+ "emptyFeatDiv": "配当の追跡",
+ "emptyFeatChart": "インタラクティブ技術分析チャート"
 }

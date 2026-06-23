@@ -322,5 +322,10 @@
  "icTenkan": "轉換線",
  "icKijun": "基準線",
  "icSenkou": "先行帶",
- "closeBtn": "關閉"
+ "closeBtn": "關閉",
+ "emptyWelcomeTitle": "開始追蹤你的投資組合",
+ "emptyWelcomeDesc": "記錄你的第一筆交易，系統會自動計算：",
+ "emptyFeatPerf": "TWR / MWR 回報率",
+ "emptyFeatDiv": "股息收入追蹤",
+ "emptyFeatChart": "互動技術分析圖表"
 }

@@ -322,5 +322,10 @@
  "icTenkan": "转换线",
  "icKijun": "基准线",
  "icSenkou": "先行带",
- "closeBtn": "关闭"
+ "closeBtn": "关闭",
+ "emptyWelcomeTitle": "开始追踪你的投资组合",
+ "emptyWelcomeDesc": "记录你的第一笔交易，系统会自动计算：",
+ "emptyFeatPerf": "TWR / MWR 回报率",
+ "emptyFeatDiv": "股息收入追踪",
+ "emptyFeatChart": "互动技术分析图表"
 }

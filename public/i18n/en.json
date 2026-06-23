@@ -322,5 +322,10 @@
  "icTenkan": "Tenkan",
  "icKijun": "Kijun",
  "icSenkou": "Senkou",
- "closeBtn": "Close"
+ "closeBtn": "Close",
+ "emptyWelcomeTitle": "Start Tracking Your Portfolio",
+ "emptyWelcomeDesc": "Record your first trade and the system will automatically calculate:",
+ "emptyFeatPerf": "TWR / MWR returns",
+ "emptyFeatDiv": "Dividend tracking",
+ "emptyFeatChart": "Interactive technical charts"
 }

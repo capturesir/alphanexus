@@ -62,7 +62,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .seg button{flex:1;padding:6px 8px;border-radius:8px;font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
 input,select,textarea{font:inherit;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
-input[type=date]{max-width:100%}
+input[type=date]{max-width:100%;-webkit-appearance:none;appearance:none}
 input:focus,select:focus{border-color:var(--gold)}
 label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:10px 0 5px}
 .field2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -3783,8 +3783,8 @@ function openTxnModal(txn){
       </div>
       <label>${T("location")}</label>
       <div class="loc-wrap" style="position:relative">
-        <input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:34px"':""}>
-        ${locsForPick().length?`<button type="button" id="fLocPick" title="${T("pickLoc")}" style="position:absolute;right:1px;top:1px;bottom:1px;width:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px">▾</button>
+        <input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:52px"':""}>
+        ${locsForPick().length?`<button type="button" id="fLocPick" title="${T("pickLoc")}" style="position:absolute;right:4px;top:4px;bottom:4px;width:44px;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--ink2);cursor:pointer;font-size:16px;font-weight:700">▾</button>
         <div id="fLocMenu" class="ac-list" style="display:none"></div>`:""}
       </div>
     </div></details>

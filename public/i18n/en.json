@@ -327,5 +327,9 @@
  "emptyWelcomeDesc": "Record your first trade and the system will automatically calculate:",
  "emptyFeatPerf": "TWR / MWR returns",
  "emptyFeatDiv": "Dividend tracking",
- "emptyFeatChart": "Interactive technical charts"
+ "emptyFeatChart": "Interactive technical charts",
+ "emailInvalid": "Please enter a valid email",
+ "pwdWeak": "Weak",
+ "pwdMedium": "Medium",
+ "pwdStrong": "Strong"
 }

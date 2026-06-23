@@ -327,5 +327,9 @@
  "emptyWelcomeDesc": "最初の取引を記録すると、システムが自動的に計算します：",
  "emptyFeatPerf": "TWR / MWR リターン",
  "emptyFeatDiv": "配当の追跡",
- "emptyFeatChart": "インタラクティブ技術分析チャート"
+ "emptyFeatChart": "インタラクティブ技術分析チャート",
+ "emailInvalid": "有効なメールアドレスを入力してください",
+ "pwdWeak": "弱い",
+ "pwdMedium": "中程度",
+ "pwdStrong": "強い"
 }

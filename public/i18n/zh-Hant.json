@@ -327,5 +327,9 @@
  "emptyWelcomeDesc": "記錄你的第一筆交易，系統會自動計算：",
  "emptyFeatPerf": "TWR / MWR 回報率",
  "emptyFeatDiv": "股息收入追蹤",
- "emptyFeatChart": "互動技術分析圖表"
+ "emptyFeatChart": "互動技術分析圖表",
+ "emailInvalid": "請輸入有效電郵",
+ "pwdWeak": "弱",
+ "pwdMedium": "中",
+ "pwdStrong": "強"
 }

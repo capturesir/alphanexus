@@ -3746,8 +3746,10 @@ function openTxnModal(txn){
         <div><label>${T("price")}</label><input id="fPrice" type="number" step="any" inputmode="decimal" value="${t.price}"></div>
         <div><label>${T("units")}</label><input id="fUnits" type="number" step="any" inputmode="decimal" value="${t.units}"></div>
       </div>
+      <details class="adv-toggle"><summary>${T("advOptions")}</summary><div class="adv-body">
       <label>${T("feeOpt")}</label>
       <input id="fFee" type="number" step="any" inputmode="decimal" min="0" value="${t.fee||""}" placeholder="0">
+      </div></details>
     </div>
     <div id="cashFields" style="display:none">
       <div class="tiny" id="cashDirLabel" style="margin-bottom:4px;font-weight:600">${T("cashDeposit")}</div>

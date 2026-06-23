@@ -167,9 +167,9 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
 .empty-icon{font-size:48px;margin-bottom:12px;filter:grayscale(.2)}
 .empty-features{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;margin:10px 0 4px}
 .empty-features span{font-size:12.5px;color:var(--ink2)}
-.adv-toggle{margin:10px 0 0}
-.adv-toggle summary{cursor:pointer;font-size:12.5px;color:var(--ink3);padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
-.adv-toggle summary::before{content:"▸";transition:transform .2s;font-size:11px}
+.adv-toggle{margin:12px 0 0;border:1px dashed var(--line);border-radius:10px;padding:2px 12px 8px}
+.adv-toggle summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--ink2);padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px;user-select:none}
+.adv-toggle summary::before{content:"▸";transition:transform .2s;font-size:13px;color:var(--brand)}
 .adv-toggle[open] summary::before{transform:rotate(90deg)}
 .adv-toggle summary::-webkit-details-marker{display:none}
 .adv-toggle .adv-body{padding:0 0 2px}
@@ -3746,10 +3746,6 @@ function openTxnModal(txn){
         <div><label>${T("price")}</label><input id="fPrice" type="number" step="any" inputmode="decimal" value="${t.price}"></div>
         <div><label>${T("units")}</label><input id="fUnits" type="number" step="any" inputmode="decimal" value="${t.units}"></div>
       </div>
-      <details class="adv-toggle"><summary>${T("advOptions")}</summary><div class="adv-body">
-      <label>${T("feeOpt")}</label>
-      <input id="fFee" type="number" step="any" inputmode="decimal" min="0" value="${t.fee||""}" placeholder="0">
-      </div></details>
     </div>
     <div id="cashFields" style="display:none">
       <div class="tiny" id="cashDirLabel" style="margin-bottom:4px;font-weight:600">${T("cashDeposit")}</div>
@@ -3776,7 +3772,11 @@ function openTxnModal(txn){
       <div class="tiny" id="incHint" style="margin-top:4px">${T("divHint")}</div>
     </div>
     <div><label>${T("date")}</label><input id="fDate" type="date" value="${t.date}" min="${fmtD(START_DATE)}" max="${fmtD(TODAY)}"></div>
-    <details class="adv-toggle"><summary>${T("advOptions")}</summary><div class="adv-body">
+    <details class="adv-toggle" id="advToggle"><summary>${T("advOptions")}</summary><div class="adv-body">
+      <div id="advFeeWrap">
+        <label>${T("feeOpt")}</label>
+        <input id="fFee" type="number" step="any" inputmode="decimal" min="0" value="${t.fee||""}" placeholder="0">
+      </div>
       <label>${T("location")}</label>
       <div class="loc-wrap" style="position:relative">
         <input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:34px"':""}>
@@ -3795,6 +3795,7 @@ function openTxnModal(txn){
   const sync=()=>{
     const sec=!(kind==="cash"||isInc(kind));
     m.querySelector("#secFields").style.display=sec?"block":"none";
+    const feeWrap=m.querySelector("#advFeeWrap");if(feeWrap)feeWrap.style.display=sec?"block":"none";
     m.querySelector("#cashFields").style.display=kind==="cash"?"block":"none";
     m.querySelector("#incFields").style.display=isInc(kind)?"block":"none";
     m.querySelector("#incSymWrap").style.display=kind==="dividend"?"block":"none";

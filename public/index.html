@@ -2172,7 +2172,8 @@ function openInteractiveChart(sym){
   // 建立全屏 overlay
   const overlay=document.createElement("div");
   overlay.id="icOverlay";
-  overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden";
+  overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain";
+  document.body.style.overflow="hidden";
   overlay.innerHTML=`
     <div style="display:flex;align-items:center;padding:10px 14px;gap:8px;border-bottom:1px solid var(--line);flex-shrink:0">
       <button class="btn btn-sm" id="icBack">← ${T("back")||"返回"}</button>
@@ -3666,6 +3667,7 @@ function openInteractiveChart(sym){
       this._destroy=true;
       window.removeEventListener("resize",this._resize);
       overlay.remove();
+      document.body.style.overflow="";
     }
   };
 
@@ -4426,12 +4428,13 @@ function renderCmpTags(){
       guruDis.querySelector(".guru-calc-link").onclick=()=>{
         const overlay=document.createElement("div");
         overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center";
-        overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+        overlay.onclick=e=>{if(e.target===overlay){overlay.remove();document.body.style.overflow=""}};
         const box=document.createElement("div");
-        box.style.cssText="background:var(--card,#fff);color:var(--ink,#222);max-width:560px;width:90%;max-height:80vh;overflow:auto;padding:20px 24px;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);line-height:1.7;font-size:14px;position:relative";
-        box.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:12px">${T("guruCalcTitle")}</div>${T("guruCalcBody")}<div style="text-align:right;margin-top:16px"><button onclick="this.closest('div[style*=fixed]').remove()" style="padding:6px 18px;border:1px solid var(--brd,#ccc);border-radius:6px;background:var(--card,#fff);color:var(--ink,#222);cursor:pointer">${T("closeBtn")}</button></div>`;
+        box.style.cssText="background:var(--card,#fff);color:var(--ink,#222);max-width:560px;width:90%;max-height:80vh;overflow:auto;overscroll-behavior:contain;padding:20px 24px;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);line-height:1.7;font-size:14px;position:relative";
+        box.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:12px">${T("guruCalcTitle")}</div>${T("guruCalcBody")}<div style="text-align:right;margin-top:16px"><button onclick="this.closest('div[style*=fixed]').remove();document.body.style.overflow=''" style="padding:6px 18px;border:1px solid var(--brd,#ccc);border-radius:6px;background:var(--card,#fff);color:var(--ink,#222);cursor:pointer">${T("closeBtn")}</button></div>`;
         overlay.appendChild(box);
         document.body.appendChild(overlay);
+        document.body.style.overflow="hidden";
       };
       // 持倉面板 展開/收起
       const holdingsPanel=guruDis.querySelector(".guru-holdings-panel");

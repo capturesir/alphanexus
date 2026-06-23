@@ -1940,7 +1940,7 @@ function openHoldingDetail(sym){
     ensureMarketData().then(changed=>{ if(changed&&REAL.series[sym]&&$("#modalRoot").querySelector(".modal")){ openHoldingDetail(sym) } }).catch(()=>{});
   }
   // 轉倉入口已隱藏(底層 transfer 處理仍保留,供既有資料與將來恢復);如需恢復,在上方按鈕列加回 hdXfer 並綁定 openTransferModal(sym)
-  m.querySelector("#hdAdd").onclick=()=>{closeModal();const tx={kind:o&&o.m==="US-OPT"?"option":"stock",sym,name:h?h.name:symName(o||{n:sym,z:sym}),ccy,loc:"",side:"buy",price:"",units:"",date:fmtD(TODAY)};openTxnModal(tx)};
+  m.querySelector("#hdAdd").onclick=()=>{closeModal();openTxnModal(null,{kind:o&&o.m==="US-OPT"?"option":"stock",sym,name:h?h.name:symName(o||{n:sym,z:sym}),ccy,loc:"",side:"buy",price:"",units:"",date:fmtD(TODAY)})};
   m.querySelector("#hdDelAll").onclick=async()=>{
     if(!confirm(T("confirmDelAll").replace("{sym}",sym)+` (${myTxns.length})`))return;
     state.txns=state.txns.filter(t=>t.sym!==sym);
@@ -3725,9 +3725,9 @@ function openTransferModal(sym){
   };
 }
 
-function openTxnModal(txn){
+function openTxnModal(txn,prefill){
   const isEdit=!!txn;
-  const t=txn||{kind:"stock",sym:"",name:"",ccy:"USD",loc:"",side:"buy",price:"",units:"",amount:"",fee:"",date:fmtD(TODAY)};
+  const t=txn||prefill||{kind:"stock",sym:"",name:"",ccy:"USD",loc:"",side:"buy",price:"",units:"",amount:"",fee:"",date:fmtD(TODAY)};
   const isInc=k=>k==="dividend"||k==="interest"||k==="fee"||k==="liability";
   const m=openModal(`
     <h2 style="margin-bottom:10px">${isEdit?T("editTxn"):T("newTxn")}</h2>

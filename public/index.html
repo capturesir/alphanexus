@@ -696,6 +696,7 @@ const SYMBOLS=[
 {s:"9984.T", n:"SoftBank Group",             z:"軟銀集團",            m:"JP", c:"JPY", p0:1600,dr:.12,vol:.40,dy:.006}
 ];
 const SYM_MAP=Object.fromEntries(SYMBOLS.map(o=>[o.s,o]));
+function normalizeSym(s){return s.replace(/[\uFF10-\uFF19]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/\uFF0E/g,".").replace(/\s+/g,"").toUpperCase()}
 function symName(o){return state.settings.lang==="en"?o.n:o.z}
 
 /* ====================== 模擬日線數據（原始價 + 經調整價） ====================== */
@@ -1575,7 +1576,7 @@ async function persist(){
 
 /* ====================== 代碼自動完成 ====================== */
 function searchSymbols(q){
-  q=q.trim().toUpperCase(); if(!q)return [];
+  q=normalizeSym(q); if(!q)return [];
   return SYMBOLS.filter(o=>o.s.toUpperCase().includes(q)||o.n.toUpperCase().includes(q)||o.z.includes(q))
     .sort((a,b)=>{const ai=a.s.toUpperCase().indexOf(q),bi=b.s.toUpperCase().indexOf(q);
       return (ai<0?99:ai)-(bi<0?99:bi)||a.s.length-b.s.length}).slice(0,8);
@@ -3893,7 +3894,7 @@ function openTxnModal(txn){
     }else if(isInc(kind)){
       const amt=parseFloat(m.querySelector("#fAmtI").value);
       if(!isFinite(amt)||amt<=0)return toast("⚠️ "+T("amount"));
-      const symI=kind==="dividend"?m.querySelector("#fSymI").value.trim().toUpperCase():"";
+      const symI=kind==="dividend"?normalizeSym(m.querySelector("#fSymI").value):"";
       // 第2點:新增(非編輯)手動股息且指定了股票 → 提醒優先用自動派息機制
       if(!isEdit&&kind==="dividend"&&symI&&state.settings.autoDiv!==false){
         if(!confirm(T("manualDivWarn")))return;
@@ -3902,7 +3903,7 @@ function openTxnModal(txn){
       if(symI)rec.sym=symI;
       // §3.2 自動股息經修改即視為手動,後續同步不再覆寫(不保留 auto/gross)
     }else{
-      const sym=m.querySelector("#fSym").value.trim().toUpperCase();
+      const sym=normalizeSym(m.querySelector("#fSym").value);
       const price=parseFloat(m.querySelector("#fPrice").value), units=parseFloat(m.querySelector("#fUnits").value);
       if(!sym||!isFinite(price)||!isFinite(units)||units<=0)return toast("⚠️ "+T("symbol")+" / "+T("price")+" / "+T("units"));
       const fee=parseFloat(m.querySelector("#fFee").value);
@@ -4783,10 +4784,10 @@ function importCSVText(text){
       }
       if(!isFinite(amt)||amt<=0)continue;
       const rec={id:uid(),kind,ccy,loc,amount:amt,date};
-      const sym=g(r,C.sym).toUpperCase(); if(sym)rec.sym=sym;
+      const sym=normalizeSym(g(r,C.sym)); if(sym)rec.sym=sym;
       out.push(rec);
     }else{
-      const sym=g(r,C.sym).toUpperCase();
+      const sym=normalizeSym(g(r,C.sym));
       const price=parseFloat(g(r,C.price)),units=parseFloat(g(r,C.units));
       if(!sym||!isFinite(price)||!isFinite(units)||units<=0)continue;
       const rec={id:uid(),kind,sym,name:g(r,C.name)||sym,ccy,loc,side:side==="sell"?"sell":"buy",price,units,date};
@@ -4822,7 +4823,7 @@ function openCustomSrcModal(){
       <button class="btn" id="csCancel">${T("cancel")}</button>
       <button class="btn btn-primary" id="csSave">${T("save")}</button>
     </div>`);
-  const cfg=()=>({symbol:m.querySelector("#csSym").value.trim().toUpperCase(),
+  const cfg=()=>({symbol:normalizeSym(m.querySelector("#csSym").value),
     name:m.querySelector("#csName").value.trim(),ccy:m.querySelector("#csCcy").value,
     url:m.querySelector("#csUrl").value.trim(),datePath:m.querySelector("#csDate").value.trim(),
     pricePath:m.querySelector("#csPrice").value.trim()});

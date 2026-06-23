@@ -7,11 +7,12 @@ const path = require("path");
 const html = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 global.location = { protocol: "http:" };
-global.window = {};
-global.document = { querySelector: () => null, querySelectorAll: () => [] };
+global.window = { addEventListener: () => {} };
+Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, writable: true, configurable: true });
+global.document = { querySelector: () => null, querySelectorAll: () => [], getElementById: () => ({ classList: { toggle: () => {}, remove: () => {}, add: () => {} } }), addEventListener: () => {} };
 global.fetch = async () => { throw new Error("offline") };
 
-let code = scripts.slice(0, 3).join("\n;\n").replace(/"use strict";/g, "");
+let code = scripts.slice(1, 4).join("\n;\n").replace(/"use strict";/g, "");
 code = code.slice(0, code.indexOf("/* ====================== 資產列表 UI"));
 
 let pass = 0;

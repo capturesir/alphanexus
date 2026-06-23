@@ -267,6 +267,7 @@
  "rowsLbl": "rows",
  "noCustomSrc": "No custom sources yet",
  "feeOpt": "Fee (optional)",
+ "advOptions": "Advanced options (fee, location)",
  "optional": "optional",
  "incomeReceived": "Received",
  "divTTM": "TTM div ≈",

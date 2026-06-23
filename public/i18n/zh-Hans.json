@@ -267,6 +267,7 @@
  "rowsLbl": "条",
  "noCustomSrc": "尚未设置任何自定义数据源",
  "feeOpt": "手续费(选填)",
+ "advOptions": "高级选项（费用、位置）",
  "optional": "选填",
  "incomeReceived": "已收",
  "divTTM": "近一年股息约",

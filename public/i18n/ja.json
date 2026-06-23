@@ -267,6 +267,7 @@
  "rowsLbl": "行",
  "noCustomSrc": "カスタムソースはまだありません",
  "feeOpt": "手数料（任意）",
+ "advOptions": "詳細設定（手数料・場所）",
  "optional": "任意",
  "incomeReceived": "受取済み",
  "divTTM": "TTM配当 ≈",

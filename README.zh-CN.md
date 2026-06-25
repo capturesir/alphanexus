@@ -1,126 +1,145 @@
-# AlphaNexus — 投资组合管理平台
+<div align="center">
+
+# AlphaNexus
+
+**投资组合管理平台**
+
+![Node.js](https://img.shields.io/badge/Node.js-≥18-339933?logo=node.js&logoColor=white)
+![Zero Deps](https://img.shields.io/badge/依赖-零依赖-blue)
+![License](https://img.shields.io/badge/License-PolyForm--NC--1.0-purple)
+![Tests](https://img.shields.io/badge/Tests-158✓-brightgreen)
 
 [中文](README.md) | **简体中文** | [English](README.en.md) | [日本語](README.ja.md)
 
-> 🌐 **Live Demo**: [https://www.alphanexus.cc](https://www.alphanexus.cc)
+🌐 **[Live Demo](https://www.alphanexus.cc)** — 访客模式免注册即可体验
 
-AlphaNexus 是一个**手机优先**的多语言投资组合追踪平台,以**单一 HTML 前端 + 零依赖 Node.js 后端**构成,专注于跨市场、多币种的精准会计与绩效分析。整套系统可在一台最低配的 VPS 上运行,亦可离线以 `file://` 开启体验。
+</div>
 
-> ⚠️ **免责声明**:本平台为个人理财追踪工具,所有市场数据、汇率与新闻均来自第三方来源,仅供参考,**不构成任何投资建议**。新闻仅作标题索引与导流,版权归属原出版者所有。
+---
 
-## 系统界面
+一个**手机优先**的多语言投资组合追踪平台。单一 HTML 前端 + 零依赖 Node.js 后端，专注于跨市场、多币种的精准会计与绩效分析。最低配 VPS 即可运行，也能离线以 `file://` 开启。
 
-👉 [前往 Live Demo](https://www.alphanexus.cc) 体验完整功能（访客模式免注册即可使用）。
+> ⚠️ **免责声明**：本平台为个人理财追踪工具，所有市场数据、汇率与新闻均来自第三方来源，仅供参考，**不构成任何投资建议**。
 
-## 核心特色
+---
 
-- **手机优先设计**:触控热区 ≥44dp、手势图表、底部分页导航,亦兼容平板与桌面。
-- **多语言**:繁体中文、简体中文、English、日本語,即时切换(语系包外置 JSON,离线有内嵌兜底)。
-- **多市场・多货币**:美股/ETF、港股、A 股、日股、加密货币;多币种自动以历史汇率折算为基准货币。
-- **业界标准会计模型**:原始价计价 + 交易单位数重述 + 内部现金流转,正确处理股息、拆股、手续费,避免净值扭曲与双重计算。
-- **韧性数据层**:多源备份、本地持久化 + 增量更新、收市后自动预抓、请求合并、gzip 压缩。
-- **真实帐号系统**:scrypt 密码杂凑、Bearer token、可选邮箱验证、组合云端同步。
-- **隐私与分享**:一键隐私模式隐藏所有金额;可分享只含报酬率(不含金额)的成绩卡。
-- **零依赖**:后端仅用 Node.js 内建模块,无需 `npm install`。
+## ✨ 为什么选择 AlphaNexus？
 
-## 功能总览
+<table>
+<tr>
+<td width="50%">
 
-### 资产列表
-- 持仓一览:市值、损益、报酬率、已收股息、近一年股息估算。
-- **总资产卡片**:点金额一键开关隐私模式;点下方盈亏循环切换「总盈亏 / 近两交易日净值变化」;右上「分析」进入资产分析页。
-- **持仓排序**:市值、当日涨跌 %、报酬率(升/降序)。
-- **金额栏点击循环**:最新市值 → 最新价(单日 %)→ 单日市值变动值。
-- **持仓详情页**:点任一持仓进入,显示最新价、迷你走势图、该资产全部交易历史、股息、数据源,可删除整个资产。
-- **多币种现金看板**:各币种余额(支持负数/融资)、累计股息利息收入、累计费用负债支出。
-- **交易记录**:九种交易类型(股票/债券/现金/期权/其他/股息/利息/费用/负债),含手续费字段。
-- **交易筛选**:分组下拉(交易类型 / 持仓代码);按代码筛选会同时带出该资产的买卖与相关股息。
-- **资产位置**:区分券商/银行(如富途、中银),字段内建选取已有位置的图标,留空归为「默认」。
+### 🏗️ 零依赖架构
+后端仅用 Node.js 内建模块，无需 `npm install`。一个 `server.js` 搞定一切——部署、扩展、维护都极简。
 
-### 资产分析
-- **资产类别比重**:现金 / 股票 / 债券 / 其他 的饼图,含占比与金额。
-- **整体表现**:组合 TWR 与主要大市(SPY、VT)同期报酬对比。
-- **追踪投资大师**:接美国 SEC EDGAR 13F 公开申报,显示 13 位大师最近一季的十大持股(名称 / 金额 / 占比);支持的大师包括巴菲特(Berkshire)、李录(Himalaya)、Tepper(Appaloosa)、Ackman(Pershing)、Druckenmiller(Duquesne)、Burry(Scion)、Griffin(Citadel)、Cohen(Point72)、Coleman(Tiger Global)、Wood(ARK)、**Dalio(Bridgewater)**、**Loeb(Third Point)**、**Klarman(Baupost)**。透过 OpenFIGI API 自动将 CUSIP 转换为股票代码,覆盖率最高可达 100%;明确标示仅美股多头、季末后最多 45 天延迟、不含现金等限制。
-- **股息行事历**:月度股息预估(以过去 12 个月实际派息推算)、除净日时间轴(向上为过去一年真实公司行动,向下为未来一年假想除净日)。
+</td>
+<td width="50%">
 
-### 变化图
-- 三种指标:资产净值、TWR(时间加权)、MWR(资金加权)——TWR 与 MWR 同为累积口径,无外部现金流时两者重合。
-- 四种形态:折线、平滑曲线、阴阳烛(日/周/月/年聚合)。
-- **手势操作**:双指捏合缩放、单指拖动平移、长按扫描查值(显示日期 + 组合 + 各比较线数值)、放开后停留。
-- **基准对比**:加入任意 ETF/股票(如 VT、SPY),以经调整价的总报酬曲线叠合对比。
-- **投资大师假想曲线**:选择大师后,以 13F 季度持仓模拟的净值曲线叠合对比;警示区提供计算原理说明与最新持仓详情(含 SEC 原文链接)。
-- **事件标注**:除净日(💰)、拆股(✂️)以图标标于 X 轴,十字线停留显示明细。
-- **期间切换**:1M / 3M / 6M / YTD / 1Y / 3Y / ALL,并可按资产位置筛选。
-- **互动图表**:点按持仓右侧图表图标进入,支持阴阳烛图 + 12 项技术指标。
-  - 指标工具箱面板:开关与参数设置,支持叠加(如 SMA)与独立面板(如 RSI)。
-  - 技术指标:SMA、EMA、RSI、MACD、布林带(Bollinger Bands)、随机指标(KD)、VWAP、ATR、OBV、ADX、Parabolic SAR、一目均衡表(Ichimoku Cloud)。
-  - 十字线悬停时,所有指标面板同步显示该交易日的数值。
-  - 指标数据显示范围跟随主图视图范围。
-- 期权不纳入曲线追踪,图表标示「不含期权现值 ±X」。
+### 📱 手机优先设计
+触控热区 ≥44dp、手势图表、底部分页导航。手机、平板、桌面三端自适应。
 
-### 资讯平台
-- 持仓相关 / 热门财经 / 全部 三分页。
-- 以公司或基金名称智慧查询相关新闻(非美股优化)。
-- **仅显示标题、来源、发布时间,点按导向原文**;不转载内文。
+</td>
+</tr>
+<tr>
+<td>
 
-### 个人中心
-- 头像与个人资料、修改密码、登出、**删除帐号**(需密码确认,永久移除所有资料,符合 GDPR/PDPO 删除权)。
-- 深色 / 浅色主题、语言切换、涨跌颜色偏好、默认图表形态。
-- **隐私模式**开关(默认开):隐藏所有资产金额(显示为 •••),比率与股价照常。
-- **盈亏显示**默认模式(总盈亏 / 当日变化)。
-- **分享报酬率**:产生只含报酬率、不含金额的成绩卡,以 Canvas 输出 PNG,经系统分享面板储存至相簿或直接下载。
-- **自动股息**开关与**股息预扣税率**设置。
-- **自订数据源**(JSONPath)、**CSV 导入 / 导出**、示范组合加载 / 清除。
+### 🌍 四语即时切换
+繁体中文、简体中文、English、日本语。语系包外置 JSON，离线有内嵌兜底。
 
-## 会计模型(原始价 + 内部现金流转)
+</td>
+<td>
 
-- **计价**:个人组合一律以原始价(拆股已调整、股息未调整)计算;大盘基准对比唯一使用经调整价(代表总报酬)。
-- **股息**:除净日按各资产位置持股自动入帐,税后金额 = 持股 × 每股息 ×(1 − 预扣税率);自动笔标记 ⚡,修改即转手动、删除入跳过清单,同代码 ±14 天去重。除净日股价跌、现金升,净值平滑,不计外部资金流。
-- **拆股**:交易单位数重述(单位 × F、单价 ÷ F),用户纪录不被改写,净值与成本不跳动。
-- **期权**:不入曲线与 TWR/MWR;现金进出视为外部资金流(完全中立),列表以最后结算价静态估值。
-- **费用 / 负债**:内部支出,减现金、不入资金流,自然压低回报率。
-- **TWR**:`∏ Vₜ/(Vₜ₋₁+Cₜ) − 1`,费用不重复扣减;**MWR**:XIRR,累积与年化两种口径。
+### 🔒 安全账号系统
+scrypt 密码杂凑 + Bearer Token + 可选邮箱验证 + 登录防暴力破解 + HSTS 安全 Headers。
 
-## 数据架构
+</td>
+</tr>
+</table>
 
-- **行情备份链**:Yahoo Finance → 过期本地库存 → Stooq(美/港/日)。加密货币 Yahoo → CoinGecko。
-- **汇率备份**:Yahoo `{CCY}=X` → 本地库存 → Frankfurter / 欧洲央行;交叉汇率由对 USD 三角换算。
-- **持久化 + 增量更新**:历史数据存于 `data/market/`,30 分钟内回库存,过期只抓缺口;侦测新拆股事件才全量重抓。
-- **收市后预抓**:每日台北 05:00(`PREFETCH_HOUR` 可调)自动更新全站持仓与自订源。
-- **自订数据源**:JSONPath 接入任意 API(日期格式自动侦测、SSRF 防护、连续失败报警)。
-- **投资大师 CUSIP 自动解析**:透过 OpenFIGI API 自动将 SEC 13F 的 CUSIP 转换为股票代码,结果缓存至 `data/cusip_cache.json`(零维护,自动累积)。
-- **新闻数据层(可插拔 + 按市场自动路由)**:**港股(.HK)、A 股(.SS/.SZ)、台股(.TW)自动查 Google News 中文新闻,日股(.T)查日文,美股维持 Yahoo 英文**——皆以公司名称查询——无需任何设置即生效,保留出处、不转载内文。亦可设 `NEWS_PROVIDER=rss` 强制全部走 RSS,或 `NEWS_PROVIDER=newsapi|marketaux` + `NEWS_API_KEY` 切换至正规授权来源。新闻按**单支股票**缓存与请求合并,全站每支每周期最多抓一次,与用户数无关。
+---
 
-## 项目结构
+## 🚀 核心功能
+
+### 📊 精准会计引擎
+
+| 特色 | 说明 |
+|:---|:---|
+| **原始价计价** | 拆股已调整、股息未调整，避免净值扭曲 |
+| **自动股息入账** | 除净日按持仓自动入账，税后金额精确计算 |
+| **拆股重述** | 交易单位数自动调整，用户记录不被改写 |
+| **TWR / MWR** | 时间加权与资金加权(XIRR)双指标，累积+年化 |
+| **九种交易类型** | 股票/债券/现金/期权/其他/股息/利息/费用/负债 |
+
+### 🌐 跨市场 · 多币种
 
 ```
-wealthlens/
-├── server.js              # 零依赖 Node.js 后端(>= Node 18)
-├── public/
-│   ├── index.html         # 前端(单档,含全部 CSS/JS)
-│   └── i18n/              # 语系包 zh-Hant / zh-Hans / en / ja
-├── test/                  # 回归测试(引擎 + 后端)
-├── package.json
-├── README.md / README.en.md / README.ja.md / README.zh-CN.md
-└── data/                  # 运行期自动建立:用户、组合、市场数据缓存、大师数据、CUSIP 缓存
+美股/ETF  ·  港股  ·  A股  ·  日股  ·  加密货币
+         ↓ 历史汇率自动折算 ↓
+        统一基准货币显示
 ```
 
-## 快速开始
+### 📈 图表与分析
 
-需要 **Node.js 18 以上**(内建 `fetch`),无需 `npm install`。
+- **四种图表形态**：折线、平滑曲线、阴阳烛（日/周/月/年聚合）
+- **手势操作**：双指捏合缩放、单指拖动平移、长按扫描查值
+- **12 项技术指标**：SMA、EMA、RSI、MACD、布林带、KD、VWAP、ATR、OBV、ADX、Parabolic SAR、一目均衡表
+- **基准对比**：叠加任意 ETF/股票（SPY、VT 等）的总回报曲线
+- **事件标注**：除净日 💰、拆股 ✂️ 标于图表 X 轴
+
+### 🧠 追踪投资大师
+
+接美国 SEC EDGAR 13F 公开申报，追踪 **13 位大师**的季度持仓变动：
+
+| 大师 | 机构 | 大师 | 机构 |
+|:---:|:---:|:---:|:---:|
+| 巴菲特 | Berkshire | Dalio | Bridgewater |
+| 李录 | Himalaya | Loeb | Third Point |
+| Tepper | Appaloosa | Klarman | Baupost |
+| Ackman | Pershing | Burry | Scion |
+| Druckenmiller | Duquesne | Griffin | Citadel |
+| Cohen | Point72 | Coleman | Tiger Global |
+| Wood | ARK | | |
+
+- CUSIP 自动解析为股票代码（OpenFIGI API）
+- 大师净值曲线叠加对比
+- 季度持仓差异分析（增持/减持/新建/清仓）
+
+### 💰 股息日历
+
+- 月度股息预估（过去 12 个月实际推算）
+- 除净日时间轴：向上 = 过去真实行动，向下 = 未来假想除净日
+- 仅显示有持仓的股票
+
+### 📰 智慧新闻
+
+- 按市场自动路由：港股/A股→中文、日股→日文、美股→英文
+- 仅显示标题、来源、时间，点击导向原文——不转载内文
+
+### 🔐 隐私与分享
+
+- **一键隐私模式**：隐藏所有金额（显示为 •••），比率与股价照常
+- **分享成绩卡**：只含回报率、不含金额，Canvas 输出 PNG
+
+---
+
+## ⚡ 快速开始
+
+需要 **Node.js 18+**（内建 `fetch`），无需 `npm install`。
 
 ```bash
-node server.js            # 默认 http://localhost:8080
-PORT=3000 node server.js  # 自订端口
+git clone https://github.com/capturesir/alphanexus.git
+cd alphanexus
+node server.js
+# → http://localhost:8080
 ```
 
-浏览器开启 `http://localhost:8080`。首次可选「访客模式」并加载示范组合即时体验。
+首次开启可选「访客模式」并加载示范组合即时体验。
 
-### 投资大师数据建档
-
-首次使用投资大师功能前,需在服务器执行建档(抓取 SEC 13F 数据 + 历史股价):
+### 投资大师建档（首次）
 
 ```bash
-node server.js --build-gurus   # 建档所有大师(约 10–15 分钟)
+node server.js --build-gurus   # 约 10–15 分钟，完成后自动退出
+node server.js                 # 正常启动
 ```
 
 ### 环境变量
@@ -128,56 +147,81 @@ node server.js --build-gurus   # 建档所有大师(约 10–15 分钟)
 | 变量 | 说明 | 默认 |
 |---|---|---|
 | `PORT` | 服务器端口 | 8080 |
-| `PREFETCH_HOUR` | 每日预抓时间(本地时,-1 停用) | 5 |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | 启用邮箱验证注册(465 隐式 TLS) | 未设置 = 免验证 |
-| `NEWS_PROVIDER` | 新闻来源:`rss`(Google News RSS,中文市场) / `newsapi` / `marketaux` | 未设置 = Yahoo 聚合 |
-| `NEWS_API_KEY` | newsapi / marketaux 所需密钥(rss 不需要) | 无 |
-| `MARKET_FRESH_MS` | 市场数据视为新鲜的时间窗 | 30 分钟 |
-| `SEC_UA` | 投资大师 13F 查询的 SEC User-Agent(建议填真实 email) | 内建占位 |
+| `CORS_ORIGIN` | 允许的前端来源（逗号分隔） | 空 = 全部允许 |
+| `SMTP_*` | 邮箱验证（HOST/PORT/USER/PASS/FROM） | 未设定 = 免验证 |
+| `NEWS_PROVIDER` | 新闻来源：`rss` / `newsapi` / `marketaux` | Yahoo 聚合 |
+| `PREFETCH_HOUR` | 每日预抓时间（-1 停用） | 5 |
 
-## 测试
+---
+
+## 🧪 测试
 
 ```bash
-npm test                  # 引擎回归(75)+ 后端(57),共 132 项
+npm test    # 引擎 101 + 后端 57 = 158 项 ✓
 ```
 
-涵盖:除净日净值恒等、拆股重述、期权中立、费用处理、自动股息、MWR 累积口径、数据源备份链、增量合并、JSONPath、CoinGecko、并发合并、邮箱验证、设置隔离、CUSIP 对映。
+涵盖：除净日净值恒等、拆股重述、期权中立、费用处理、自动股息、MWR、数据源备援、增量合并、JSONPath、CoinGecko、CUSIP 对映。
 
-## 部署
+---
 
-完整的由零开始 VPS 教学(反向代理 + 自动 HTTPS + 备份 + Cloudflare):见 **[DEPLOY.md](DEPLOY.md)**。
+## 🏗️ 技术栈
 
-最低配 VPS(1 vCPU / 1GB RAM,月费约 US$4–6)即可运行;建议前置 Cloudflare 免费方案抵御 DDoS。应用层另有每 IP 限流与慢速请求超时。
+| 层级 | 技术 |
+|:---|:---|
+| 前端 | 原生 HTML/CSS/JS，Canvas 自绘图表，无框架、无构建 |
+| 后端 | Node.js 内建模块（http/crypto/tls/zlib/fs），零第三方依赖 |
+| 储存 | JSON 文件（原子写入）+ 两层缓存（内存 + 磁盘） |
+| 数据源 | Yahoo Finance → Stooq → CoinGecko 备援链 |
+| 安全 | scrypt、Bearer Token、HSTS、X-Frame-Options、速率限制 |
 
-## 容量与规模
+---
 
-- **个人使用**:每月流量约 30–100MB,占用空间约 2–3MB,不会随时间失控增长。
-- **一万用户**:总空间约 3GB 内;对外 API 请求量按「不同代码数」而非用户数计,搭配持久化、预抓与请求合并,远低于数据源容忍区间。
-- 用户/session 储存超过约 1,000–2,000 人时,建议迁移至 SQLite(Node 22+ 内建)。
+## 📦 部署
 
-## 法律与合规
+最低配 VPS（1 vCPU / 1GB RAM，月费 ~US$4–6）即可运行。
 
-- 市场数据与新闻透过第三方来源取得,**个人/示范用途**为主;**商业上线前**应改用有明确授权的数据与新闻 API,并咨询当地律师。
-- 新闻仅作「标题 + 来源 + 链接」的索引与导流,**不转载内文**,版权归属原出版者。
+```bash
+# VPS 上
+git clone https://github.com/capturesir/alphanexus.git
+cd alphanexus
+node server.js --build-gurus   # 首次建档
+pm2 start server.js --name alphanexus
+pm2 save
+```
 
-## 技术栈
+建议前置 Cloudflare 免费方案抵御 DDoS。完整教学见 DEPLOY.md（本地私有，不随 git 发布）。
 
-- 前端:原生 HTML / CSS / JavaScript,Canvas 自绘图表,无框架、无构建步骤。
-- 后端:Node.js 内建模块(http / crypto / tls / zlib / fs),零第三方依赖。
-- 储存:JSON 文件(原子写入)+ 两层缓存。
+---
 
-## 致谢
+## 📁 项目结构
 
-架构设计参考了两个优秀的开源项目(仅借鉴思路,未复制代码):
-[Ghostfolio](https://github.com/ghostfolio/ghostfolio)(数据源抽象、市场数据持久化、活动类型)与
-[Portfolio Performance](https://github.com/portfolio-performance/portfolio)(TWR/MWR 计算、JSON Quote Feed、数据源教训)。
+```
+alphanexus/
+├── server.js          # 零依赖 Node.js 后端（~1500 行）
+├── public/
+│   ├── index.html     # 前端单档（含全部 CSS/JS）
+│   └── i18n/          # 语系包 zh-Hant / zh-Hans / en / ja
+├── test/              # 回归测试（引擎 + 后端）
+├── package.json
+└── data/              # 运行期自动建立（不入 git）
+```
 
-## 联络 / 作者
+---
 
-- 作者:Capture
-- Email:capturesir@gmail.com
-- 问题回报与建议:欢迎透过上述 email,或在代码仓库开 issue。
+## 📜 授权
 
-## 授权
+[PolyForm Noncommercial License 1.0.0](LICENSE) — 非商用免费开源，商用需取得作者同意。
 
-PolyForm Noncommercial License 1.0.0 — 非商用免费开源,商用需取得作者同意。详见 [LICENSE](LICENSE)。
+## ✉️ 联络
+
+- 作者：Capture
+- Email：capturesir@gmail.com
+- 问题回报：欢迎开 issue 或来信
+
+---
+
+<div align="center">
+
+**架构参考**：[Ghostfolio](https://github.com/ghostfolio/ghostfolio) · [Portfolio Performance](https://github.com/portfolio-performance/portfolio)
+
+</div>

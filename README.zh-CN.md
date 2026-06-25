@@ -2,19 +2,15 @@
 
 [中文](README.md) | **简体中文** | [English](README.en.md) | [日本語](README.ja.md)
 
+> 🌐 **Live Demo**: [https://www.alphanexus.cc](https://www.alphanexus.cc)
+
 AlphaNexus 是一个**手机优先**的多语言投资组合追踪平台,以**单一 HTML 前端 + 零依赖 Node.js 后端**构成,专注于跨市场、多币种的精准会计与绩效分析。整套系统可在一台最低配的 VPS 上运行,亦可离线以 `file://` 开启体验。
 
 > ⚠️ **免责声明**:本平台为个人理财追踪工具,所有市场数据、汇率与新闻均来自第三方来源,仅供参考,**不构成任何投资建议**。新闻仅作标题索引与导流,版权归属原出版者所有。
 
 ## 系统界面
 
-|  |  |
-|:---:|:---:|
-| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
-| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
-| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
-| ![](docs/screenshots/07.jpg) | ![](docs/screenshots/08.jpeg) |
-| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
+👉 [前往 Live Demo](https://www.alphanexus.cc) 体验完整功能（访客模式免注册即可使用）。
 
 ## 核心特色
 
@@ -103,10 +99,8 @@ wealthlens/
 │   ├── index.html         # 前端(单档,含全部 CSS/JS)
 │   └── i18n/              # 语系包 zh-Hant / zh-Hans / en / ja
 ├── test/                  # 回归测试(引擎 + 后端)
-├── docs/screenshots/      # 截图
 ├── package.json
 ├── README.md / README.en.md / README.ja.md / README.zh-CN.md
-├── DEPLOY.md              # VPS 部署教学
 └── data/                  # 运行期自动建立:用户、组合、市场数据缓存、大师数据、CUSIP 缓存
 ```
 

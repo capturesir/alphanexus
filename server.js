@@ -20,6 +20,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const PORT = process.env.PORT || 8080;
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
 const ROOT = __dirname;
 const PUB = path.join(ROOT, "public");
 const DATA = process.env.WL_DATA_DIR ? path.resolve(process.env.WL_DATA_DIR) : path.join(ROOT, "data");
@@ -1109,12 +1110,18 @@ function userByToken(req) {
 const zlib = require("zlib");
 function send(req, res, code, obj) {
   let body = Buffer.from(JSON.stringify(obj));
+  const origin = req.headers["origin"] || "";
+  const corsOk = ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin);
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": corsOk ? (origin || "*") : ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Cache-Control": "no-store"
+    "Access-Control-Allow-Credentials": "true",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
   };
   // 流量優化:>1KB 的 JSON 以 gzip 壓縮(歷史序列可省 75–85% 出網流量)
   if (body.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
@@ -1148,7 +1155,7 @@ function serveStatic(req, res, urlPath) {
       res.writeHead(404); return res.end("not found");
     }
     const mime = MIME[path.extname(file)] || "application/octet-stream";
-    const headers = { "Content-Type": mime };
+    const headers = { "Content-Type": mime, "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
     // HTML 檔案不快取（確保更新後瀏覽器立即載入新版本）
     if (mime.startsWith("text/html")) headers["Cache-Control"] = "no-cache";
     if (/^(text\/|application\/json|image\/svg)/.test(mime) && buf.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
@@ -1168,6 +1175,15 @@ function rateOk(ip) {
   if (now - r.at > 60e3) { r.at = now; r.n = 0 }
   r.n++; RATE.set(ip, r);
   return r.n <= 240;
+}
+/* 登入防暴力破解:每 email 每分鐘最多 5 次 */
+const LOGIN_RATE = new Map();
+function loginRateOk(email) {
+  const now = Date.now();
+  const r = LOGIN_RATE.get(email) || { at: now, n: 0 };
+  if (now - r.at > 60e3) { r.at = now; r.n = 0 }
+  r.n++; LOGIN_RATE.set(email, r);
+  return r.n <= 5;
 }
 
 /* ---------------------- 路由 ---------------------- */
@@ -1363,6 +1379,7 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/auth/login" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
+      if (!loginRateOk(email)) return send(req, res, 429, { error: "too_many_attempts", retryAfter: 60 });
       const usr = Store.getByEmail(email);
       if (!usr) return send(req, res, 404, { error: "no_user" });
       if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });

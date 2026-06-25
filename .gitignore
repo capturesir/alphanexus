@@ -26,5 +26,5 @@ DEPLOY.md
 
 # Private notes
 problems.md
-docs/*.md
+docs/
 cusip_cache.json

@@ -2,19 +2,15 @@
 
 [中文](README.md) | [简体中文](README.zh-CN.md) | [English](README.en.md) | **日本語**
 
+> 🌐 **Live Demo**: [https://www.alphanexus.cc](https://www.alphanexus.cc)
+
 AlphaNexusは**モバイルファースト**の多言語ポートフォリオ追跡プラットフォームです。**単一HTMLフロントエンド + ゼロ依存Node.jsバックエンド**で構成され、クロスマーケット・多通貨の正確な会計処理とパフォーマンス分析に特化しています。最小構成のVPSで稼働し、`file://`でオフライン利用も可能です。
 
 > ⚠️ **免責事項**: 本プラットフォームは個人の資産管理ツールです。市場データ、為替レート、ニュースはすべて第三者ソースからの情報を参考として提供するものであり、**いかなる投資助言を構成するものでもありません**。ニュースは見出しインデックスとして表示され、元の出版社へのリンクを含みます。著作権は各出版社に帰属します。
 
 ## システム画面
 
-|  |  |
-|:---:|:---:|
-| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
-| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
-| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
-| ![](docs/screenshots/07.jpg) | ![](docs/screenshots/08.jpeg) |
-| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
+👉 [Live Demo で体験](https://www.alphanexus.cc) — ゲストモードで登録なしに利用可能。
 
 ## 主な特長
 
@@ -103,10 +99,8 @@ wealthlens/
 │   ├── index.html         # フロントエンド（単一ファイル、全CSS/JS含む）
 │   └── i18n/              # 言語パック zh-Hant / zh-Hans / en / ja
 ├── test/                  # リグレッションテスト（エンジン + バックエンド）
-├── docs/screenshots/
 ├── package.json
 ├── README.md / README.en.md / README.ja.md / README.zh-CN.md
-├── DEPLOY.md              # VPSデプロイメントガイド
 └── data/                  # 実行時に自動生成: ユーザー、ポートフォリオ、マーケットキャッシュ、著名投資家データ、CUSIPキャッシュ
 ```
 

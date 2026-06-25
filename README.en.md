@@ -2,19 +2,15 @@
 
 [中文](README.md) | [简体中文](README.zh-CN.md) | **English** | [日本語](README.ja.md)
 
+> 🌐 **Live Demo**: [https://www.alphanexus.cc](https://www.alphanexus.cc)
+
 AlphaNexus is a **mobile-first**, multilingual portfolio tracker built as a **single-file HTML frontend + zero-dependency Node.js backend**, focused on accurate cross-market, multi-currency accounting and performance analytics. It runs on an entry-level VPS, or offline via `file://`.
 
 > ⚠️ **Disclaimer**: This is a personal finance tracking tool. All market data, FX rates and news come from third-party sources, are provided for reference only, and **do not constitute investment advice**. News is shown as headline indexing with links to the original publishers, who retain all copyright.
 
 ## System Interface
 
-|  |  |
-|:---:|:---:|
-| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
-| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
-| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
-| ![](docs/screenshots/07.jpg) | ![](docs/screenshots/08.jpeg) |
-| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
+👉 [Try the Live Demo](https://www.alphanexus.cc) — guest mode available, no registration required.
 
 ## Highlights
 
@@ -103,10 +99,8 @@ wealthlens/
 │   ├── index.html         # frontend (single file, all CSS/JS)
 │   └── i18n/              # language packs zh-Hant / zh-Hans / en / ja
 ├── test/                  # regression tests (engine + backend)
-├── docs/screenshots/
 ├── package.json
 ├── README.md / README.en.md / README.ja.md / README.zh-CN.md
-├── DEPLOY.md              # VPS deployment guide
 └── data/                  # auto-created at runtime: users, portfolios, market cache, guru data, CUSIP cache
 ```
 

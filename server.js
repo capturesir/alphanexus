@@ -385,6 +385,16 @@ function guruIndexRead() {
 function guruIndexWrite(data) {
   try { fs.writeFileSync(path.join(GURU_DIR, "index.json"), JSON.stringify(data)); return true } catch (e) { return false }
 }
+function collectGuruSymbols() {
+  const syms = new Set();
+  for (const g of GURUS) {
+    try {
+      const doc = guruRead(g.id, "holdings");
+      if (doc && doc.quarters) for (const q of doc.quarters) for (const h of q.holdings) if (h.sym) syms.add(h.sym);
+    } catch (e) {}
+  }
+  return [...syms];
+}
 
 /* 大師假想淨值計算(純函式,便於測試)。
    quarters: [{date:'YYYY-MM-DD', holdings:[{sym, pct}]}],按季排序(pct=該股市值占比,和約為1)。
@@ -1460,6 +1470,21 @@ async function prefetchAll() {
       }
     } catch (e) {}
     log(`prefetch done: ok=${ok} fail=${fail}`);
+    // 大師持倉 symbol 輪詢:每天更新 1/7,避免一次性打爆 API
+    try {
+      const guruSyms = collectGuruSymbols();
+      if (guruSyms.length) {
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 864e5);
+        const batch = dayOfYear % 7;
+        const chunkSize = Math.ceil(guruSyms.length / 7);
+        const todaySyms = guruSyms.slice(batch * chunkSize, (batch + 1) * chunkSize);
+        log(`guru prefetch batch ${batch}/7: ${todaySyms.length} symbols`);
+        for (const s of todaySyms) {
+          try { await smartHistory(s); ok++ } catch (e) { fail++ }
+          await sleep(800);
+        }
+      }
+    } catch (e) { log("guru prefetch err", e.message) }
   } finally { prefetchRunning = false }
 }
 
@@ -1475,16 +1500,35 @@ if (require.main === module) {
     buildAllGurus(ids ? { ids } : {}).then(r => { log("guru build done", JSON.stringify(r)); process.exit(0); })
       .catch(e => { log("guru build error", e.message); process.exit(1); });
   } else {
-    server.listen(PORT, () => log(`AlphaNexus server v0.1 listening on http://localhost:${PORT}`));
-    if (PREFETCH_HOUR >= 0) setInterval(() => {
-      const now = new Date(), day = now.toISOString().slice(0, 10);
-      if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {
-        lastPrefetchDay = day;
-        prefetchAll().catch(e => log("prefetch err", e.message));
-        // 收市後順帶更新大師 nav 尾端(每日)
-        buildAllGurus({}).catch(e => log("guru refresh err", e.message));
-      }
-    }, 10 * 60e3);
+    // 季度判斷:上次建檔是否在本季度之前
+    function needsGuruBuild() {
+      const idx = guruIndexRead();
+      if (!idx || !idx.updatedAt) return true; // 從未建檔
+      const last = new Date(idx.updatedAt);
+      const now = new Date();
+      const lastQ = Math.floor(last.getMonth() / 3); // 0-3
+      const nowQ = Math.floor(now.getMonth() / 3);
+      return last.getFullYear() !== now.getFullYear() || lastQ !== nowQ;
+    }
+    // 啟動流程:先確保大師資料就緒,再開伺服器
+    const guruReady = needsGuruBuild()
+      ? (log("guru data missing or stale, building ..."), buildAllGurus({}).then(r => log("auto guru build done:", JSON.stringify(r))).catch(e => log("auto guru build err", e.message)))
+      : Promise.resolve();
+    guruReady.then(() => {
+      server.listen(PORT, () => log(`AlphaNexus server v0.1 listening on http://localhost:${PORT}`));
+      if (PREFETCH_HOUR >= 0) setInterval(() => {
+        const now = new Date(), day = now.toISOString().slice(0, 10);
+        if (now.getHours() === PREFETCH_HOUR && lastPrefetchDay !== day) {
+          lastPrefetchDay = day;
+          prefetchAll().catch(e => log("prefetch err", e.message));
+          // 季度自動更新大師(非每日,避免重量 API 調用)
+          if (needsGuruBuild()) {
+            log("quarterly guru rebuild triggered");
+            buildAllGurus({}).then(r => log("quarterly guru done:", JSON.stringify(r))).catch(e => log("quarterly guru err", e.message));
+          }
+        }
+      }, 10 * 60e3);
+    });
   }
 } else {
   module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };

@@ -1255,8 +1255,23 @@ function loginRateOk(key, limit) {
 }
 
 /* ---------------------- 路由 ---------------------- */
+/* 取得真實用戶 IP(安全版)。架構:用戶→Cloudflare→Caddy(同機)→Node。
+   只有當「直連 Node 的來源」是信任代理(預設本機回環,可用 TRUST_PROXY 擴充)時,
+   才採信轉發標頭——否則用 socket IP,防止有人繞過 Caddy 直連並偽造標頭。
+   優先順序:CF-Connecting-IP(Cloudflare)> X-Forwarded-For 首個 > socket。 */
+const TRUST_PROXY = (process.env.TRUST_PROXY || "127.0.0.1,::1,::ffff:127.0.0.1").split(",").map(s => s.trim()).filter(Boolean);
+function clientIp(req) {
+  const sock = req.socket.remoteAddress || "?";
+  const trusted = TRUST_PROXY.includes(sock) || sock === "::1" || sock.startsWith("127.");
+  if (!trusted) return sock; // 非經信任代理(可能繞過 Caddy 直連)→ 不採信標頭
+  const cf = (req.headers["cf-connecting-ip"] || "").trim();
+  if (cf) return cf;
+  const xff = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  if (xff) return xff;
+  return sock;
+}
 const server = http.createServer(async (req, res) => {
-  const ip = req.socket.remoteAddress || "?";
+  const ip = clientIp(req);
   const u = new URL(req.url, "http://x");
   const p = u.pathname;
   if (req.method === "OPTIONS") return send(req, res, 204, {});
@@ -1617,5 +1632,5 @@ if (require.main === module) {
     });
   }
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, isPrivateIp, assertSafeUrl, set _dnsLookup(fn){_dnsLookup=fn}, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, isPrivateIp, assertSafeUrl, clientIp, set _dnsLookup(fn){_dnsLookup=fn}, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };
 }

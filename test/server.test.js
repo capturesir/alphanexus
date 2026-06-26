@@ -93,6 +93,11 @@ async function run() {
   let ssrfBlocked = false;
   try { await S2.assertSafeUrl("http://169.254.169.254/"); } catch (e) { ssrfBlocked = /unsafe/.test(e.message); }
   ok(ssrfBlocked, "B3e assertSafeUrl 解析後擋 metadata IP");
+  // B6 真實用戶 IP 解析(Caddy+Cloudflare 架構;只信任本機代理的轉發標頭)
+  const mkReq = (sock, hdr) => ({ socket: { remoteAddress: sock }, headers: hdr || {} });
+  ok(S2.clientIp(mkReq("127.0.0.1", { "cf-connecting-ip": "203.0.113.5" })) === "203.0.113.5", "B6 本機代理採信 CF-Connecting-IP");
+  ok(S2.clientIp(mkReq("127.0.0.1", { "x-forwarded-for": "203.0.113.9, 10.0.0.1" })) === "203.0.113.9", "B6 採信 XFF 首個");
+  ok(S2.clientIp(mkReq("198.51.100.7", { "cf-connecting-ip": "1.1.1.1" })) === "198.51.100.7", "B6 非信任來源忽略偽造標頭(防繞過直連)");
   S2.CUSTOM["MYFUND"] = { url:"https://myfund.example.com/api", datePath:"$.data.series[*].day", pricePath:"$.data.series[*].nav", ccy:"CNY", name:"基金" };
   const cf = await S2.smartHistory("MYFUND");
   ok(cf.source === "custom" && JSON.stringify(cf.raw) === "[10.51,10.62,10.7]", "B4 自訂源端到端 + 壞列剔除");

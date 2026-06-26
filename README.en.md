@@ -205,7 +205,10 @@ alphanexus/
 │   ├── index.html     # Single-file frontend (all CSS/JS)
 │   └── i18n/          # Language packs zh-Hant / zh-Hans / en / ja
 ├── test/              # Regression tests (engine + backend)
+├── scripts/           # Helper scripts (PDF generation, etc.)
+├── docs/screenshots/  # System interface screenshots (used in README)
 ├── package.json
+├── LICENSE            # PolyForm Noncommercial 1.0.0
 └── data/              # Auto-created at runtime (not in git)
 ```
 

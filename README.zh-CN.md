@@ -205,7 +205,10 @@ alphanexus/
 │   ├── index.html     # 前端单档（含全部 CSS/JS）
 │   └── i18n/          # 语系包 zh-Hant / zh-Hans / en / ja
 ├── test/              # 回归测试（引擎 + 后端）
+├── scripts/           # 辅助脚本（PDF 生成等）
+├── docs/screenshots/  # 系统界面截图（README 引用）
 ├── package.json
+├── LICENSE            # PolyForm Noncommercial 1.0.0
 └── data/              # 运行期自动建立（不入 git）
 ```
 

@@ -11,9 +11,19 @@
 
 [中文](README.md) | [简体中文](README.zh-CN.md) | **English** | [日本語](README.ja.md)
 
-🌐 **[Live Demo](https://www.alphanexus.cc)** — Guest mode available, no registration required
-
 </div>
+
+## System Interface
+
+👉 [Try the Live Demo](https://www.alphanexus.cc) — guest mode available, no registration required.
+
+|  |  |
+|:---:|:---:|
+| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
+| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
+| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
+| ![](docs/screenshots/07.jpg) | ![](docs/screenshots/08.jpeg) |
+| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
 
 ---
 

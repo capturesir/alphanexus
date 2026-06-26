@@ -11,9 +11,19 @@
 
 **中文** | [简体中文](README.zh-CN.md) | [English](README.en.md) | [日本語](README.ja.md)
 
-🌐 **[Live Demo](https://www.alphanexus.cc)** — 訪客模式免註冊即可體驗
-
 </div>
+
+## 系統介面
+
+👉 [前往 Live Demo](https://www.alphanexus.cc) 體驗完整功能（訪客模式免註冊即可使用）。
+
+|  |  |
+|:---:|:---:|
+| ![](docs/screenshots/01.jpeg) | ![](docs/screenshots/02.jpeg) |
+| ![](docs/screenshots/03.jpeg) | ![](docs/screenshots/04.jpeg) |
+| ![](docs/screenshots/05.jpeg) | ![](docs/screenshots/06.jpeg) |
+| ![](docs/screenshots/07.jpg) | ![](docs/screenshots/08.jpeg) |
+| ![](docs/screenshots/09.jpeg) | ![](docs/screenshots/10.jpeg) |
 
 ---
 

@@ -586,10 +586,14 @@ async function ensureGuruNav(id){
 function authHeaders(){return state.token?{"Authorization":"Bearer "+state.token}:{}}
 async function api(path,opt){
   if(API_BASE===null)throw new Error("offline");
-  const r=await fetch(API_BASE+path,{...opt,headers:{...(opt&&opt.body?{"Content-Type":"application/json"}:{}),...authHeaders(),...(opt&&opt.headers||{})}});
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),10000);
+  try{
+  const r=await fetch(API_BASE+path,{...opt,signal:ac.signal,headers:{...(opt&&opt.body?{"Content-Type":"application/json"}:{}),...authHeaders(),...(opt&&opt.headers||{})}});
+  clearTimeout(t);
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
   return j;
+  }catch(e){clearTimeout(t);throw e}
 }
 const apiPost=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b)});
 const apiPut=(p,b)=>api(p,{method:"PUT",body:JSON.stringify(b)});
@@ -762,7 +766,9 @@ async function loadLangPack(lang){
 }
 async function probeLive(){
   if(API_BASE===null){LIVE=false;return}
-  try{const r=await api("/api/ping");LIVE=!!r.ok}catch(e){LIVE=false}
+  try{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),5000);
+  const r=await fetch(API_BASE+"/api/ping",{signal:ac.signal});clearTimeout(t);
+  const j=await r.json().catch(()=>({}));LIVE=!!j.ok}catch(e){LIVE=false}
   updateLiveBadge();
 }
 function updateLiveBadge(){
@@ -5355,7 +5361,9 @@ function startTour(){
 window.startTour=startTour;
 // Auto-trigger on first login
 setTimeout(()=>{if(!localStorage.getItem('app_onboarded')&&state.user)startTour()},800);
-init();
+// Failsafe: if init() hangs (e.g. network issues), show auth screen after 15s
+const _initTimeout=setTimeout(()=>{if(state.user===null)$("#authScreen").style.display="flex"},15000);
+init().finally(()=>clearTimeout(_initTimeout));
 </script>
 </body>
 </html>

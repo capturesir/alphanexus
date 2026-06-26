@@ -1,0 +1,9 @@
+Contact: mailto:capturesir@gmail.com
+Expires: 2027-06-17T00:00:00.000Z
+Encryption: https://www.alphanexus.cc/.well-known/pgp-key.txt
+Preferred-Languages: zh-TW, zh-CN, en, ja
+Canonical: https://www.alphanexus.cc/.well-known/security.txt
+Policy: https://github.com/capturesir/alphanexus/security/policy
+
+# 歡迎安全研究人員回報漏洞
+# We welcome security researchers to report vulnerabilities

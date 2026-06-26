@@ -18,6 +18,8 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const dns = require("dns").promises;
+const net = require("net");
 
 const PORT = process.env.PORT || 8080;
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -284,11 +286,68 @@ function isSafeUrl(u) {
   try {
     const x = new URL(u);
     if (!/^https?:$/.test(x.protocol)) return false;
-    const h = x.hostname.toLowerCase();
+    const h = x.hostname.toLowerCase().replace(/^\[|\]$/g, ""); // 去除 IPv6 方括號
+    // 字串層快速預檢(僅擋明顯內網字面量;真正防護見 assertSafeUrl 的 IP 解析)
     if (h === "localhost" || h === "0.0.0.0" || h.startsWith("127.") || h.startsWith("10.") ||
-        h.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h.includes(":")) return false;
+        h.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+        h.startsWith("169.254.") || h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80"))
+      return false;
     return true;
   } catch (e) { return false }
+}
+/* 判定一個 IP 是否為私有/保留/不可外連(SSRF 防護核心)。 */
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  if (net.isIPv4(ip)) {
+    const o = ip.split(".").map(Number);
+    if (o[0] === 0 || o[0] === 127 || o[0] === 10) return true;           // 0/8、loopback、10/8
+    if (o[0] === 192 && o[1] === 168) return true;                         // 192.168/16
+    if (o[0] === 172 && o[1] >= 16 && o[1] <= 31) return true;             // 172.16/12
+    if (o[0] === 169 && o[1] === 254) return true;                         // 169.254/16 link-local(雲端 metadata)
+    if (o[0] === 100 && o[1] >= 64 && o[1] <= 127) return true;            // 100.64/10 CGNAT
+    if (o[0] >= 224) return true;                                          // 多播/保留
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const a = ip.toLowerCase();
+    if (a === "::1" || a === "::") return true;                            // loopback / 未指定
+    if (a.startsWith("fc") || a.startsWith("fd")) return true;            // fc00::/7 ULA
+    if (a.startsWith("fe80")) return true;                                 // link-local
+    if (a.startsWith("::ffff:")) return isPrivateIp(a.slice(7));          // IPv4-mapped
+    return false;
+  }
+  return true; // 無法判定 → 視為不安全
+}
+/* SSRF 安全的 URL 驗證:字串預檢 + 解析主機所有 IP,任一為私有即拒絕。
+   用於所有「用戶提供的 URL」抓取前。回傳解析到的安全 IP 清單(供可選的釘選連線)。 */
+/* DNS 解析掛勾(可被測試覆寫);預設用真實 dns.lookup。 */
+let _dnsLookup = (host) => dns.lookup(host, { all: true });
+async function assertSafeUrl(u) {
+  if (!isSafeUrl(u)) throw new Error("unsafe_url");
+  const host = new URL(u).hostname.replace(/^\[|\]$/g, "");
+  // 主機若本身是 IP 字面量,直接判定
+  if (net.isIP(host)) {
+    if (isPrivateIp(host)) throw new Error("unsafe_url_ip");
+    return [host];
+  }
+  let addrs;
+  try { addrs = await _dnsLookup(host); }
+  catch (e) { throw new Error("dns_failed"); }
+  if (!addrs.length) throw new Error("dns_empty");
+  for (const a of addrs) if (isPrivateIp(a.address)) throw new Error("unsafe_url_resolved");
+  return addrs.map(a => a.address);
+}
+/* SSRF 安全的抓取:驗證後抓取,且不自動跟隨轉址(避免 302 → 內網繞過)。 */
+async function safeFetchJson(u) {
+  await assertSafeUrl(u);
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 12000);
+  try {
+    const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" }, redirect: "manual", signal: ctl.signal });
+    if (r.status >= 300 && r.status < 400) throw new Error("redirect_blocked"); // 不跟隨轉址
+    if (!r.ok) throw new Error("upstream_" + r.status);
+    return await r.json();
+  } finally { clearTimeout(tm) }
 }
 /* §2.5 自訂源連續失敗監控:第 3 次起記錄 alerts 日誌並輸出報警 */
 const CUSTOM_FAILS = {};
@@ -303,8 +362,7 @@ function noteCustomFail(symbol, err) {
   }
 }
 async function customHistory(symbol, cfg) {
-  if (!isSafeUrl(cfg.url)) throw new Error("unsafe_url");
-  const j = await fetchAny([cfg.url]);
+  const j = await safeFetchJson(cfg.url);  // SSRF 安全:解析IP驗證 + 不跟隨轉址
   const dRaw = jsonPathEval(j, cfg.datePath);
   const pRaw = jsonPathEval(j, cfg.pricePath);
   if (!Array.isArray(dRaw) || !Array.isArray(pRaw)) throw new Error("path_not_array");
@@ -1111,18 +1169,28 @@ const zlib = require("zlib");
 function send(req, res, code, obj) {
   let body = Buffer.from(JSON.stringify(obj));
   const origin = req.headers["origin"] || "";
-  const corsOk = ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin);
+  const allowlisted = ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.includes(origin);
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": corsOk ? (origin || "*") : ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Access-Control-Allow-Credentials": "true",
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
   };
+  // CORS:只有來源在允許清單內,才回傳「反射來源 + 允許憑證」(安全組合)。
+  // 未設定 CORS_ORIGIN 時退回寬鬆的 "*" 但「不」開啟 credentials(避免任意站點挾帶憑證)。
+  if (allowlisted) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Credentials"] = "true";
+    headers["Vary"] = "Origin";
+  } else if (ALLOWED_ORIGINS.length > 0) {
+    headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGINS[0]; // 有清單但來源不符:回主要來源、不開憑證
+    headers["Vary"] = "Origin";
+  } else {
+    headers["Access-Control-Allow-Origin"] = "*";                // 未設定清單:寬鬆但不開憑證
+  }
   // 流量優化:>1KB 的 JSON 以 gzip 壓縮(歷史序列可省 75–85% 出網流量)
   if (body.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
     body = zlib.gzipSync(body); headers["Content-Encoding"] = "gzip";
@@ -1144,7 +1212,7 @@ function serveStatic(req, res, urlPath) {
   let p = decodeURIComponent(urlPath.split("?")[0]);
   if (p === "/") p = "/index.html";
   const file = path.normalize(path.join(PUB, p));
-  if (!file.startsWith(PUB)) { res.writeHead(403); return res.end("forbidden") }
+  if (file !== PUB && !file.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end("forbidden") }
   fs.readFile(file, (err, buf0) => {
     let buf = buf0;
     if (err) {
@@ -1178,12 +1246,12 @@ function rateOk(ip) {
 }
 /* 登入防暴力破解:每 email 每分鐘最多 5 次 */
 const LOGIN_RATE = new Map();
-function loginRateOk(email) {
+function loginRateOk(key, limit) {
   const now = Date.now();
-  const r = LOGIN_RATE.get(email) || { at: now, n: 0 };
+  const r = LOGIN_RATE.get(key) || { at: now, n: 0 };
   if (now - r.at > 60e3) { r.at = now; r.n = 0 }
-  r.n++; LOGIN_RATE.set(email, r);
-  return r.n <= 5;
+  r.n++; LOGIN_RATE.set(key, r);
+  return r.n <= (limit || 5);
 }
 
 /* ---------------------- 路由 ---------------------- */
@@ -1290,7 +1358,8 @@ const server = http.createServer(async (req, res) => {
         const b = await readBody(req);
         const sym = String(b.symbol || "").trim().toUpperCase();
         if (!/^[A-Z0-9._\-]{1,24}$/.test(sym)) return send(req, res, 400, { error: "bad_symbol" });
-        if (!isSafeUrl(String(b.url || ""))) return send(req, res, 400, { error: "bad_url" });
+        try { await assertSafeUrl(String(b.url || "")); }
+        catch (e) { return send(req, res, 400, { error: "bad_url", detail: String(e.message || e) }); }
         try { jsonPathTokens(String(b.datePath || "")); jsonPathTokens(String(b.pricePath || "")) }
         catch (e) { return send(req, res, 400, { error: "bad_path", detail: String(e.message || e) }) }
         CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60) };
@@ -1379,7 +1448,7 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/auth/login" && req.method === "POST") {
       const b = await readBody(req);
       const email = String(b.email || "").trim().toLowerCase();
-      if (!loginRateOk(email)) return send(req, res, 429, { error: "too_many_attempts", retryAfter: 60 });
+      if (!loginRateOk(email) || !loginRateOk("ip:" + ip, 30)) return send(req, res, 429, { error: "too_many_attempts", retryAfter: 60 });
       const usr = Store.getByEmail(email);
       if (!usr) return send(req, res, 404, { error: "no_user" });
       if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });
@@ -1548,5 +1617,5 @@ if (require.main === module) {
     });
   }
 } else {
-  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };
+  module.exports = { providers, smartHistory, smartFx, mergeSeries, hasNewEvents, loadStore, saveStore, server, jsonPathEval, jsonPathTokens, normDate, customHistory, coingeckoHistory, isSafeUrl, isPrivateIp, assertSafeUrl, set _dnsLookup(fn){_dnsLookup=fn}, collectSymbols, prefetchAll, CUSTOM, mailer, SMTP, Store, get PENDING(){return Store._raw().PENDING}, parseInfoTable, getGuru, GURUS, guruRead, guruWrite, guruIndexRead, guruIndexWrite, guruPath, computeGuruNavSeries, buildGuruHoldings, buildGuruNav, fetchGuru13F, buildAllGurus, cusipToTicker, CUSIP_TICKER, parseRssItems, newsForSymbol, USE_RSS };
 }

@@ -150,7 +150,7 @@ node server.js
 | 變數 | 說明 | 預設 |
 |---|---|---|
 | `PORT` | 伺服器埠 | 8080 |
-| `CORS_ORIGIN` | 允許的前端來源（逗號分隔） | 空 = 全部允許 |
+| `CORS_ORIGIN` | 允許的前端來源（逗號分隔）**生產環境務必設定為你的網域，例如 `https://www.alphanexus.cc`** | 空 = 寬鬆 `*`（不附帶憑證） |
 | | ⚠️ 上線務必設定，例如 `https://www.alphanexus.cc`，防止任意網站呼叫你的 API |
 | `SMTP_*` | 郵箱驗證（HOST/PORT/USER/PASS/FROM） | 未設定 = 免驗證 |
 | `NEWS_PROVIDER` | 新聞來源：`rss` / `newsapi` / `marketaux` | Yahoo 聚合 |

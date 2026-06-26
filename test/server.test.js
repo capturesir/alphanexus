@@ -79,9 +79,20 @@ async function run() {
   };
   delete require.cache[require.resolve("../server.js")];
   const S2 = require("../server.js");
+  // SSRF 檢查會做真實 DNS;測試環境離線,故 stub 成回傳公網 IP(對 example.com 域)
+  S2._dnsLookup = async (host) => {
+    if (/\.example\.com$/.test(host) || host === "example.com") return [{ address: "93.184.216.34", family: 4 }];
+    return [{ address: "8.8.8.8", family: 4 }];
+  };
   ok(JSON.stringify(S2.jsonPathEval({ a:{ list:[{ d:"x", p:1 }] } }, "$.a.list[*].p")) === "[1]", "B1 JSONPath 求值");
   ok(S2.normDate(1704326400) === "2024-01-04" && S2.normDate("01/08/2024") === "2024-01-08", "B2 日期自動偵測");
-  ok(S2.isSafeUrl("https://api.example.com") && !S2.isSafeUrl("http://127.0.0.1"), "B3 SSRF 防護");
+  ok(S2.isSafeUrl("https://api.example.com") && !S2.isSafeUrl("http://127.0.0.1"), "B3 SSRF 防護(字串)");
+  ok(S2.isPrivateIp("169.254.169.254") && S2.isPrivateIp("10.0.0.1") && S2.isPrivateIp("::1") && S2.isPrivateIp("fd00::1"), "B3b 私有/保留 IP 判定");
+  ok(!S2.isPrivateIp("8.8.8.8") && !S2.isPrivateIp("1.1.1.1"), "B3c 公網 IP 不誤判");
+  ok(!S2.isSafeUrl("http://169.254.169.254/latest/meta-data") && !S2.isSafeUrl("http://[::1]/") && !S2.isSafeUrl("ftp://x.com"), "B3d 擋雲端metadata/IPv6loopback/非http");
+  let ssrfBlocked = false;
+  try { await S2.assertSafeUrl("http://169.254.169.254/"); } catch (e) { ssrfBlocked = /unsafe/.test(e.message); }
+  ok(ssrfBlocked, "B3e assertSafeUrl 解析後擋 metadata IP");
   S2.CUSTOM["MYFUND"] = { url:"https://myfund.example.com/api", datePath:"$.data.series[*].day", pricePath:"$.data.series[*].nav", ccy:"CNY", name:"基金" };
   const cf = await S2.smartHistory("MYFUND");
   ok(cf.source === "custom" && JSON.stringify(cf.raw) === "[10.51,10.62,10.7]", "B4 自訂源端到端 + 壞列剔除");

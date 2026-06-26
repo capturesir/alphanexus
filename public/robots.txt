@@ -1,25 +1,17 @@
-# === AlphaNexus ===
-# 允許搜索引擎索引首頁，封鎖所有 API 和敏感路徑
+# === AlphaNexus — https://www.alphanexus.cc ===
 
 # ---- 通用規則 ----
 User-agent: *
 Allow: /
 Allow: /favicon.ico
 Allow: /manifest.webmanifest
-
-# 封鎖 API 端點（用戶數據、投資組合、認證、搜尋、新聞、大師數據）
+Allow: /robots.txt
+Allow: /sitemap.xml
+Allow: /i18n/
 Disallow: /api/
-
-# 封鎖伺服器端數據目錄
 Disallow: /data/
 
-# 封鎖輔助資源（無 SEO 價值）
-Disallow: /i18n/
-Disallow: /.well-known/
-Disallow: /robots.txt
-Disallow: /sitemap.xml
-
-# ---- 常見 AI 爬蟲（防止訓練數據收集）----
+# ---- AI 爬蟲（防止訓練數據收集）----
 User-agent: GPTBot
 Disallow: /
 
@@ -44,24 +36,7 @@ Disallow: /
 User-agent: Amazonbot
 Disallow: /
 
-# ---- SEO 搜尋引擎（允許但限速）----
-User-agent: Googlebot
-Allow: /
-Crawl-delay: 10
-
-User-agent: Bingbot
-Allow: /
-Crawl-delay: 10
-
-User-agent: Yandex
-Allow: /
-Crawl-delay: 10
-
-User-agent: Baiduspider
-Allow: /
-Crawl-delay: 10
-
-# ---- 其他常見爬蟲（封鎖）----
+# ---- SEO 工具爬蟲（封鎖）----
 User-agent: AhrefsBot
 Disallow: /
 
@@ -73,5 +48,18 @@ Disallow: /
 
 User-agent: DotBot
 Disallow: /
+
+# ---- 搜索引擎（允許索引）----
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Yandex
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
 
 Sitemap: https://www.alphanexus.cc/sitemap.xml

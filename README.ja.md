@@ -143,14 +143,7 @@ node server.js
 # → http://localhost:8080
 ```
 
-初回起動時に「ゲストモード」を選択し、デモポートフォロリオを読み込んで体験可能。
-
-### 巨匠データ構築（初回）
-
-```bash
-node server.js --build-gurus   # 約10〜15分、完了後に自動終了
-node server.js                 # 通常起動
-```
+初回起動時に「ゲストモード」を選択し、デモポートフォリオを読み込んで体験可能。巨匠データは初回起動時に自動構築（約10〜15分）、以降は四半期ごとに自動更新。
 
 ### 環境変数
 
@@ -194,8 +187,7 @@ npm test    # エンジン101 + バックエンド57 = 158項目 ✓
 # VPS上で
 git clone https://github.com/capturesir/alphanexus.git
 cd alphanexus
-node server.js --build-gurus   # 初回ビルド
-pm2 start server.js --name alphanexus
+pm2 start server.js --name alphanexus   # 初回起動時に巨匠データを自動構築
 pm2 save
 ```
 

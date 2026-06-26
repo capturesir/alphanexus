@@ -143,14 +143,7 @@ node server.js
 # → http://localhost:8080
 ```
 
-Choose "Guest mode" and load the demo portfolio to explore instantly.
-
-### Build Guru Data (First Time)
-
-```bash
-node server.js --build-gurus   # ~10–15 min, exits when done
-node server.js                 # start normally
-```
+Choose "Guest mode" and load the demo portfolio to explore instantly. Guru data auto-builds on first launch (~10–15 min) and auto-updates quarterly.
 
 ### Environment Variables
 
@@ -194,8 +187,7 @@ An entry-level VPS (1 vCPU / 1GB RAM, ~US$4–6/mo) is sufficient.
 # On VPS
 git clone https://github.com/capturesir/alphanexus.git
 cd alphanexus
-node server.js --build-gurus   # first-time build
-pm2 start server.js --name alphanexus
+pm2 start server.js --name alphanexus   # auto-builds guru data on first launch
 pm2 save
 ```
 

@@ -143,14 +143,7 @@ node server.js
 # → http://localhost:8080
 ```
 
-首次开启可选「访客模式」并加载示范组合即时体验。
-
-### 投资大师建档（首次）
-
-```bash
-node server.js --build-gurus   # 约 10–15 分钟，完成后自动退出
-node server.js                 # 正常启动
-```
+首次开启可选「访客模式」并加载示范组合即时体验。投资大师数据会在首次启动时自动建档（约 10–15 分钟），之后每季度自动更新。
 
 ### 环境变量
 
@@ -194,8 +187,7 @@ npm test    # 引擎 101 + 后端 57 = 158 项 ✓
 # VPS 上
 git clone https://github.com/capturesir/alphanexus.git
 cd alphanexus
-node server.js --build-gurus   # 首次建档
-pm2 start server.js --name alphanexus
+pm2 start server.js --name alphanexus   # 首次启动自动建档大师数据
 pm2 save
 ```
 

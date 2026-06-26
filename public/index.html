@@ -1677,7 +1677,7 @@ function openShareSnapshot(){
     btn.disabled=true; const old=btn.textContent; btn.textContent="…";
     try{
       const blob=await renderSnapshotPNG({rows,pts,since,green:pts[pts.length-1]>=0});
-      const file=new File([blob],"wealthlens-return.png",{type:"image/png"});
+      const file=new File([blob],"alphanexus-return.png",{type:"image/png"});
       // 優先系統分享面板(iOS/Android 可選「儲存影像/加入相簿」)
       if(navigator.canShare&&navigator.canShare({files:[file]})){
         await navigator.share({files:[file],title:"AlphaNexus",text:T("shareDisclaimer")});
@@ -1685,7 +1685,7 @@ function openShareSnapshot(){
         // 退回:直接下載 PNG
         const url=URL.createObjectURL(blob);
         const a=document.createElement("a");
-        a.href=url;a.download="wealthlens-return.png";
+        a.href=url;a.download="alphanexus-return.png";
         document.body.appendChild(a);a.click();a.remove();
         setTimeout(()=>URL.revokeObjectURL(url),3000);
         toast(T("imgSaved"));
@@ -4764,7 +4764,7 @@ function exportCSV(){
   const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="wealthlens-txns-"+fmtD(TODAY)+".csv";
+  a.download="alphanexus-txns-"+fmtD(TODAY)+".csv";
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),3000);
   toast(T("exported"));

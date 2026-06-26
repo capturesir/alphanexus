@@ -1,0 +1,16 @@
+{
+  "name": "AlphaNexus · 投資組合管理",
+  "short_name": "AlphaNexus",
+  "description": "跨市場多幣種投資組合管理平台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E1420",
+  "theme_color": "#0E1420",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

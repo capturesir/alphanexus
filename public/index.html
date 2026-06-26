@@ -760,7 +760,8 @@ const _langLoaded={};
 async function loadLangPack(lang){
   if(API_BASE===null||_langLoaded[lang])return;
   try{
-    const r=await fetch("i18n/"+(LANG_FILE[lang]||"en")+".json");
+    const ac=new AbortController();const t=setTimeout(()=>ac.abort(),5000);
+    const r=await fetch("i18n/"+(LANG_FILE[lang]||"en")+".json",{signal:ac.signal});clearTimeout(t);
     if(r.ok){Object.assign(I18N[lang]||(I18N[lang]={}),await r.json());_langLoaded[lang]=1}
   }catch(e){}
 }

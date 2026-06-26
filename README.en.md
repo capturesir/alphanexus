@@ -151,6 +151,7 @@ Choose "Guest mode" and load the demo portfolio to explore instantly. Guru data 
 |---|---|---|
 | `PORT` | Server port | 8080 |
 | `CORS_ORIGIN` | Allowed frontend origins (comma-separated) | empty = all |
+| | ⚠️ Set this in production, e.g. `https://www.alphanexus.cc`, to prevent other sites from calling your API |
 | `SMTP_*` | Email verification (HOST/PORT/USER/PASS/FROM) | unset = no verification |
 | `NEWS_PROVIDER` | News source: `rss` / `newsapi` / `marketaux` | Yahoo aggregation |
 | `PREFETCH_HOUR` | Daily prefetch hour (-1 to disable) | 5 |

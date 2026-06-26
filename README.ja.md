@@ -151,6 +151,7 @@ node server.js
 |---|---|---|
 | `PORT` | サーバーポート | 8080 |
 | `CORS_ORIGIN` | 許可するフロントエンドオリジン（カンマ区切り） | 空＝全て許可 |
+| | ⚠️ 本番環境では必ず設定（例: `https://www.alphanexus.cc`）。外部サイトからのAPI呼び出しを防止 |
 | `SMTP_*` | メール認証（HOST/PORT/USER/PASS/FROM） | 未設定＝認証なし |
 | `NEWS_PROVIDER` | ニュースソース：`rss` / `newsapi` / `marketaux` | Yahoo集約 |
 | `PREFETCH_HOUR` | 毎日プリフェッチ時刻（-1で無効） | 5 |

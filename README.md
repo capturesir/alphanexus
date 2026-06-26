@@ -151,6 +151,7 @@ node server.js
 |---|---|---|
 | `PORT` | 伺服器埠 | 8080 |
 | `CORS_ORIGIN` | 允許的前端來源（逗號分隔） | 空 = 全部允許 |
+| | ⚠️ 上線務必設定，例如 `https://www.alphanexus.cc`，防止任意網站呼叫你的 API |
 | `SMTP_*` | 郵箱驗證（HOST/PORT/USER/PASS/FROM） | 未設定 = 免驗證 |
 | `NEWS_PROVIDER` | 新聞來源：`rss` / `newsapi` / `marketaux` | Yahoo 聚合 |
 | `PREFETCH_HOUR` | 每日預抓時間（-1 停用） | 5 |

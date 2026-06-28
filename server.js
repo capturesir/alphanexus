@@ -47,6 +47,26 @@ const tsToDate = ts => new Date(ts * 1000).toISOString().slice(0, 10);
 const dateToTs = d => Math.floor(new Date(d + "T00:00:00Z").getTime() / 1000);
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+/* ---------------------- 平台統計追蹤 ---------------------- */
+const ADMIN_EMAILS = ["ericslhoi@gmail.com", "capturesir@gmail.com"];
+const ANALYTICS_PATH = path.join(__dirname, "data", "analytics.json");
+let pvBuffer = []; // page view buffer
+function trackPageView(p, email, ip) {
+  if (p.startsWith("/api/")) return; // 不追蹤 API 請求
+  pvBuffer.push({ t: Date.now(), p, e: email || null, ip: ip || null });
+}
+function flushAnalytics() {
+  if (!pvBuffer.length) return;
+  const data = readJSON(ANALYTICS_PATH, { views: [] });
+  data.views.push(...pvBuffer);
+  // 保留最近 90 天
+  const cutoff = Date.now() - 90 * 86400000;
+  data.views = data.views.filter(v => v.t > cutoff);
+  writeJSON(ANALYTICS_PATH, data);
+  pvBuffer = [];
+}
+setInterval(flushAnalytics, 60000); // 每分鐘寫入磁碟
+
 /* ---------------------- 短效快取 (記憶體 + 磁碟) ---------------------- */
 const MEM_CACHE = new Map();
 function cacheGet(key, ttlMs) {
@@ -1275,7 +1295,7 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://x");
   const p = u.pathname;
   if (req.method === "OPTIONS") return send(req, res, 204, {});
-  if (!p.startsWith("/api")) return serveStatic(req, res, req.url);
+  if (!p.startsWith("/api")) { trackPageView(p, null, ip); return serveStatic(req, res, req.url); }
   if (!rateOk(ip)) return send(req, res, 429, { error: "rate_limited" });
   try {
     if (p === "/api/ping") return send(req, res, 200, { ok: true, t: Date.now() });
@@ -1529,6 +1549,90 @@ const server = http.createServer(async (req, res) => {
         return send(req, res, 200, { ok: true, updatedAt: doc.updatedAt });
       }
       return send(req, res, 200, Store.pfGet(a.u.id));
+    }
+
+    /* ---- 管理員統計 ---- */
+    if (p === "/api/admin/stats") {
+      const a = userByToken(req);
+      if (!a) return send(req, res, 401, { error: "unauthorized" });
+      if (!ADMIN_EMAILS.includes(a.email)) return send(req, res, 403, { error: "forbidden" });
+      flushAnalytics(); // 確保 buffer 寫入
+      const analytics = readJSON(ANALYTICS_PATH, { views: [] });
+      const users = Store._raw().USERS;
+      const userEmails = Object.keys(users);
+      const totalUsers = userEmails.length;
+      // 用戶增長（按日）
+      const userGrowth = {};
+      for (const email of userEmails) {
+        const u = users[email];
+        // 用最早 token 的時間估算註冊日（近似）
+        const earliestToken = u.tokens && u.tokens.length > 0 ? null : null;
+        // 沒有 created_at，用 portfolios 文件修改時間估算
+        const pfPath = path.join(__dirname, "data", "portfolios", u.id + ".json");
+        try {
+          const stat = fs.statSync(pfPath);
+          const day = new Date(stat.birthtime || stat.mtime).toISOString().slice(0, 10);
+          userGrowth[day] = (userGrowth[day] || 0) + 1;
+        } catch (e) {
+          const day = todayStr();
+          userGrowth[day] = (userGrowth[day] || 0) + 1;
+        }
+      }
+      // 累計用戶增長
+      const growthDays = Object.keys(userGrowth).sort();
+      const cumulativeGrowth = [];
+      let cum = 0;
+      for (const d of growthDays) { cum += userGrowth[d]; cumulativeGrowth.push({ date: d, count: cum }); }
+      // 頁面瀏覽統計
+      const viewsByDay = {};
+      const visitorsByDay = {};
+      for (const v of analytics.views) {
+        const day = new Date(v.t).toISOString().slice(0, 10);
+        viewsByDay[day] = (viewsByDay[day] || 0) + 1;
+        const key = v.e || v.ip || "unknown";
+        if (!visitorsByDay[day]) visitorsByDay[day] = new Set();
+        visitorsByDay[day].add(key);
+      }
+      // 留存率（近 7 天活躍用戶 / 總用戶）
+      const now = Date.now();
+      const last7d = analytics.views.filter(v => now - v.t < 7 * 86400000);
+      const active7d = new Set(last7d.map(v => v.e || v.ip).filter(Boolean));
+      const last30d = analytics.views.filter(v => now - v.t < 30 * 86400000);
+      const active30d = new Set(last30d.map(v => v.e || v.ip).filter(Boolean));
+      // 熱門頁面
+      const pageCounts = {};
+      for (const v of analytics.views) { pageCounts[v.p] = (pageCounts[v.p] || 0) + 1; }
+      const topPages = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      // 留存率時間序列（每日）
+      const retentionDays = {};
+      for (const v of analytics.views) {
+        const day = new Date(v.t).toISOString().slice(0, 10);
+        const key = v.e || v.ip;
+        if (!key) continue;
+        if (!retentionDays[day]) retentionDays[day] = new Set();
+        retentionDays[day].add(key);
+      }
+      const retentionSeries = [];
+      const sortedDays = Object.keys(retentionDays).sort();
+      for (let i = 1; i < sortedDays.length; i++) {
+        const prevDay = sortedDays[i - 1];
+        const currDay = sortedDays[i];
+        const prevVisitors = retentionDays[prevDay];
+        const currVisitors = retentionDays[currDay];
+        let returned = 0;
+        for (const v of currVisitors) { if (prevVisitors.has(v)) returned++; }
+        const rate = prevVisitors.size > 0 ? Math.round(returned / prevVisitors.size * 100) : 0;
+        retentionSeries.push({ date: currDay, rate, returned, total: prevVisitors.size });
+      }
+      return send(req, res, 200, {
+        totalUsers,
+        cumulativeGrowth,
+        viewsByDay: Object.entries(viewsByDay).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date)),
+        uniqueVisitors: Object.entries(visitorsByDay).map(([date, s]) => ({ date, count: s.size })).sort((a, b) => a.date.localeCompare(b.date)),
+        retention: { last7d: active7d.size, last30d: active30d.size, series: retentionSeries },
+        topPages,
+        totalViews: analytics.views.length
+      });
     }
 
     return send(req, res, 404, { error: "not_found" });

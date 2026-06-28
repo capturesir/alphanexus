@@ -76,6 +76,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn-sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12.5px;font-weight:500;color:var(--ink2);white-space:nowrap}
 .chip.on{background:var(--brand);color:var(--bg);border-color:var(--brand)}
+.stats-toggle{opacity:0.5;border:1px solid var(--line);background:var(--card);color:var(--ink2)}
+.stats-toggle.on{opacity:1;background:var(--gold);color:#fff;border-color:var(--gold)}
 .chiprow{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
 .chiprow::-webkit-scrollbar{display:none}
 .seg{display:flex;background:var(--card2);border-radius:10px;padding:3px;gap:2px}
@@ -499,6 +501,29 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     <div class="tiny" style="text-align:center;margin-top:14px">AlphaNexus · <span data-i18n="disclaimer">示範平台，內置數據為模擬數據，不構成投資建議</span></div>
   </section>
 
+  <!-- 5. 平台統計 (管理員限定) -->
+  <section class="screen" id="scr-stats">
+    <div class="topbar">
+      <div class="logo"><div class="mark"><svg class="mark-svg" viewBox="0 0 64 64" aria-hidden="true"><text x="19" y="43" class="mk-a">A</text><g class="mk-n"><path d="M36 44 Q34 32 36 22"/><path d="M36 23 Q43 36 50 43"/><path d="M50 44 Q52 32 50 22"/></g><circle cx="36" cy="22" r="3" class="mk-d1"/><circle cx="50" cy="44" r="3" class="mk-d1"/><circle cx="50" cy="22" r="3" class="mk-d2"/><circle cx="36" cy="44" r="3" class="mk-d2"/></svg></div><span data-i18n="tabStats">平台統計</span></div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div class="row" style="gap:8px;margin-bottom:12px">
+        <button class="btn btn-sm stats-toggle on" data-metric="growth" onclick="switchStatsMetric('growth')" data-i18n="statsGrowth">用戶增長</button>
+        <button class="btn btn-sm stats-toggle" data-metric="retention" onclick="switchStatsMetric('retention')" data-i18n="statsRetention">留存率</button>
+        <button class="btn btn-sm stats-toggle" data-metric="views" onclick="switchStatsMetric('views')" data-i18n="statsViews">瀏覽量</button>
+      </div>
+      <canvas id="statsChart" style="width:100%;height:220px"></canvas>
+    </div>
+    <div class="card" style="padding:12px">
+      <h3 data-i18n="statsOverview" style="margin:0 0 10px">📊 網站概覽</h3>
+      <div id="statsOverview" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+    <div class="card" style="padding:12px">
+      <h3 data-i18n="statsTopPages" style="margin:0 0 10px">🔥 熱門頁面</h3>
+      <div id="statsTopPages"></div>
+    </div>
+  </section>
+
   <nav id="tabbar">
     <button data-tab="assets" class="on">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M7.5 9h9M7.5 13h9M7.5 17h5"/></svg>
@@ -515,6 +540,10 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
     <button data-tab="me">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.2 3.9-4.8 7-4.8s5.8 1.6 7 4.8"/></svg>
       <span data-i18n="tabMe">我的</span>
+    </button>
+    <button data-tab="stats" id="btnTabStats" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+      <span data-i18n="tabStats">統計</span>
     </button>
   </nav>
   <div id="modalRoot"></div>
@@ -604,7 +633,7 @@ const apiGet=(p)=>api(p);
 /* ====================== i18n ====================== */
 const I18N={
 "zh-TW":{appName:"AlphaNexus",appTag:"跨平台投資組合追蹤 · TWR / MWR",email:"電郵",password:"密碼",login:"登入 / 註冊",guest:"以訪客身份使用",demoNote:"訪客模式會載入示範組合，可隨時清除",
-tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
+tabAssets:"資產列表",tabChart:"變化圖",tabNews:"資訊",tabMe:"我的",tabStats:"統計",add:"新增",totalAssets:"總資產淨值",holdings:"持倉",cashByCcy:"各貨幣現金水平",txnHistory:"交易記錄",
 mValue:"資產值",cLine:"折線",cSmooth:"平滑",cCandle:"陰陽燭",aD:"日",aW:"週",aM:"月",aY:"年",pAll:"全部",
 gestureHint:"提示：雙指捏合縮放，單指拖動平移觀察期間（桌面可用滾輪）",sTWR:"期間TWR(年化)",sMWR:"期間MWR(年化)",sNet:"期間淨投入",
 compare:"與 ETF / 股票比較",cmpPh:"輸入代碼，如 VT、0700、QQQ…",cmpExists:"{sym} 已在比較中",cmpLimit:"最多比較 {n} 項,請先刪除已有比較再新增",locFilter:"資產位置篩選",locFilterHint:"只計算所選位置的資產值與回報",
@@ -676,6 +705,10 @@ if(I18N["zh-TW"])Object.assign(I18N["zh-TW"],{srcSim:"模擬",srcStale:"快取",
 if(I18N["zh-CN"])Object.assign(I18N["zh-CN"],{srcSim:"模拟",srcStale:"缓存",srcOffline:"交易价",srcSimHint:"⚠️ 模拟数据（基于历史参数估算，非真实市场价格）",srcStaleHint:"使用服务器缓存数据（可能不是最新）",srcOfflineHint:"使用的交易价格（无法获取市场数据）"});
 if(I18N["en"])Object.assign(I18N["en"],{srcSim:"Sim",srcStale:"Cached",srcOffline:"Txn price",srcSimHint:"⚠️ Simulated data (based on historical parameters, not real market prices)",srcStaleHint:"Using server cache (may not be latest)",srcOfflineHint:"Using entered transaction price (market data unavailable)"});
 if(I18N["ja"])Object.assign(I18N["ja"],{srcSim:"シミュレーション",srcStale:"キャッシュ",srcOffline:"取引価格",srcSimHint:"⚠️ シミュレーションデータ（過去のパラメータに基づく推定値であり、実際の市場価格ではありません）",srcStaleHint:"サーバーキャッシュデータを使用（最新でない可能性があります）",srcOfflineHint:"入力された取引価格を使用（市場データを取得できません）"});
+if(I18N["zh-TW"])Object.assign(I18N["zh-TW"],{tabStats:"統計",statsGrowth:"用戶增長",statsRetention:"留存率",statsViews:"瀏覽量",statsOverview:"📊 網站概覽",statsTopPages:"🔥 熱門頁面",statsTotalUsers:"總用戶數",statsTotalViews:"總瀏覽量",statsActive7d:"7天活躍",statsActive30d:"30天活躍"});
+if(I18N["zh-CN"])Object.assign(I18N["zh-CN"],{tabStats:"统计",statsGrowth:"用户增长",statsRetention:"留存率",statsViews:"浏览量",statsOverview:"📊 网站概览",statsTopPages:"🔥 热门页面",statsTotalUsers:"总用户数",statsTotalViews:"总浏览量",statsActive7d:"7天活跃",statsActive30d:"30天活跃"});
+if(I18N["en"])Object.assign(I18N["en"],{tabStats:"Stats",statsGrowth:"User Growth",statsRetention:"Retention",statsViews:"Page Views",statsOverview:"📊 Overview",statsTopPages:"🔥 Top Pages",statsTotalUsers:"Total Users",statsTotalViews:"Total Views",statsActive7d:"7d Active",statsActive30d:"30d Active"});
+if(I18N["ja"])Object.assign(I18N["ja"],{tabStats:"統計",statsGrowth:"ユーザー増加",statsRetention:"リテンション",statsViews:"ページビュー",statsOverview:"📊 概要",statsTopPages:"🔥 人気ページ",statsTotalUsers:"総ユーザー数",statsTotalViews:"総ビュー数",statsActive7d:"7日間アクティブ",statsActive30d:"30日間アクティブ"});
 function T(k){return (I18N[state.settings.lang]||I18N["zh-TW"])[k]||k}
 function applyI18n(){
   $$("[data-i18n]").forEach(el=>el.textContent=T(el.dataset.i18n));
@@ -5067,7 +5100,7 @@ function switchTab(tab){
   $$("#tabbar button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
   $$(".screen").forEach(s=>s.classList.toggle("active",s.id==="scr-"+tab));
   $$(".topbar").forEach(t=>t.classList.remove("hide")); // #5 切頁恢復顯示
-  if(tab==="chart"){Chart._resize&&Chart._resize();refreshChart()} if(tab==="news")renderNews(); if(tab==="me")renderMe();
+  if(tab==="chart"){Chart._resize&&Chart._resize();refreshChart()} if(tab==="news")renderNews(); if(tab==="me")renderMe(); if(tab==="stats")renderStats();
   window.scrollTo(0,0);
 }
 function onChartLocPick(val){
@@ -5193,6 +5226,9 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
     }catch(e){}
     applySettingsSideEffects();restoreChartComps();
     await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
+    // 管理員統計按鈕
+    const _adminEmails=["ericslhoi@gmail.com","capturesir@gmail.com"];
+    if(state.user&&_adminEmails.includes(state.user.email)){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}
   }
   // 即時驗證：email 格式 + 密碼強度
   const _eI=$("#loginEmail"),_pI=$("#loginPwd"),_eH=$("#emailHint"),_pS=$("#pwdStrength"),_pH=$("#pwdHint");
@@ -5274,7 +5310,10 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
     applyTheme();applyI18n();restoreChartComps();
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
-  if(state.user){restoreChartComps();$("#authScreen").style.display="none";refreshAll()}
+  if(state.user){restoreChartComps();$("#authScreen").style.display="none";refreshAll();
+    const _adm=["ericslhoi@gmail.com","capturesir@gmail.com"];
+    if(_adm.includes(state.user.email)){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}
+  }
   switchTab("assets");
 }
 /* ======== Onboarding Tour ======== */
@@ -5363,6 +5402,133 @@ function startTour(){
 window.startTour=startTour;
 // Auto-trigger on first login
 setTimeout(()=>{if(!localStorage.getItem('app_onboarded')&&state.user)startTour()},800);
+/* ====================== 平台統計 ====================== */
+let _statsData=null,_statsMetric="growth";
+async function renderStats(){
+  if(!_statsData){
+    try{
+      const r=await api("/api/admin/stats");
+      if(!r||r.error){toast("無法載入統計數據");return}
+      _statsData=r;
+    }catch(e){toast("統計載入失敗: "+e.message);return}
+  }
+  const d=_statsData;
+  // 概覽卡片
+  const ov=$("#statsOverview");
+  ov.innerHTML=[
+    _statCard(T("statsTotalUsers")||"總用戶數",d.totalUsers,"var(--gold)"),
+    _statCard(T("statsTotalViews")||"總瀏覽量",d.totalViews,"var(--accent,#4fc3f7)"),
+    _statCard(T("statsActive7d")||"7天活躍",d.retention.last7d,"var(--up,#26a69a)"),
+    _statCard(T("statsActive30d")||"30天活躍",d.retention.last30d,"var(--up,#26a69a)")
+  ].join("");
+  // 熱門頁面
+  const tp=$("#statsTopPages");
+  if(d.topPages.length===0){tp.innerHTML='<div class="muted tiny">暫無數據</div>'}
+  else{tp.innerHTML='<table style="width:100%;font-size:13px"><tr><th style="text-align:left;padding:4px">頁面</th><th style="text-align:right;padding:4px">瀏覽次數</th></tr>'+d.topPages.map(([p,c])=>`<tr><td style="padding:4px;word-break:break-all">${p}</td><td style="text-align:right;padding:4px">${c}</td></tr>`).join("")+"</table>"}
+  drawStatsChart();
+}
+function _statCard(label,value,color){
+  return `<div style="background:var(--card,#1a1f2e);border-radius:10px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:${color}">${value}</div><div class="tiny muted">${label}</div></div>`;
+}
+function switchStatsMetric(m){
+  _statsMetric=m;
+  $$(".stats-toggle").forEach(b=>b.classList.toggle("on",b.dataset.metric===m));
+  drawStatsChart();
+}
+function drawStatsChart(){
+  const canvas=$("#statsChart");
+  if(!canvas||!_statsData)return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+  const ctx=canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;
+  const pad={t:20,r:16,b:30,l:46};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  // 清除背景
+  const isDark=document.documentElement.dataset.theme==="dark";
+  ctx.fillStyle=isDark?"#0C111B":"#F6F7F5";
+  ctx.fillRect(0,0,W,H);
+  let series=[],label="",color="",unit="";
+  if(_statsMetric==="growth"){
+    series=_statsData.cumulativeGrowth.map(d=>({x:d.date,y:d.count}));
+    label="用戶增長";color="#C9962E";unit="人";
+  }else if(_statsMetric==="retention"){
+    series=_statsData.retention.series.map(d=>({x:d.date,y:d.rate}));
+    label="留存率";color="#4fc3f7";unit="%";
+  }else{
+    series=_statsData.viewsByDay.map(d=>({x:d.date,y:d.count}));
+    label="瀏覽量";color="#26a69a";unit="次";
+  }
+  if(series.length<2){
+    ctx.fillStyle=isDark?"#8899aa":"#666";
+    ctx.font="14px sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText("數據收集中，至少需要 2 天數據才能顯示圖表…",W/2,H/2);
+    return;
+  }
+  const minY=Math.min(...series.map(s=>s.y));
+  const maxY=Math.max(...series.map(s=>s.y));
+  const rangeY=maxY-minY||1;
+  const xStep=cw/(series.length-1);
+  // 網格線
+  ctx.strokeStyle=isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)";
+  ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ch-ch*(i/4);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    ctx.fillStyle=isDark?"#667788":"#999";
+    ctx.font="10px sans-serif";
+    ctx.textAlign="right";
+    const val=minY+rangeY*(i/4);
+    ctx.fillText(_statsMetric==="retention"?val.toFixed(0)+"%":Math.round(val),pad.l-4,y+3);
+  }
+  // X 軸標籤
+  ctx.fillStyle=isDark?"#667788":"#999";
+  ctx.font="10px sans-serif";
+  ctx.textAlign="center";
+  const labelEvery=Math.max(1,Math.floor(series.length/6));
+  for(let i=0;i<series.length;i+=labelEvery){
+    const x=pad.l+i*xStep;
+    ctx.fillText(series[i].x.slice(5),x,H-pad.b+16);
+  }
+  // 面積填充
+  ctx.beginPath();
+  for(let i=0;i<series.length;i++){
+    const x=pad.l+i*xStep;
+    const y=pad.t+ch-ch*((series[i].y-minY)/rangeY);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.lineTo(pad.l+(series.length-1)*xStep,pad.t+ch);
+  ctx.lineTo(pad.l,pad.t+ch);
+  ctx.closePath();
+  ctx.fillStyle=color+"22";
+  ctx.fill();
+  // 線條
+  ctx.beginPath();
+  for(let i=0;i<series.length;i++){
+    const x=pad.l+i*xStep;
+    const y=pad.t+ch-ch*((series[i].y-minY)/rangeY);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle=color;
+  ctx.lineWidth=2;
+  ctx.stroke();
+  // 數據點
+  for(let i=0;i<series.length;i++){
+    const x=pad.l+i*xStep;
+    const y=pad.t+ch-ch*((series[i].y-minY)/rangeY);
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+    ctx.strokeStyle=isDark?"#0C111B":"#F6F7F5";ctx.lineWidth=1.5;ctx.stroke();
+  }
+  // 標題
+  ctx.fillStyle=isDark?"#e0e0e0":"#333";
+  ctx.font="bold 12px sans-serif";
+  ctx.textAlign="left";
+  ctx.fillText(label,pad.l,pad.t-6);
+}
 // Failsafe: if init() hangs (e.g. network issues), show auth screen after 15s
 const _initTimeout=setTimeout(()=>{if(state.user===null)$("#authScreen").style.display="flex"},15000);
 init().finally(()=>clearTimeout(_initTimeout));

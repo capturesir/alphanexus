@@ -5045,6 +5045,7 @@ function bindMe(){
     applyTheme();applyI18n();
     $("#btnTabStats").style.display="none"; // 登出隱藏統計按鈕
     _statsData=null; // 清除統計快取
+    switchTab("assets"); // 切回首頁，避免停留在統計頁
     await persist();$("#authScreen").style.display="flex"};
   // 刪除帳號:此處只綁定一次點擊;「是否顯示」的判斷在 renderMe()(會隨狀態重繪)
   const bda=$("#btnDeleteAcct");

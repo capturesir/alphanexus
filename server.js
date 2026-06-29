@@ -1559,6 +1559,30 @@ const server = http.createServer(async (req, res) => {
       return send(req, res, 200, { admin: getAdminEmails().includes(a.email) });
     }
 
+    /* ---- 管理員名單 CRUD ---- */
+    if (p === "/api/admin/list") {
+      const a = userByToken(req);
+      if (!a || !getAdminEmails().includes(a.email)) return send(req, res, 403, { error: "forbidden" });
+      return send(req, res, 200, { emails: getAdminEmails() });
+    }
+    if (p === "/api/admin/manage" && req.method === "POST") {
+      const a = userByToken(req);
+      if (!a || !getAdminEmails().includes(a.email)) return send(req, res, 403, { error: "forbidden" });
+      const body = await readBody(req);
+      const { action, email } = body || {};
+      if (!email || !["add", "remove"].includes(action)) return send(req, res, 400, { error: "bad_request" });
+      const cfg = readJSON(ADMIN_PATH, { adminEmails: [] });
+      if (action === "add") {
+        if (cfg.adminEmails.includes(email)) return send(req, res, 200, { ok: true, emails: cfg.adminEmails, msg: "already_exists" });
+        cfg.adminEmails.push(email);
+      } else {
+        if (email === a.email) return send(req, res, 400, { error: "cannot_remove_self" });
+        cfg.adminEmails = cfg.adminEmails.filter(e => e !== email);
+      }
+      writeJSON(ADMIN_PATH, cfg);
+      return send(req, res, 200, { ok: true, emails: cfg.adminEmails });
+    }
+
     /* ---- 管理員統計 ---- */
     if (p === "/api/admin/stats") {
       const a = userByToken(req);

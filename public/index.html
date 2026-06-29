@@ -5226,9 +5226,8 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
     }catch(e){}
     applySettingsSideEffects();restoreChartComps();
     await persist();$("#verifyBox").style.display="none";$("#authScreen").style.display="none";refreshAll();
-    // 管理員統計按鈕
-    const _adminEmails=["ericslhoi@gmail.com","capturesir@gmail.com"];
-    if(state.user&&_adminEmails.includes(state.user.email)){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}
+    // 管理員統計按鈕（透過 API 檢查，不硬編碼 email）
+    try{const _ac=await api("/api/admin/check");if(_ac&&_ac.admin){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}}catch(e){$("#btnTabStats").style.display="none"}
   }
   // 即時驗證：email 格式 + 密碼強度
   const _eI=$("#loginEmail"),_pI=$("#loginPwd"),_eH=$("#emailHint"),_pS=$("#pwdStrength"),_pH=$("#pwdHint");
@@ -5311,8 +5310,7 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
     await persist();$("#authScreen").style.display="none";refreshAll();
   };
   if(state.user){restoreChartComps();$("#authScreen").style.display="none";refreshAll();
-    const _adm=["ericslhoi@gmail.com","capturesir@gmail.com"];
-    if(_adm.includes(state.user.email)){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}
+    api("/api/admin/check").then(r=>{if(r&&r.admin){$("#btnTabStats").style.display=""}else{$("#btnTabStats").style.display="none"}}).catch(()=>{$("#btnTabStats").style.display="none"})
   }
   switchTab("assets");
 }

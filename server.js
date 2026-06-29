@@ -48,7 +48,8 @@ const dateToTs = d => Math.floor(new Date(d + "T00:00:00Z").getTime() / 1000);
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 /* ---------------------- 平台統計追蹤 ---------------------- */
-const ADMIN_EMAILS = ["ericslhoi@gmail.com", "capturesir@gmail.com"];
+const ADMIN_PATH = path.join(__dirname, "data", "admin.json");
+function getAdminEmails() { try { return JSON.parse(fs.readFileSync(ADMIN_PATH, "utf8")).adminEmails || [] } catch (e) { return [] } }
 const ANALYTICS_PATH = path.join(__dirname, "data", "analytics.json");
 let pvBuffer = []; // page view buffer
 function trackPageView(p, email, ip) {
@@ -1551,11 +1552,18 @@ const server = http.createServer(async (req, res) => {
       return send(req, res, 200, Store.pfGet(a.u.id));
     }
 
+    /* ---- 管理員權限檢查 ---- */
+    if (p === "/api/admin/check") {
+      const a = userByToken(req);
+      if (!a) return send(req, res, 200, { admin: false });
+      return send(req, res, 200, { admin: getAdminEmails().includes(a.email) });
+    }
+
     /* ---- 管理員統計 ---- */
     if (p === "/api/admin/stats") {
       const a = userByToken(req);
       if (!a) return send(req, res, 401, { error: "unauthorized" });
-      if (!ADMIN_EMAILS.includes(a.email)) return send(req, res, 403, { error: "forbidden" });
+      if (!getAdminEmails().includes(a.email)) return send(req, res, 403, { error: "forbidden" });
       flushAnalytics(); // 確保 buffer 寫入
       const analytics = readJSON(ANALYTICS_PATH, { views: [] });
       const users = Store._raw().USERS;

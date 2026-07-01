@@ -1442,7 +1442,7 @@ const server = http.createServer(async (req, res) => {
       if (pwd.length < 4) return send(req, res, 400, { error: "weak_pwd" });
       if (Store.exists(email)) return send(req, res, 409, { error: "exists" });
       const salt = crypto.randomBytes(16).toString("hex");
-      const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [] };
+      const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [], createdAt: Date.now() };
       if (MAIL_ENABLED) { // 郵箱驗證:先入待驗證區,寄送 6 位驗證碼
         const code = genCode();
         Store.pPut(email, { ...rec, code, exp: Date.now() + 15 * 60e3, tries: 0, lastSent: Date.now() });
@@ -1463,7 +1463,7 @@ const server = http.createServer(async (req, res) => {
       pd.tries = (pd.tries || 0) + 1;
       if (pd.tries > 5) { Store.pDel(email); return send(req, res, 429, { error: "too_many_tries" }) }
       if (String(b.code || "").trim() !== pd.code) { Store.pPut(email, pd); return send(req, res, 401, { error: "bad_code" }) }
-      const usr = { id: pd.id, name: pd.name, avatar: pd.avatar, salt: pd.salt, hash: pd.hash, tokens: [] };
+      const usr = { id: pd.id, name: pd.name, avatar: pd.avatar, salt: pd.salt, hash: pd.hash, tokens: [], createdAt: pd.createdAt || Date.now() };
       const token = newToken(usr);
       Store.put(email, usr);
       Store.pDel(email);
@@ -1488,7 +1488,7 @@ const server = http.createServer(async (req, res) => {
       const usr = Store.getByEmail(email);
       if (!usr) return send(req, res, 404, { error: "no_user" });
       if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });
-      const token = newToken(usr); Store.save();
+      const token = newToken(usr); usr.lastLoginAt = Date.now(); Store.save();
       return send(req, res, 200, { token, user: pubUser(usr, email) });
     }
     if (p === "/api/auth/logout" && req.method === "POST") {
@@ -1593,22 +1593,29 @@ const server = http.createServer(async (req, res) => {
       const users = Store._raw().USERS;
       const userEmails = Object.keys(users);
       const totalUsers = userEmails.length;
-      // 用戶增長（按日）
+      // 自動遷移：為缺少 createdAt 的用戶補上（用 portfolio 文件時間估算）
+      let migrated = false;
+      for (const email of userEmails) {
+        const u = users[email];
+        if (!u.createdAt) {
+          const pfPath = path.join(__dirname, "data", "portfolios", u.id + ".json");
+          try {
+            const stat = fs.statSync(pfPath);
+            u.createdAt = (stat.birthtime || stat.mtime).getTime();
+          } catch (e) {
+            u.createdAt = Date.now(); // fallback: 今天
+          }
+          migrated = true;
+        }
+        if (!u.loginHistory) u.loginHistory = [];
+      }
+      if (migrated) Store.save();
+      // 用戶增長（按日，使用 createdAt）
       const userGrowth = {};
       for (const email of userEmails) {
         const u = users[email];
-        // 用最早 token 的時間估算註冊日（近似）
-        const earliestToken = u.tokens && u.tokens.length > 0 ? null : null;
-        // 沒有 created_at，用 portfolios 文件修改時間估算
-        const pfPath = path.join(__dirname, "data", "portfolios", u.id + ".json");
-        try {
-          const stat = fs.statSync(pfPath);
-          const day = new Date(stat.birthtime || stat.mtime).toISOString().slice(0, 10);
-          userGrowth[day] = (userGrowth[day] || 0) + 1;
-        } catch (e) {
-          const day = todayStr();
-          userGrowth[day] = (userGrowth[day] || 0) + 1;
-        }
+        const day = new Date(u.createdAt).toISOString().slice(0, 10);
+        userGrowth[day] = (userGrowth[day] || 0) + 1;
       }
       // 累計用戶增長
       const growthDays = Object.keys(userGrowth).sort();

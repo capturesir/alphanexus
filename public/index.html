@@ -926,10 +926,15 @@ function dividendMonthly(base){
   for(const sym of syms){
     const ev=LIVE&&REAL.events[sym]; if(!ev||!ev.dividends)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD";
+    // 取當前持股(作為回退:若除息日尚未持有,以當前持股推算)
+    const curByLoc=unitsByLocAt(sym,today,false);
+    let curUnits=0; for(const loc in curByLoc){const u=curByLoc[loc]; if(u>1e-9)curUnits+=u;}
     for(const d of ev.dividends){
       if(d.date<yAgoStr||d.date>today)continue;          // 只取過去 12 個月
       const byLoc=unitsByLocAt(sym,d.date,true);
       let units=0; for(const loc in byLoc){const u=byLoc[loc]; if(u>1e-9)units+=u;}
+      // 若除息日尚未持有,以當前持股推算(讓新買入的股票也能看到完整股息歷史)
+      if(units<=1e-9)units=curUnits;
       if(units<=1e-9)continue;
       const grossCcy=units*d.amount;
       const net=grossCcy*(1-tax);
@@ -944,6 +949,7 @@ function dividendMonthly(base){
 
 /* 股息行事曆 — 除淨日時間軸:
    真實=過去一年各持倉的除淨日(及拆股);假想=把過去一年的除淨日 +1 年(同月同日,約)。
+   對於新買入的股票(除息日尚未持有),以當前持股推算並標記為假設。
    回傳依日期排序的事件陣列 [{sym,name,date,perShare,ccy,kind:'div'|'split',hypothetical:bool}]。 */
 function dividendTimeline(){
   const out=[];
@@ -954,12 +960,17 @@ function dividendTimeline(){
   for(const sym of syms){
     const ev=LIVE&&REAL.events[sym]; if(!ev)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD"; const nm=o?(o.z||o.n||sym):sym;
+    // 取當前持股(回退用)
+    const curByLoc=unitsByLocAt(sym,today,false); let curUnits=0; for(const loc in curByLoc){if(curByLoc[loc]>1e-9)curUnits+=curByLoc[loc]}
     // 真實過去一年:股息
     for(const d of (ev.dividends||[])){
       if(d.date<yAgoStr||d.date>today)continue;
       const byLoc=unitsByLocAt(sym,d.date,true); let units=0; for(const loc in byLoc){if(byLoc[loc]>1e-9)units+=byLoc[loc]}
+      const heldAtEx=units>1e-9;
+      if(!heldAtEx)units=curUnits;           // 除息日尚未持有→以當前持股推算
       if(units<=1e-9)continue;
-      out.push({sym,name:nm,date:d.date,perShare:d.amount,ccy,units:+units.toFixed(4),kind:"div",hypothetical:false});
+      // 除息日未持有者標記為假設,已持有者為真實
+      out.push({sym,name:nm,date:d.date,perShare:d.amount,ccy,units:+units.toFixed(4),kind:"div",hypothetical:!heldAtEx});
       // 假想未來:同月同日 +1 年
       const fd=new Date(d.date); fd.setFullYear(fd.getFullYear()+1); const fds=fmtD(fd);
       if(fds>today&&fds<=yFwdStr){

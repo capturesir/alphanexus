@@ -102,13 +102,13 @@ label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:10px
 .mark-svg .mk-d2{fill:var(--bg)}
 
 /* ---- 底部分頁列 ---- */
-#tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:860px;height:var(--tabbar-h);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:1000;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(0,0,0,0.1)}
+#tabbar{position:fixed;bottom:0;left:0;right:0;margin:0 auto;width:100%;max-width:860px;height:var(--tabbar-h);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:1000;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(0,0,0,0.1);will-change:transform}
 #tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;font-weight:600;color:var(--ink3)}
 #tabbar button.on{color:var(--gold)}
 #tabbar svg{width:21px;height:21px}
 
 /* ---- 登入頁 ---- */
-#authScreen{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:22px}
+#authScreen{position:fixed;inset:0;z-index:1200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:22px}
 .auth-card{width:100%;max-width:400px}
 .auth-hero{text-align:center;margin-bottom:22px}
 .auth-hero .mark{width:56px;height:56px;border-radius:16px;background:var(--brand);color:var(--bg);display:grid;place-items:center;font-size:26px;font-weight:800;margin:0 auto 12px}
@@ -138,7 +138,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
 .ac-item:active,.ac-item:hover{background:var(--card2)}
 
 /* ---- 彈窗 ---- */
-.modal-mask{position:fixed;inset:0;background:rgba(8,12,20,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s}
+.modal-mask{position:fixed;inset:0;background:rgba(8,12,20,.55);z-index:1100;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s;will-change:transform}
 @keyframes fadeIn{from{opacity:0}}
 .modal{background:var(--bg);width:100%;max-width:860px;max-height:92dvh;display:flex;flex-direction:column;border-radius:20px 20px 0 0;animation:slideUp .22s cubic-bezier(.2,.8,.3,1)}
 .modal-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px 12px;overscroll-behavior:contain}
@@ -180,7 +180,7 @@ html[data-color="redUp"] .pl-neg{color:var(--up)}
 .btn-sm{min-height:36px}
 .live-badge{font-size:10.5px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--ink3);border:1px solid var(--line);white-space:nowrap}
 .live-badge.on{color:var(--up);border-color:var(--up)}
-.toast{position:fixed;left:50%;bottom:calc(var(--tabbar-h) + 18px);transform:translateX(-50%);background:var(--brand);color:var(--bg);padding:9px 18px;border-radius:99px;font-size:13px;font-weight:600;z-index:200;box-shadow:var(--shadow);animation:toastIn .3s cubic-bezier(.2,.8,.3,1);max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--tabbar-h) + 18px);transform:translateX(-50%);background:var(--brand);color:var(--bg);padding:9px 18px;border-radius:99px;font-size:13px;font-weight:600;z-index:1300;box-shadow:var(--shadow);animation:toastIn .3s cubic-bezier(.2,.8,.3,1);max-width:90vw;text-align:center}
 .toast.toast-success{background:var(--up,#16a34a);color:#fff}
 @keyframes toastIn{0%{opacity:0;transform:translateX(-50%) translateY(16px) scale(.95)}60%{transform:translateX(-50%) translateY(-4px) scale(1.02)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
 .empty{padding:34px 12px;text-align:center;color:var(--ink3)}

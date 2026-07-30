@@ -4886,25 +4886,23 @@ function renderDivCalendar(){
         <div id="expenseList">
           ${expenses.map((exp,idx)=>{
             const ccy=exp.ccy||base;
-            const annualBase=expenseToBase(
-              (exp.frequency==="monthly"?exp.amount*12:exp.frequency==="quarterly"?exp.amount*4:exp.amount),
-              ccy,base,N_DAYS-1
-            );
+            const multiplier=exp.frequency==="monthly"?12:exp.frequency==="quarterly"?4:1;
+            const annualAmt=exp.amount*multiplier;
+            const annualBase=expenseToBase(annualAmt,ccy,base,N_DAYS-1);
             const freqLbl=exp.frequency==="monthly"?(T("monthly")||"每月"):exp.frequency==="quarterly"?(T("quarterly")||"每季"):(T("yearly")||"每年");
-            const ccyNote=ccy!==base?`<div class="tiny num" style="color:var(--ink3)">≈ ${fmtAmt(annualBase,base,true)}/${T("yearly")||"每年"}</div>`:"";
+            const showAnnual=ccy!==base;
             return `
             <div class="holding" data-exp-idx="${idx}" style="cursor:pointer">
               <div class="sym-badge">${exp.category==="living"?"🏠":"💳"}</div>
               <div class="grow">
-                <div class="row between"><b style="font-size:13px">${exp.name}</b><span class="num" style="font-size:13px;font-weight:600">${fmtAmt(exp.amount,ccy)}</span></div>
-                <div class="row between"><span class="tiny">${exp.category==="living"?(T("livingExpense")||"生活支出"):(T("financialExpense")||"財務支出")}</span><span class="tiny num">${freqLbl}</span></div>
-                ${ccyNote}
+                <div class="row between"><b style="font-size:13px">${exp.name}</b><span class="num" style="font-size:13px;font-weight:600">${fmtMoney(annualBase,base,true)}/${T("yearly")||"每年"}</span></div>
+                <div class="row between"><span class="tiny">${exp.category==="living"?(T("livingExpense")||"生活支出"):(T("financialExpense")||"財務支出")}</span><span class="tiny num">${fmtMoney(exp.amount,ccy)} × ${multiplier} (${freqLbl})</span></div>
               </div>
             </div>`;
           }).join("")}
         </div>
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-          <div class="row between"><span class="tiny">${T("totalAnnualExpense")||"年度總支出"}</span><span class="num" style="font-weight:600">${fmtAmt(totalAnnualExpense,base,true)}</span></div>
+          <div class="row between"><span class="tiny">${T("totalAnnualExpense")||"年度總支出"}</span><span class="num" style="font-weight:600">${fmtMoney(totalAnnualExpense,base,true)}</span></div>
         </div>
       </div>
     `;

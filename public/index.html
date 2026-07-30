@@ -4745,15 +4745,18 @@ function openExpenseModal(editIdx){
       <option value="quarterly" ${exp&&exp.frequency==="quarterly"?"selected":""}>${T("quarterly")||"每季"}</option>
       <option value="yearly" ${exp&&exp.frequency==="yearly"?"selected":""}>${T("yearly")||"每年"}</option>
     </select>
-    
-    <div style="height:12px"></div>
-    <div class="row">
-      ${exp?`<button class="btn btn-danger" id="expDel">${T("delete")||"刪除"}</button>`:""}
-      <div class="grow"></div>
-      <button class="btn" id="expCancel">${T("cancel")||"取消"}</button>
-      <button class="btn btn-primary" id="expSave">${T("save")||"儲存"}</button>
-    </div>
   `);
+  
+  // === 固定底部操作列 ===
+  const footer=document.createElement("div");
+  footer.className="modal-footer";
+  footer.innerHTML=`<div class="row">
+    ${exp?`<button class="btn btn-danger" id="expDel">${T("delete")||"刪除"}</button>`:""}
+    <div class="grow"></div>
+    <button class="btn" id="expCancel">${T("cancel")||"取消"}</button>
+    <button class="btn btn-primary" id="expSave">${T("save")||"儲存"}</button>
+  </div>`;
+  m.appendChild(footer);
   
   // 儲存按鈕
   m.querySelector("#expSave").onclick=()=>{

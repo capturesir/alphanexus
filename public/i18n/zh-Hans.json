@@ -65,7 +65,7 @@
  "pleaseFillName": "请输入支出名称",
  "pleaseEnterAmount": "请输入有效金额",
  "noExpenses": "此分类无支出项目",
- "avgMonthlyExpense": "年度平均月支出",
+ "avgMonthlyExpense": "月度总支出",
  "expSortName": "名称",
  "expSortAdded": "时间",
  "expSortAmount": "金额",

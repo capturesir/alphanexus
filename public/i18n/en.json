@@ -64,6 +64,7 @@
  "totalAnnualExpense": "Total Annual Expense",
  "pleaseFillName": "Please enter expense name",
  "pleaseEnterAmount": "Please enter a valid amount",
+ "avgMonthlyExpense": "Avg Monthly Expense",
  "expSortName": "Name",
  "expSortAdded": "Time",
  "expSortAmount": "Amount",

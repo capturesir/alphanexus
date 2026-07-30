@@ -64,6 +64,7 @@
  "totalAnnualExpense": "年度總支出",
  "pleaseFillName": "請輸入支出名稱",
  "pleaseEnterAmount": "請輸入有效金額",
+ "avgMonthlyExpense": "年度平均月支出",
  "expSortName": "名稱",
  "expSortAdded": "時間",
  "expSortAmount": "金額",

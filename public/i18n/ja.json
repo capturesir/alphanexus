@@ -64,6 +64,7 @@
  "totalAnnualExpense": "年間総支出",
  "pleaseFillName": "支出名を入力してください",
  "pleaseEnterAmount": "有効な金額を入力してください",
+ "noExpenses": "このカテゴリの支出はありません",
  "avgMonthlyExpense": "月平均支出",
  "expSortName": "名前",
  "expSortAdded": "追加順",

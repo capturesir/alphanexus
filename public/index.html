@@ -582,6 +582,10 @@ function b64dec(s){return decodeURIComponent(escape(atob(s)))}
 function userKey(email){return email?"app_settings_"+b64enc(email):"app_settings_guest"}
 function txnsKey(email){return email?"app_txns_"+b64enc(email):"app_txns_guest"}
 function currentUserEmail(){return state.user&&!state.user.guest?state.user.email:null}
+function expensesKey(email){return email?"app_expenses_"+b64enc(email):"app_expenses_guest"}
+function incomesKey(email){return email?"app_incomes_"+b64enc(email):"app_incomes_guest"}
+function curExpensesKey(){return expensesKey(currentUserEmail())}
+function curIncomesKey(){return incomesKey(currentUserEmail())}
 
 const state={
   user:null,            // {name,email,avatar,guest,pwd}
@@ -1675,14 +1679,14 @@ async function persist(){
   if(LIVE&&state.token&&state.user&&!state.user.guest){
     clearTimeout(_syncTimer);
     _syncTimer=setTimeout(()=>{
-      const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-      const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+      const expenses=JSON.parse(localStorage.getItem(curExpensesKey())||'[]');
+      const incomes=JSON.parse(localStorage.getItem(curIncomesKey())||'[]');
       apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).then(()=>{
         // 同步成功：標記所有支出/收入為已上傳
         expenses.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_expenses',JSON.stringify(expenses));
+        localStorage.setItem(curExpensesKey(),JSON.stringify(expenses));
         incomes.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_incomes',JSON.stringify(incomes));
+        localStorage.setItem(curIncomesKey(),JSON.stringify(incomes));
       }).catch(()=>{});
     },600);
   }
@@ -4760,7 +4764,7 @@ function expenseToBase(amount,ccy,base,idx){
 }
 
 function openExpenseModal(editIdx){
-  const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
+  const expenses=JSON.parse(localStorage.getItem(curExpensesKey())||'[]');
   const exp=editIdx>=0?expenses[editIdx]:null;
   const base=state.settings.baseCcy||"USD";
   
@@ -4829,7 +4833,7 @@ function openExpenseModal(editIdx){
       expenses.push(newExp);
     }
     
-    localStorage.setItem('alphanexus_expenses',JSON.stringify(expenses));
+    localStorage.setItem(curExpensesKey(),JSON.stringify(expenses));
     closeModal(m);
     renderDivCalendar();
     persist();
@@ -4845,7 +4849,7 @@ function openExpenseModal(editIdx){
     delBtn.onclick=()=>{
       if(confirm(T("confirmDelExpense")||"確定刪除此支出項目？")){
         expenses.splice(editIdx,1);
-        localStorage.setItem('alphanexus_expenses',JSON.stringify(expenses));
+        localStorage.setItem(curExpensesKey(),JSON.stringify(expenses));
         closeModal(m);
         renderDivCalendar();
         persist();
@@ -4856,7 +4860,7 @@ function openExpenseModal(editIdx){
 }
 
 function openIncomeModal(editIdx){
-  const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+  const incomes=JSON.parse(localStorage.getItem(curIncomesKey())||'[]');
   const inc=editIdx>=0?incomes[editIdx]:null;
   const base=state.settings.baseCcy||"USD";
   
@@ -4924,7 +4928,7 @@ function openIncomeModal(editIdx){
       incomes.push(newInc);
     }
     
-    localStorage.setItem('alphanexus_incomes',JSON.stringify(incomes));
+    localStorage.setItem(curIncomesKey(),JSON.stringify(incomes));
     closeModal(m);
     renderDivCalendar();
     persist();
@@ -4940,7 +4944,7 @@ function openIncomeModal(editIdx){
     delBtn.onclick=()=>{
       if(confirm(T("confirmDelIncome")||"確定刪除此收入項目？")){
         incomes.splice(editIdx,1);
-        localStorage.setItem('alphanexus_incomes',JSON.stringify(incomes));
+        localStorage.setItem(curIncomesKey(),JSON.stringify(incomes));
         closeModal(m);
         renderDivCalendar();
         persist();
@@ -4955,9 +4959,9 @@ function renderDivCalendar(){
   const base=state.settings.baseCcy||"USD";
   
   // 載入支出數據（從 localStorage）
-  const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
+  const expenses=JSON.parse(localStorage.getItem(curExpensesKey())||'[]');
   // 載入收入數據（從 localStorage）
-  const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+  const incomes=JSON.parse(localStorage.getItem(curIncomesKey())||'[]');
   
   if(!LIVE){ box.innerHTML=`<div class="card"><div class="tiny" style="text-align:center;color:var(--ink3);padding:20px">${T("needLive")}</div></div>`; return; }
   const months=dividendMonthly(base);
@@ -5628,8 +5632,8 @@ function bindMe(){
   $("#btnLogout").onclick=async()=>{
     // 1. 先同步到伺服器（確保最新設定已備份）
     if(LIVE&&state.token&&!state.user.guest){
-      const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-      const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+      const expenses=JSON.parse(localStorage.getItem(curExpensesKey())||'[]');
+      const incomes=JSON.parse(localStorage.getItem(curIncomesKey())||'[]');
       await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).catch(()=>{});
     }
     // 2. 儲存當前用戶資料到本地
@@ -5641,8 +5645,8 @@ function bindMe(){
     state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
     await kvSet("app_token",null);
     // 清除帳戶專屬 localStorage（防止跨帳號洩漏）
-    localStorage.removeItem('alphanexus_expenses');
-    localStorage.removeItem('alphanexus_incomes');
+    localStorage.removeItem(curExpensesKey());
+    localStorage.removeItem(curIncomesKey());
     state.privacyOn=true;
     applyTheme();applyI18n();
     $("#btnTabStats").style.display="none"; // 登出隱藏統計按鈕
@@ -5663,8 +5667,8 @@ function bindMe(){
         state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
         await kvSet("app_token",null);
         // 清除帳戶專屬 localStorage
-        localStorage.removeItem('alphanexus_expenses');
-        localStorage.removeItem('alphanexus_incomes');
+        localStorage.removeItem(curExpensesKey());
+        localStorage.removeItem(curIncomesKey());
         state.privacyOn=true;
         applyTheme();applyI18n();
         await persist();
@@ -5762,6 +5766,20 @@ async function init(){
   // 探測後端(有後端=即時數據模式)
   await probeLive();
   await loadLangPack(state.settings.lang);
+  // 遷移舊版共用 key → per-account key（一次性）
+  if(state.user&&!state.user.guest){
+    const em=state.user.email;
+    const oldExp=localStorage.getItem('alphanexus_expenses');
+    if(oldExp&&!localStorage.getItem(expensesKey(em))){
+      localStorage.setItem(expensesKey(em),oldExp);
+    }
+    localStorage.removeItem('alphanexus_expenses');
+    const oldInc=localStorage.getItem('alphanexus_incomes');
+    if(oldInc&&!localStorage.getItem(incomesKey(em))){
+      localStorage.setItem(incomesKey(em),oldInc);
+    }
+    localStorage.removeItem('alphanexus_incomes');
+  }
   if(LIVE&&state.token){
     try{
       const me=await api("/api/me");
@@ -5778,15 +5796,15 @@ async function init(){
       // 載入伺服器端支出/收入數據（同步到 localStorage）
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+        localStorage.setItem(curExpensesKey(),JSON.stringify(p.expenses));
       }else{
-        localStorage.removeItem('alphanexus_expenses');
+        localStorage.removeItem(curExpensesKey());
       }
       if(p&&Array.isArray(p.incomes)){
         p.incomes.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
+        localStorage.setItem(curIncomesKey(),JSON.stringify(p.incomes));
       }else{
-        localStorage.removeItem('alphanexus_incomes');
+        localStorage.removeItem(curIncomesKey());
       }
       applySettingsSideEffects();
     }catch(e){ state.token=null; await kvSet("app_token",null) }
@@ -5855,15 +5873,15 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
       // 載入伺服器端支出/收入數據（同步到 localStorage）
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+        localStorage.setItem(curExpensesKey(),JSON.stringify(p.expenses));
       }else{
-        localStorage.removeItem('alphanexus_expenses');
+        localStorage.removeItem(curExpensesKey());
       }
       if(p&&Array.isArray(p.incomes)){
         p.incomes.forEach(e=>e.synced=true);
-        localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
+        localStorage.setItem(curIncomesKey(),JSON.stringify(p.incomes));
       }else{
-        localStorage.removeItem('alphanexus_incomes');
+        localStorage.removeItem(curIncomesKey());
       }
     }catch(e){}
     applySettingsSideEffects();restoreChartComps();
@@ -5935,8 +5953,8 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
       await kvSet(userKey(em),state.settings);
       await kvSet(txnsKey(em),state.txns);
       if(LIVE&&state.token){
-        const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-        const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+        const expenses=JSON.parse(localStorage.getItem(curExpensesKey())||'[]');
+        const incomes=JSON.parse(localStorage.getItem(curIncomesKey())||'[]');
         await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).catch(()=>{});
       }
     }

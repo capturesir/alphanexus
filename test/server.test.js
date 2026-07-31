@@ -381,6 +381,43 @@ async function run() {
   ok(Array.isArray(h7b.j.incomes) && h7b.j.incomes.length === 1,
     "H7b PUT 不帶 incomes 時保留舊值");
 
+  // ---- H8. 跨帳號隔離：支出/收入不互相洩漏 ----
+  // H2 儲存支出+收入
+  await put7("/api/portfolio", {
+    txns: [], settings: {},
+    expenses: [{ category: "living", name: "H2房租", amount: 5000, ccy: "MOP", frequency: "monthly" }],
+    incomes: [{ category: "work", name: "H2薪水", amount: 30000, ccy: "MOP", frequency: "monthly" }]
+  }, "tokH2");
+  // H4 儲存不同支出+收入
+  await put7("/api/portfolio", {
+    txns: [], settings: {},
+    expenses: [{ category: "financial", name: "H4貸款", amount: 8000, ccy: "HKD", frequency: "monthly" }],
+    incomes: [{ category: "other", name: "H4租金", amount: 12000, ccy: "HKD", frequency: "monthly" }]
+  }, "tokH4");
+  // H2 讀取：只有自己的
+  const h8a = await call7("/api/portfolio", null, "tokH2");
+  ok(h8a.j.expenses.length === 1 && h8a.j.expenses[0].name === "H2房租" &&
+     h8a.j.incomes.length === 1 && h8a.j.incomes[0].name === "H2薪水",
+    "H8a H2 只看到自己的支出+收入");
+  // H4 讀取：只有自己的
+  const h8b = await call7("/api/portfolio", null, "tokH4");
+  ok(h8b.j.expenses.length === 1 && h8b.j.expenses[0].name === "H4貸款" &&
+     h8b.j.incomes.length === 1 && h8b.j.incomes[0].name === "H4租金",
+    "H8b H4 只看到自己的支出+收入（不洩漏 H2）");
+  // H2 更新（PUT 帶新數據，舊的應被覆蓋）
+  await put7("/api/portfolio", {
+    txns: [], settings: {},
+    expenses: [{ category: "living", name: "H2新房租", amount: 6000, ccy: "MOP", frequency: "monthly" }],
+    incomes: [{ category: "work", name: "H2新薪水", amount: 35000, ccy: "MOP", frequency: "monthly" }]
+  }, "tokH2");
+  const h8c = await call7("/api/portfolio", null, "tokH2");
+  ok(h8c.j.expenses[0].name === "H2新房租" && h8c.j.incomes[0].name === "H2新薪水",
+    "H8c H2 更新後數據正確覆蓋");
+  // H4 不受影響
+  const h8d = await call7("/api/portfolio", null, "tokH4");
+  ok(h8d.j.expenses[0].name === "H4貸款" && h8d.j.incomes[0].name === "H4租金",
+    "H8d H4 不受 H2 更新影響");
+
   // ---- I. M-3 自訂數據源多租戶隔離 ----
   S7._dnsLookup = async () => [{ address: "93.184.216.34", family: 4 }]; // 公網 IP → 通過 SSRF 檢查(POST 會呼叫 assertSafeUrl)
   St7.put("m1@x.com", { id: "m1", name: "M1", salt: "s", hash: "h", tokens: ["tokM1"] });

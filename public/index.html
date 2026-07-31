@@ -1676,10 +1676,13 @@ async function persist(){
     clearTimeout(_syncTimer);
     _syncTimer=setTimeout(()=>{
       const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-      apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses}).then(()=>{
-        // 同步成功：標記所有支出為已上傳
+      const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+      apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).then(()=>{
+        // 同步成功：標記所有支出/收入為已上傳
         expenses.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_expenses',JSON.stringify(expenses));
+        incomes.forEach(e=>e.synced=true);
+        localStorage.setItem('alphanexus_incomes',JSON.stringify(incomes));
       }).catch(()=>{});
     },600);
   }
@@ -5626,7 +5629,8 @@ function bindMe(){
     // 1. 先同步到伺服器（確保最新設定已備份）
     if(LIVE&&state.token&&!state.user.guest){
       const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-      await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses}).catch(()=>{});
+      const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+      await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).catch(()=>{});
     }
     // 2. 儲存當前用戶資料到本地
     const em=currentUserEmail();
@@ -5765,10 +5769,14 @@ async function init(){
         state.settings={...DEFAULT_SETTINGS,...p.settings};
       }
       // else: 保留本地已載入的 settings（line 3542）
-      // 載入伺服器端支出數據（同步到 localStorage）
+      // 載入伺服器端支出/收入數據（同步到 localStorage）
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+      }
+      if(p&&Array.isArray(p.incomes)){
+        p.incomes.forEach(e=>e.synced=true);
+        localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
       }
       applySettingsSideEffects();
     }catch(e){ state.token=null; await kvSet("app_token",null) }
@@ -5834,10 +5842,14 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
       }else if(localSt&&typeof localSt==="object"){
         state.settings={...DEFAULT_SETTINGS,...localSt,lang:curLang};
       }
-      // 載入伺服器端支出數據（同步到 localStorage）
+      // 載入伺服器端支出/收入數據（同步到 localStorage）
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+      }
+      if(p&&Array.isArray(p.incomes)){
+        p.incomes.forEach(e=>e.synced=true);
+        localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
       }
     }catch(e){}
     applySettingsSideEffects();restoreChartComps();
@@ -5910,7 +5922,8 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
       await kvSet(txnsKey(em),state.txns);
       if(LIVE&&state.token){
         const expenses=JSON.parse(localStorage.getItem('alphanexus_expenses')||'[]');
-        await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses}).catch(()=>{});
+        const incomes=JSON.parse(localStorage.getItem('alphanexus_incomes')||'[]');
+        await apiPut("/api/portfolio",{txns:state.txns,settings:state.settings,expenses,incomes}).catch(()=>{});
       }
     }
     // 載入訪客資料

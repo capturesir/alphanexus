@@ -369,6 +369,18 @@ async function run() {
   ok(h6Read.j.settings.divTax === 0 && h6Read.j.settings.privacy === false && h6Read.j.settings.autoDiv === false,
     "H6 特殊值(divTax=0, privacy=false, autoDiv=false)正確儲存");
 
+  // ---- H7. 收入數據同步 ----
+  const incData = [{ category: "work", name: "薪水", amount: 30000, ccy: "MOP", frequency: "monthly" }];
+  await put7("/api/portfolio", { txns: [], settings: {}, incomes: incData }, "tokH6");
+  const h7Read = await call7("/api/portfolio", null, "tokH6");
+  ok(Array.isArray(h7Read.j.incomes) && h7Read.j.incomes.length === 1 && h7Read.j.incomes[0].name === "薪水",
+    "H7 收入數據正確儲存與讀取");
+  // 不帶 incomes 的 PUT 應保留舊值
+  await put7("/api/portfolio", { txns: [], settings: {} }, "tokH6");
+  const h7b = await call7("/api/portfolio", null, "tokH6");
+  ok(Array.isArray(h7b.j.incomes) && h7b.j.incomes.length === 1,
+    "H7b PUT 不帶 incomes 時保留舊值");
+
   // ---- I. M-3 自訂數據源多租戶隔離 ----
   S7._dnsLookup = async () => [{ address: "93.184.216.34", family: 4 }]; // 公網 IP → 通過 SSRF 檢查(POST 會呼叫 assertSafeUrl)
   St7.put("m1@x.com", { id: "m1", name: "M1", salt: "s", hash: "h", tokens: ["tokM1"] });

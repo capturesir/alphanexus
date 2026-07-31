@@ -1617,12 +1617,17 @@ const server = http.createServer(async (req, res) => {
           txns: Array.isArray(b.txns) ? b.txns.slice(0, 20000) : [],
           settings: (b.settings && typeof b.settings === "object") ? b.settings : {},
           expenses: Array.isArray(b.expenses) ? b.expenses.slice(0, 500) : undefined,
+          incomes: Array.isArray(b.incomes) ? b.incomes.slice(0, 500) : undefined,
           updatedAt: Date.now()
         };
-        // 保留已有的 expenses（若本次 PUT 未帶入）
+        // 保留已有的 expenses / incomes（若本次 PUT 未帶入）
         if (doc.expenses === undefined) {
           const old = Store.pfGet(a.u.id);
           doc.expenses = old.expenses || [];
+        }
+        if (doc.incomes === undefined) {
+          const old = Store.pfGet(a.u.id);
+          doc.incomes = old.incomes || [];
         }
         Store.pfPut(a.u.id, doc);
         return send(req, res, 200, { ok: true, updatedAt: doc.updatedAt });

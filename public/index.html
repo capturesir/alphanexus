@@ -5640,6 +5640,9 @@ function bindMe(){
     if(LIVE&&state.token)apiPost("/api/auth/logout",{}).catch(()=>{});
     state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
     await kvSet("app_token",null);
+    // 清除帳戶專屬 localStorage（防止跨帳號洩漏）
+    localStorage.removeItem('alphanexus_expenses');
+    localStorage.removeItem('alphanexus_incomes');
     state.privacyOn=true;
     applyTheme();applyI18n();
     $("#btnTabStats").style.display="none"; // 登出隱藏統計按鈕
@@ -5659,6 +5662,9 @@ function bindMe(){
         if(em){ await kvSet(userKey(em),null); await kvSet(txnsKey(em),null) }
         state.user=null;state.token=null;state.txns=[];state.settings={...DEFAULT_SETTINGS};state.chart.comps=[];
         await kvSet("app_token",null);
+        // 清除帳戶專屬 localStorage
+        localStorage.removeItem('alphanexus_expenses');
+        localStorage.removeItem('alphanexus_incomes');
         state.privacyOn=true;
         applyTheme();applyI18n();
         await persist();
@@ -5773,10 +5779,14 @@ async function init(){
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+      }else{
+        localStorage.removeItem('alphanexus_expenses');
       }
       if(p&&Array.isArray(p.incomes)){
         p.incomes.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
+      }else{
+        localStorage.removeItem('alphanexus_incomes');
       }
       applySettingsSideEffects();
     }catch(e){ state.token=null; await kvSet("app_token",null) }
@@ -5846,10 +5856,14 @@ $$("[data-setlang]").forEach(b=>b.onclick=()=>{state.settings.lang=b.dataset.set
       if(p&&Array.isArray(p.expenses)){
         p.expenses.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_expenses',JSON.stringify(p.expenses));
+      }else{
+        localStorage.removeItem('alphanexus_expenses');
       }
       if(p&&Array.isArray(p.incomes)){
         p.incomes.forEach(e=>e.synced=true);
         localStorage.setItem('alphanexus_incomes',JSON.stringify(p.incomes));
+      }else{
+        localStorage.removeItem('alphanexus_incomes');
       }
     }catch(e){}
     applySettingsSideEffects();restoreChartComps();

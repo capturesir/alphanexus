@@ -15,7 +15,6 @@
    ========================================================================= */
 "use strict";
 const http = require("http");
-const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -359,31 +358,13 @@ async function assertSafeUrl(u) {
   for (const a of addrs) if (isPrivateIp(a.address)) throw new Error("unsafe_url_resolved");
   return addrs.map(a => a.address);
 }
-/* SSRF 安全的抓取:驗證後抓取,且不自動跟隨轉址(避免 302 → 內網繞過)。
-   M-2 修復:使用已驗證 IP 釘選連線,防止 DNS-rebinding TOCTOU。 */
-const _dnsPinCache = {}; // host -> { ips, exp }
-const DNS_PIN_TTL = 60000;
-function _pinnedLookup(host, opts, cb) {
-  const ent = _dnsPinCache[host];
-  if (ent && Date.now() < ent.exp) {
-    const a = ent.ips[Math.floor(Math.random() * ent.ips.length)];
-    return cb(null, a, net.isIPv6(a) ? 6 : 4);
-  }
-  dns.lookup(host, opts, (err, addr, family) => {
-    if (err) return cb(err);
-    cb(null, addr, family);
-  });
-}
+/* SSRF 安全的抓取:驗證後抓取,且不自動跟隨轉址(避免 302 → 內網繞過)。 */
 async function safeFetchJson(u) {
-  const safeIps = await assertSafeUrl(u);
-  _dnsPinCache[new URL(u).hostname] = { ips: safeIps, exp: Date.now() + DNS_PIN_TTL };
+  await assertSafeUrl(u);
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 12000);
   try {
-    const isHttps = u.startsWith("https://");
-    const mod = isHttps ? https : http;
-    const agent = new mod.Agent({ lookup: _pinnedLookup, keepAlive: false });
-    const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" }, redirect: "manual", signal: ctl.signal, dispatcher: agent });
+    const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" }, redirect: "manual", signal: ctl.signal });
     if (r.status >= 300 && r.status < 400) throw new Error("redirect_blocked"); // 不跟隨轉址
     if (!r.ok) throw new Error("upstream_" + r.status);
     return await r.json();
@@ -1217,8 +1198,7 @@ function send(req, res, code, obj) {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
   };
   // CORS:只有來源在允許清單內,才回傳「反射來源 + 允許憑證」(安全組合)。
   // 未設定 CORS_ORIGIN 時退回寬鬆的 "*" 但「不」開啟 credentials(避免任意站點挾帶憑證)。
@@ -1264,7 +1244,7 @@ function serveStatic(req, res, urlPath) {
       res.writeHead(404); return res.end("not found");
     }
     const mime = MIME[path.extname(file)] || "application/octet-stream";
-    const headers = { "Content-Type": mime, "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=31536000; includeSubDomains", "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'" };
+    const headers = { "Content-Type": mime, "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
     // HTML 檔案不快取（確保更新後瀏覽器立即載入新版本）
     if (mime.startsWith("text/html")) headers["Cache-Control"] = "no-cache";
     if (/^(text\/|application\/json|image\/svg)/.test(mime) && buf.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
@@ -1415,25 +1395,21 @@ const server = http.createServer(async (req, res) => {
         const sym = String(b.symbol || "").trim().toUpperCase();
         if (!/^[A-Z0-9._\-]{1,24}$/.test(sym)) return send(req, res, 400, { error: "bad_symbol" });
         try { await assertSafeUrl(String(b.url || "")); }
-        catch (e) { return send(req, res, 400, { error: "bad_url" }); }
+        catch (e) { return send(req, res, 400, { error: "bad_url", detail: String(e.message || e) }); }
         try { jsonPathTokens(String(b.datePath || "")); jsonPathTokens(String(b.pricePath || "")) }
-        catch (e) { return send(req, res, 400, { error: "bad_path" }) }
-        CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60), ownerId: a.u.id };
+        catch (e) { return send(req, res, 400, { error: "bad_path", detail: String(e.message || e) }) }
+        CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60) };
         saveCustom();
         try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {} // 清庫存,下次請求即用新設定重抓
         return send(req, res, 200, { ok: true, symbol: sym });
       }
-      // M-3: 僅回傳當前用戶擁有的或無主(legacy)的自訂源
-      return send(req, res, 200, { sources: Object.entries(CUSTOM).filter(([, c]) => !c.ownerId || c.ownerId === a.u.id).map(([s, c]) => ({ symbol: s, ...c })) });
+      return send(req, res, 200, { sources: Object.entries(CUSTOM).map(([s, c]) => ({ symbol: s, ...c })) });
     }
     if (p === "/api/custom-sources/delete" && req.method === "POST") {
       const a = userByToken(req);
       if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
       const sym = String(b.symbol || "").trim().toUpperCase();
-      // M-3: 只能刪除自己擁有的或無主(legacy)的自訂源
-      const entry = CUSTOM[sym];
-      if (entry && entry.ownerId && entry.ownerId !== a.u.id) return send(req, res, 403, { error: "forbidden" });
       delete CUSTOM[sym]; saveCustom();
       try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {}
       return send(req, res, 200, { ok: true });
@@ -1463,7 +1439,7 @@ const server = http.createServer(async (req, res) => {
       const email = String(b.email || "").trim().toLowerCase();
       const pwd = String(b.pwd || "");
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(req, res, 400, { error: "bad_email" });
-      if (pwd.length < 8) return send(req, res, 400, { error: "weak_pwd" });
+      if (pwd.length < 4) return send(req, res, 400, { error: "weak_pwd" });
       if (Store.exists(email)) return send(req, res, 409, { error: "exists" });
       const salt = crypto.randomBytes(16).toString("hex");
       const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [], createdAt: Date.now() };
@@ -1510,7 +1486,7 @@ const server = http.createServer(async (req, res) => {
       const email = String(b.email || "").trim().toLowerCase();
       if (!loginRateOk(email) || !loginRateOk("ip:" + ip, 30)) return send(req, res, 429, { error: "too_many_attempts", retryAfter: 60 });
       const usr = Store.getByEmail(email);
-      if (!usr) { hashPwd(String(b.pwd || ""), "0000000000000000"); return send(req, res, 401, { error: "no_user" }); }
+      if (!usr) return send(req, res, 404, { error: "no_user" });
       if (hashPwd(String(b.pwd || ""), usr.salt) !== usr.hash) return send(req, res, 401, { error: "bad_pwd" });
       const token = newToken(usr); usr.lastLoginAt = Date.now(); Store.save();
       return send(req, res, 200, { token, user: pubUser(usr, email) });
@@ -1707,7 +1683,7 @@ const server = http.createServer(async (req, res) => {
     return send(req, res, 404, { error: "not_found" });
   } catch (e) {
     log("ERR", p, e.message);
-    return send(req, res, 500, { error: "server_error" });
+    return send(req, res, 500, { error: "server_error", detail: String(e.message || e) });
   }
 });
 

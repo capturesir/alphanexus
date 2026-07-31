@@ -1505,12 +1505,12 @@ function renderAssets(){
     }else{ // 最新市值
       amtHtml=`<b class="num">${fmtAmt(h.mv,base,true)}</b>`;
     }
-    return `<div class="holding" data-sym="${escHtml(h.sym)}" style="cursor:pointer">
-      <div class="sym-badge">${escHtml(h.sym.split(".")[0].slice(0,5))}</div>
+    return `<div class="holding" data-sym="${h.sym}" style="cursor:pointer">
+      <div class="sym-badge">${h.sym.split(".")[0].slice(0,5)}</div>
       <div class="grow">
-        <div class="row between"><b style="font-size:13.5px">${escHtml(h.sym)}</b><span class="hold-amt" data-amt="${escHtml(h.sym)}" style="cursor:pointer">${amtHtml}</span></div>
+        <div class="row between"><b style="font-size:13.5px">${h.sym}</b><span class="hold-amt" data-amt="${h.sym}" style="cursor:pointer">${amtHtml}</span></div>
         <div class="row between">
-          <span class="tiny">${escHtml(h.name||"")} ${h.m?`<span class="mkt-tag">${escHtml(h.m)}</span>`:""}${h.src==="sim"?`<span class="src-tag src-sim">${T("srcSim")}</span>`:h.src==="stale"?`<span class="src-tag src-stale">${T("srcStale")}</span>`:""}</span>
+          <span class="tiny">${h.name||""} ${h.m?`<span class="mkt-tag">${h.m}</span>`:""}${h.src==="sim"?`<span class="src-tag src-sim">${T("srcSim")}</span>`:h.src==="stale"?`<span class="src-tag src-stale">${T("srcStale")}</span>`:""}</span>
           <span class="tiny num ${plc}">${fmtAmt(h.pl,base,true)} (${h.cost>0?pct(h.pl/h.cost):"--"})</span>
         </div>
         <div class="tiny num">${T("qty")} ${state.privacyOn?"•••":(+h.units.toFixed(4)).toLocaleString()} · ${fmtMoney(h.px,h.ccy)}${extra.length?" · 💰 "+extra.join(" · "):""}</div>
@@ -1558,17 +1558,17 @@ function renderAssets(){
    txns.map(t=>{
     const isCash=t.kind==="cash", isInc=t.kind==="dividend"||t.kind==="interest", isExp=t.kind==="fee"||t.kind==="liability";
     const kindLbl=T(KIND_KEY[t.kind]||"tOther");
-    const title=isCash?`${T("tCash")} ${escHtml(t.ccy)}`:(isInc||isExp)?`${t.sym?escHtml(t.sym)+" ":""}${kindLbl}${t.auto?" ⚡":""}`:`${escHtml(t.sym)}`;
+    const title=isCash?`${T("tCash")} ${t.ccy}`:(isInc||isExp)?`${t.sym?t.sym+" ":""}${kindLbl}${t.auto?" ⚡":""}`:`${t.sym}`;
     const desc=isCash?`${t.amount>=0?"＋":""}${fmtAmt(t.amount,t.ccy)}`
       :isInc?`＋${fmtAmt(t.amount,t.ccy)}`
       :isExp?`−${fmtAmt(t.amount,t.ccy)}`
       :`${t.side==="buy"?T("buy"):T("sell")} ${state.privacyOn?"•••":(+t.units).toLocaleString()} @ ${fmtMoney(t.price,t.ccy)}${t.fee?` (${T("fee")} ${fmtAmt(t.fee,t.ccy)})`:""} · ${T("totalCost")} ${fmtAmt(t.price*t.units+(t.fee||0),t.ccy)}`;
     const sideCls=isCash?(t.amount>=0?"pl-pos":"pl-neg"):isInc?"pl-pos":isExp?"pl-neg":(t.side==="buy"?"pl-pos":"pl-neg");
     return `<div class="holding" data-txn="${t.id}" style="cursor:pointer">
-      <div class="sym-badge">${isCash?"💵":isExp?"🧾":isInc?"💰":escHtml(t.sym.split(".")[0].slice(0,5))}</div>
+      <div class="sym-badge">${isCash?"💵":isExp?"🧾":isInc?"💰":t.sym.split(".")[0].slice(0,5)}</div>
       <div class="grow">
         <div class="row between"><b style="font-size:13px">${title}</b><span class="num ${sideCls}" style="font-size:13px;font-weight:600">${desc}</span></div>
-        <div class="row between"><span class="tiny">${escHtml(t.loc||T("defaultLoc"))} · ${kindLbl}</span><span class="tiny num">${t.date}</span></div>
+        <div class="row between"><span class="tiny">${t.loc||T("defaultLoc")} · ${kindLbl}</span><span class="tiny num">${t.date}</span></div>
       </div></div>`;
   }).join("");
   $$("#txnList [data-txn]").forEach(el=>el.onclick=()=>openTxnModal(state.txns.find(t=>t.id===el.dataset.txn)));
@@ -3898,7 +3898,7 @@ function openTxnModal(txn,prefill){
       </div>
       <label>${T("location")}</label>
       <div class="loc-wrap" style="position:relative">
-        <input id="fLoc" value="${escHtml(t.loc||"")}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:52px"':""}>
+        <input id="fLoc" value="${t.loc||""}" placeholder="${T("locPh")}" autocomplete="off" ${locsForPick().length?'style="padding-right:52px"':""}>
         ${locsForPick().length?`<button type="button" id="fLocPick" title="${T("pickLoc")}" style="position:absolute;right:4px;top:4px;bottom:4px;width:44px;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--ink2);cursor:pointer;font-size:16px;font-weight:700">▾</button>
         <div id="fLocMenu" class="ac-list" style="display:none"></div>`:""}
       </div>

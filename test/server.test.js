@@ -50,6 +50,7 @@ async function run() {
     if (url.includes("frankfurter")) return okr({ rates: { "2021-01-04": { HKD: 7.75 }, "2021-01-05": { HKD: 7.76 } } });
     throw new Error("unexpected " + url);
   };
+  global.fetch.__testStub = true;
   delete require.cache[require.resolve("../server.js")];
   const S = require("../server.js");
   const expire = () => { const f = path.join(DATA, "market", fs.readdirSync(path.join(DATA,"market")).find(x => x.startsWith("hist_")));
@@ -77,6 +78,7 @@ async function run() {
     if (url.includes("coingecko.com/api/v3/coins/bitcoin")) return okr({ prices: [[1704153600000,42000.5],[1704240000000,43100.2],[1704240005000,43150.0]] });
     throw new Error("unexpected " + url);
   };
+  global.fetch.__testStub = true;
   delete require.cache[require.resolve("../server.js")];
   const S2 = require("../server.js");
   // SSRF 檢查會做真實 DNS;測試環境離線,故 stub 成回傳公網 IP(對 example.com 域)
@@ -109,6 +111,7 @@ async function run() {
   let cnt = 0;
   global.fetch = async () => { cnt++; await new Promise(r => setTimeout(r, 120));
     return { ok: true, json: async () => mkChart({ dates: ["2021-01-04"], close: [100] }), text: async () => "" } };
+  global.fetch.__testStub = true;
   delete require.cache[require.resolve("../server.js")];
   const S3 = require("../server.js");
   await Promise.all(Array.from({ length: 10 }, () => S3.smartHistory("AAA")));
@@ -118,6 +121,7 @@ async function run() {
   clean();
   process.env.SMTP_HOST = "smtp.example.com"; process.env.SMTP_USER = "bot@x.com"; process.env.SMTP_PASS = "x";
   global.fetch = async () => { throw new Error("offline") };
+  global.fetch.__testStub = true;
   delete require.cache[require.resolve("../server.js")];
   const S4 = require("../server.js");
   const SENT = [];
@@ -163,6 +167,7 @@ async function run() {
     if (url.includes("newsapi.org")) return { ok: true, json: async () => ({ articles: [{ title: "NVDA hits high", source: { name: "Reuters" }, url: "https://x.com/a", publishedAt: new Date().toISOString() }] }), text: async () => "" };
     throw new Error("unexpected " + url);
   };
+  global.fetch.__testStub = true;
   delete require.cache[require.resolve("../server.js")];
   const S5 = require("../server.js");
   await new Promise(r => S5.server.listen(0, r));

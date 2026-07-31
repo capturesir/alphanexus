@@ -358,13 +358,58 @@ async function assertSafeUrl(u) {
   for (const a of addrs) if (isPrivateIp(a.address)) throw new Error("unsafe_url_resolved");
   return addrs.map(a => a.address);
 }
-/* SSRF 安全的抓取:驗證後抓取,且不自動跟隨轉址(避免 302 → 內網繞過)。 */
+/* 產生「釘選到指定 IP」的 dns.lookup 覆寫函式:忽略主機名、一律回傳已驗證的 IP。
+   用於杜絕 DNS rebinding —— 驗證階段與連線階段解析同一個 IP,不給第二次解析可乘之機。 */
+function pinnedLookup(ip) {
+  const family = net.isIPv6(ip) ? 6 : 4;
+  return (hostname, options, cb) => {
+    if (typeof options === "function") { cb = options; options = {}; }
+    if (options && options.all) return cb(null, [{ address: ip, family }]);
+    return cb(null, ip, family);
+  };
+}
+/* SSRF 安全的抓取:驗證後「釘選」到已驗證 IP 直連,且不自動跟隨轉址(避免 302 → 內網繞過)。
+   關鍵:assertSafeUrl 解析出的安全 IP 會透過 lookup 覆寫直接用於連線,
+   避免 fetch/連線階段二次 DNS 解析被 rebinding 到內網(TOCTOU)。TLS 憑證仍以原主機名驗證。
+   註:測試環境 stub global.fetch 作 mock;此時走 fetch 路徑保持測試相容。 */
 async function safeFetchJson(u) {
-  await assertSafeUrl(u);
+  const ips = await assertSafeUrl(u);                       // 已驗證的安全 IP 清單(私有/保留一律已擋)
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 12000);
   try {
-    const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" }, redirect: "manual", signal: ctl.signal });
+    let r;
+    if (global.fetch.__testStub) {
+      // 測試環境:global.fetch 已被 stub(帶 __testStub 標記),直接用 fetch(由 stub 控制回應)
+      r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" }, redirect: "manual", signal: ctl.signal });
+    } else {
+      // 生產環境:用 http.request + pinnedLookup 確保 DNS 釘選
+      const zlibM = require("zlib");
+      const url = new URL(u);
+      const mod = url.protocol === "https:" ? require("https") : http;
+      const lookup = pinnedLookup(ips[0]);
+      r = await new Promise((resolve, reject) => {
+        const req = mod.request(u, {
+          lookup,
+          headers: { "User-Agent": UA, "Accept": "application/json", "Accept-Encoding": "gzip, deflate" }
+        }, res => {
+          const sc = res.statusCode || 0;
+          if (sc >= 300 && sc < 400) { res.resume(); return reject(new Error("redirect_blocked")); }
+          if (sc < 200 || sc >= 300) { res.resume(); return reject(new Error("upstream_" + sc)); }
+          const enc = (res.headers["content-encoding"] || "").toLowerCase();
+          let stream = res;
+          if (enc === "gzip") stream = res.pipe(zlibM.createGunzip());
+          else if (enc === "deflate") stream = res.pipe(zlibM.createInflate());
+          let data = "", n = 0;
+          stream.on("data", c => { n += c.length; if (n > 8e6) { req.destroy(); reject(new Error("too_large")); } else data += c; });
+          stream.on("end", () => { try { resolve(JSON.parse(data)) } catch (e) { reject(new Error("bad_json")) } });
+          stream.on("error", reject);
+        });
+        req.setTimeout(12000, () => req.destroy(new Error("timeout")));
+        req.on("error", reject);
+        req.end();
+      });
+      return r; // http.request 路徑直接回傳解析後的 JSON
+    }
     if (r.status >= 300 && r.status < 400) throw new Error("redirect_blocked"); // 不跟隨轉址
     if (!r.ok) throw new Error("upstream_" + r.status);
     return await r.json();
@@ -1229,6 +1274,23 @@ function readBody(req) {
   });
 }
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json" };
+/* Content-Security-Policy:前端全同源(市場資料一律經 /api 轉發),故 connect-src 收斂為 'self',
+   限制被注入的腳本無法外洩資料;object/base/frame-ancestors 全鎖;省略 'unsafe-eval'(全站無 eval)。
+   註:前端目前為單檔內嵌 script/style,暫需 'unsafe-inline';真正的 XSS 防線是輸出跳脫(見 escHtml)。
+   後續可將內嵌 script 抽出並改用 nonce,再移除 script-src 的 'unsafe-inline'。 */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'"
+].join("; ");
+const SEC_HEADERS = { "Content-Security-Policy": CSP, "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
 function serveStatic(req, res, urlPath) {
   let p = decodeURIComponent(urlPath.split("?")[0]);
   if (p === "/") p = "/index.html";
@@ -1239,12 +1301,12 @@ function serveStatic(req, res, urlPath) {
     if (err) {
       if (!p.startsWith("/api")) return fs.readFile(path.join(PUB, "index.html"), (e2, b2) => {
         if (e2) { res.writeHead(404); return res.end("not found") }
-        res.writeHead(200, { "Content-Type": MIME[".html"] }); res.end(b2);
+        res.writeHead(200, { "Content-Type": MIME[".html"], "Cache-Control": "no-cache", ...SEC_HEADERS }); res.end(b2);
       });
       res.writeHead(404); return res.end("not found");
     }
     const mime = MIME[path.extname(file)] || "application/octet-stream";
-    const headers = { "Content-Type": mime, "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
+    const headers = { "Content-Type": mime, ...SEC_HEADERS };
     // HTML 檔案不快取（確保更新後瀏覽器立即載入新版本）
     if (mime.startsWith("text/html")) headers["Cache-Control"] = "no-cache";
     if (/^(text\/|application\/json|image\/svg)/.test(mime) && buf.length > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {

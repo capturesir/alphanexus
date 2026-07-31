@@ -4904,6 +4904,12 @@ function renderDivCalendar(){
     // 分類篩選
     const catFilter=state.expCatFilter||{living:true,financial:true};
     const filtered=sorted.filter(e=>catFilter[e.category]!==false);
+    // 分頁
+    const EXP_PAGE_SIZE=10;
+    const totalPages=Math.max(1,Math.ceil(filtered.length/EXP_PAGE_SIZE));
+    const curPage=Math.min(state.expPage||0,totalPages-1);
+    state.expPage=curPage;
+    const pageItems=filtered.slice(curPage*EXP_PAGE_SIZE,(curPage+1)*EXP_PAGE_SIZE);
     // 篩選後的統計
     let filteredAnnual=0;
     filtered.forEach(e=>{
@@ -4927,7 +4933,7 @@ function renderDivCalendar(){
           <button class="chip${catOn("financial")?" on":""}" data-exp-cat="financial">💳 ${T("financialExpense")||"財務支出"}</button>
         </div>
         <div id="expenseList">
-          ${filtered.map(exp=>{
+          ${pageItems.map(exp=>{
             const idx=exp._idx;
             const ccy=exp.ccy||base;
             const multiplier=exp.frequency==="monthly"?12:exp.frequency==="quarterly"?4:1;
@@ -4945,6 +4951,11 @@ function renderDivCalendar(){
           }).join("")}
           ${!filtered.length?`<div class="tiny" style="text-align:center;color:var(--ink3);padding:12px">${T("noExpenses")||"此分類無支出項目"}</div>`:""}
         </div>
+        ${totalPages>1?`<div class="row between" style="margin-top:8px;justify-content:center;gap:12px">
+          <button class="btn btn-sm" data-exp-page="-1" ${curPage<=0?"disabled":""} style="${curPage<=0?"opacity:.35;pointer-events:none":""}">◀</button>
+          <span class="tiny" style="color:var(--ink3);line-height:28px">${curPage+1} / ${totalPages}</span>
+          <button class="btn btn-sm" data-exp-page="1" ${curPage>=totalPages-1?"disabled":""} style="${curPage>=totalPages-1?"opacity:.35;pointer-events:none":""}">▶</button>
+        </div>`:""}
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
           <div class="row between"><span class="tiny">${T("totalAnnualExpense")||"年度總支出"}</span><span class="num" style="font-weight:600">${fmtMoney(filteredAnnual,base,true)}</span></div>
           <div class="row between" style="margin-top:4px"><span class="tiny">${T("avgMonthlyExpense")||"年度平均月支出"}</span><span class="num" style="font-weight:600">${fmtMoney(filteredAnnual/12,base,true)}</span></div>
@@ -5016,6 +5027,7 @@ function renderDivCalendar(){
       const k=el.dataset.expSort;
       const cur=state.expSort||"added-desc";
       state.expSort=cur===k+"-asc"?k+"-desc":k+"-asc";
+      state.expPage=0;
       renderDivCalendar();
     };
   });
@@ -5025,6 +5037,14 @@ function renderDivCalendar(){
       const c=el.dataset.expCat;
       if(!state.expCatFilter)state.expCatFilter={living:true,financial:true};
       state.expCatFilter[c]=!state.expCatFilter[c];
+      state.expPage=0;
+      renderDivCalendar();
+    };
+  });
+  // 綁定支出分頁按鈕
+  box.querySelectorAll("[data-exp-page]").forEach(el=>{
+    el.onclick=()=>{
+      state.expPage=(state.expPage||0)+parseInt(el.dataset.expPage);
       renderDivCalendar();
     };
   });

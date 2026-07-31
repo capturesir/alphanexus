@@ -366,6 +366,29 @@ async function run() {
   ok(h6Read.j.settings.divTax === 0 && h6Read.j.settings.privacy === false && h6Read.j.settings.autoDiv === false,
     "H6 特殊值(divTax=0, privacy=false, autoDiv=false)正確儲存");
 
+  // ---- I. M-3 自訂數據源多租戶隔離 ----
+  S7._dnsLookup = async () => [{ address: "93.184.216.34", family: 4 }]; // 公網 IP → 通過 SSRF 檢查(POST 會呼叫 assertSafeUrl)
+  St7.put("m1@x.com", { id: "m1", name: "M1", salt: "s", hash: "h", tokens: ["tokM1"] });
+  St7.put("m2@x.com", { id: "m2", name: "M2", salt: "s", hash: "h", tokens: ["tokM2"] });
+  const csrc = { symbol: "MYFUND", url: "https://api.example.com/nav", datePath: "$.data.series[*].day", pricePath: "$.data.series[*].nav", ccy: "USD", name: "My Fund" };
+  const i1 = await call7("/api/custom-sources", csrc, "tokM1");
+  ok(i1.code === 200 && i1.j.ok === true, "I1 擁有者可建立自訂源");
+  const i2 = await call7("/api/custom-sources", { ...csrc, url: "https://api.example.com/evil", name: "hijack" }, "tokM2");
+  ok(i2.code === 409 && i2.j.error === "symbol_taken", "I2 他人不可覆寫已認領符號 → 409(防劫持/污染)");
+  const i3 = await call7("/api/custom-sources", null, "tokM2");
+  ok(Array.isArray(i3.j.sources) && !i3.j.sources.some(s => s.symbol === "MYFUND"), "I3 GET 只回自己的來源(不外洩他人)");
+  const i3b = await call7("/api/custom-sources", null, "tokM1");
+  ok(i3b.j.sources.some(s => s.symbol === "MYFUND") && i3b.j.sources.every(s => !("ownerId" in s)), "I3b 擁有者看得到自己的來源且回應不含內部 ownerId");
+  const i4 = await call7("/api/custom-sources/delete", { symbol: "MYFUND" }, "tokM2");
+  ok(i4.code === 403 && i4.j.error === "forbidden", "I4 他人不可刪除 → 403");
+  const i5 = await call7("/api/custom-sources", null, "tokM1");
+  ok(i5.j.sources.some(s => s.symbol === "MYFUND"), "I5 越權刪除後來源仍在");
+  const i6 = await call7("/api/custom-sources", { ...csrc, name: "Updated" }, "tokM1");
+  ok(i6.code === 200 && i6.j.ok === true, "I6 擁有者可更新自己的來源");
+  const i7 = await call7("/api/custom-sources/delete", { symbol: "MYFUND" }, "tokM1");
+  ok(i7.code === 200 && i7.j.ok === true, "I7 擁有者可刪除自己的來源");
+  St7.del("m1@x.com"); St7.del("m2@x.com");
+
   // 清理
   St7.del("h2@x.com"); St7.pfDel("h2");
   St7.del("h4@x.com"); St7.pfDel("h4");

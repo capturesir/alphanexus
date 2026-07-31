@@ -5273,7 +5273,7 @@ function openCustomSrcModal(){
       delete REAL.series[c.symbol];delete REAL.fail[c.symbol];
       registerSym({s:c.symbol,n:c.name||c.symbol,z:c.name||c.symbol,m:"CUSTOM",c:c.ccy});
       toast(T("saved"));loadList();scheduleLive();
-    }catch(e){toast("❌ "+(e.message||""))}
+    }catch(e){const m=String(e.message||"");toast(m==="symbol_taken"?"⚠️ 此自訂代碼已被其他帳號使用，請換一個":m==="forbidden"?"⚠️ 只有建立者可修改此來源":"❌ "+m)}
   };
 }
 

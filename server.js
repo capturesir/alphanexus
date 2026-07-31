@@ -1460,18 +1460,28 @@ const server = http.createServer(async (req, res) => {
         catch (e) { return send(req, res, 400, { error: "bad_url", detail: String(e.message || e) }); }
         try { jsonPathTokens(String(b.datePath || "")); jsonPathTokens(String(b.pricePath || "")) }
         catch (e) { return send(req, res, 400, { error: "bad_path", detail: String(e.message || e) }) }
-        CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60) };
+        // M-3:符號已被其他帳號認領時禁止覆寫(否則可劫持他人符號並污染其共用價格序列);否則認領/更新為自己所有
+        const owned = CUSTOM[sym];
+        if (owned && owned.ownerId && owned.ownerId !== a.u.id) return send(req, res, 409, { error: "symbol_taken" });
+        CUSTOM[sym] = { url: String(b.url), datePath: String(b.datePath), pricePath: String(b.pricePath), ccy: String(b.ccy || "USD").toUpperCase().slice(0, 5), name: String(b.name || sym).slice(0, 60), ownerId: a.u.id };
         saveCustom();
         try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {} // 清庫存,下次請求即用新設定重抓
         return send(req, res, 200, { ok: true, symbol: sym });
       }
-      return send(req, res, 200, { sources: Object.entries(CUSTOM).map(([s, c]) => ({ symbol: s, ...c })) });
+      // M-3:只回傳自己擁有或尚未認領(legacy)的來源;不外洩他人設定,並隱藏內部 ownerId
+      return send(req, res, 200, { sources: Object.entries(CUSTOM)
+        .filter(([, c]) => !c.ownerId || c.ownerId === a.u.id)
+        .map(([s, c]) => { const { ownerId, ...pub } = c; return { symbol: s, ...pub } }) });
     }
     if (p === "/api/custom-sources/delete" && req.method === "POST") {
       const a = userByToken(req);
       if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
       const sym = String(b.symbol || "").trim().toUpperCase();
+      // M-3:只能刪除自己擁有或尚未認領(legacy)的來源
+      const entry = CUSTOM[sym];
+      if (!entry) return send(req, res, 200, { ok: true }); // 冪等:不存在即視為已刪
+      if (entry.ownerId && entry.ownerId !== a.u.id) return send(req, res, 403, { error: "forbidden" });
       delete CUSTOM[sym]; saveCustom();
       try { fs.unlinkSync(storePath("hist", sym)) } catch (e) {}
       return send(req, res, 200, { ok: true });

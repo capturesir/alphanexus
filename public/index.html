@@ -1480,7 +1480,7 @@ function renderAssets(){
     const sort=state.holdSortActive?(state.holdSort||"mv-desc"):"mv-desc";
     const cmp={
       "mv-desc":(a,b)=>b.mv-a.mv, "mv-asc":(a,b)=>a.mv-b.mv,
-      "day-desc":(a,b)=>b.dayVal-a.dayVal, "day-asc":(a,b)=>a.dayVal-b.dayVal,
+      "day-desc":(a,b)=>b.dayPct-a.dayPct, "day-asc":(a,b)=>a.dayPct-b.dayPct,
       "pl-desc":(a,b)=>(b.cost>0?b.pl/b.cost:0)-(a.cost>0?a.pl/a.cost:0),
       "pl-asc":(a,b)=>(a.cost>0?a.pl/a.cost:0)-(b.cost>0?b.pl/b.cost:0),
     }[sort]||((a,b)=>b.mv-a.mv);

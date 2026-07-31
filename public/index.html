@@ -877,16 +877,20 @@ function unitsByLocAt(sym,dateStr,exDate){
   }
   return out;
 }
-function divTaxRate(){const r=parseFloat(state.settings.divTax);return isFinite(r)?Math.min(Math.max(r,0),100)/100:0}
+function divTaxRate(sym){
+  const ov=state.settings.divTaxOverrides;
+  if(sym&&ov&&isFinite(ov[sym]))return Math.min(Math.max(ov[sym],0),100)/100;
+  const r=parseFloat(state.settings.divTax);return isFinite(r)?Math.min(Math.max(r,0),100)/100:0;
+}
 function reconcileAutoDividends(){
   if(!LIVE||state.settings.autoDiv===false)return false;
-  const tax=divTaxRate();
   const skip=new Set(state.settings.divSkip||[]);
   let changed=false;
   const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other"||t.kind==="transfer")).map(t=>t.sym))];
   const today=fmtD(TODAY);
   const norm=loc=>(loc||"").trim()||T("defaultLoc"); // 正規化位置名(空=預設)
   for(const sym of syms){
+    const tax=divTaxRate(sym);
     const ev=REAL.events[sym]; if(!ev||!ev.dividends||!ev.dividends.length)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD";
     for(const d of ev.dividends){
@@ -917,13 +921,13 @@ function reconcileAutoDividends(){
    稅後、換算為基準貨幣,作為「典型年度各月股息」的預估。回傳長度 12 陣列(index 0=1月)。 */
 function dividendMonthly(base){
   base=base||state.settings.baseCcy||"USD";
-  const tax=divTaxRate();
   const months=new Array(12).fill(0);
   const today=fmtD(TODAY);
   const yAgo=new Date(TODAY); yAgo.setFullYear(yAgo.getFullYear()-1);
   const yAgoStr=fmtD(yAgo);
   const syms=[...new Set(state.txns.filter(t=>t.sym&&(t.kind==="stock"||t.kind==="bond"||t.kind==="other")).map(t=>t.sym))];
   for(const sym of syms){
+    const tax=divTaxRate(sym);
     const ev=LIVE&&REAL.events[sym]; if(!ev||!ev.dividends)continue;
     const o=SYM_MAP[sym]; const ccy=o?o.c:"USD";
     // 取當前持股(作為回退:若除息日尚未持有,以當前持股推算)
@@ -1041,8 +1045,12 @@ function deleteHoldingTxn(id,dryRun){
 }
 /* 全局稅率變更時,僅更新仍為自動(未經修改)之股息金額 */
 function reapplyDivTax(){
-  const tax=divTaxRate(); let n=0;
-  for(const t of state.txns)if(t.kind==="dividend"&&t.auto&&isFinite(t.gross)){t.amount=+(t.gross*(1-tax)).toFixed(2);n++}
+  let n=0;
+  for(const t of state.txns){
+    if(t.kind==="dividend"&&t.auto&&isFinite(t.gross)){
+      t.amount=+(t.gross*(1-divTaxRate(t.sym))).toFixed(2);n++;
+    }
+  }
   return n;
 }
 let _emdBusy=false;
@@ -1948,6 +1956,7 @@ function openHoldingDetail(sym){
   const H=holdingsDetail(null);
   const h=H.list.find(x=>x.sym===sym);
   const o=SYM_MAP[sym];
+  const ov=state.settings.divTaxOverrides||{};
   const series=getSeries(sym);
   const lastRaw=series?series.raw[N_DAYS-1]:(h?h.px:0);
   const prevRaw=series?series.raw[N_DAYS-2]:lastRaw;
@@ -1993,6 +2002,10 @@ function openHoldingDetail(sym){
     </div>`:`<div class="tiny" style="margin:8px 0">${T("noPositionNow")}</div>`}
     ${H.incomeBySym[sym]>0?`<div class="tiny" style="margin-bottom:6px">💰 ${T("incomeReceived")} ${fmtAmt(H.incomeBySym[sym],base,true)}</div>`:""}
     <div class="tiny" style="margin-bottom:8px">${T("dataSrcLbl")}: ${srcLabel}${srcHint?` <span style="color:var(--ink3)">${srcHint}</span>`:""}${ev&&ev.splits&&ev.splits.length?` · ${ev.splits.length} ${T("evSplit")}`:""}${ev&&ev.dividends&&ev.dividends.length?` · ${ev.dividends.length} ${T("evDiv")}`:""}</div>
+    <div class="setting-row" style="margin:6px 0;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div><b>${T("divTaxLbl")||"股息預扣稅率"}</b><div class="tiny">${sym} · ${T("divTaxHint")||"自動股息以稅後金額入帳;預設 0%"}</div></div>
+      <div class="row" style="align-items:center;gap:6px"><input id="hdDivTax" type="number" min="0" max="100" step="0.1" inputmode="decimal" style="width:72px;text-align:right" value="${(ov&&isFinite(ov[sym])?ov[sym]:parseFloat(state.settings.divTax)||0)}">%</div>
+    </div>
     <h3 style="font-size:13px;margin:10px 0 4px">${T("txnHistory")} (${myTxns.length})</h3>
     <div style="max-height:34vh;overflow-y:auto">${myTxns.map(t=>{
       const isInc=t.kind==="dividend";
@@ -2022,6 +2035,20 @@ function openHoldingDetail(sym){
   });
   m.querySelector("#hdClose").onclick=closeModal;
   const hdChart=m.querySelector("#hdChart");if(hdChart)hdChart.onclick=()=>{closeModal();openInteractiveChart(sym)};
+  // 股息稅率設定
+  const hdTax=m.querySelector("#hdDivTax");
+  if(hdTax){
+    hdTax.onchange=()=>{
+      const v=parseFloat(hdTax.value);
+      const globalV=parseFloat(state.settings.divTax)||0;
+      if(!state.settings.divTaxOverrides)state.settings.divTaxOverrides={};
+      if(!isFinite(v)||v<0){hdTax.value=globalV;delete state.settings.divTaxOverrides[sym];}
+      else if(v===globalV){delete state.settings.divTaxOverrides[sym];}
+      else{state.settings.divTaxOverrides[sym]=v;}
+      if(!Object.keys(state.settings.divTaxOverrides).length)delete state.settings.divTaxOverrides;
+      reconcileAutoDividends();persist().then(()=>refreshAll());
+    };
+  }
   // 若走勢資料尚未載入(LIVE 且未失敗),背景抓取後自動重開詳情以顯示走勢
   if(LIVE&&!series&&!(REAL.fail&&REAL.fail[sym])){
     ensureMarketData().then(changed=>{ if(changed&&REAL.series[sym]&&$("#modalRoot").querySelector(".modal")){ openHoldingDetail(sym) } }).catch(()=>{});

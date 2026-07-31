@@ -4918,6 +4918,11 @@ function renderDivCalendar(){
     });
     const arrow=(k)=>expSort===k+"-asc"?"↑":expSort===k+"-desc"?"↓":"";
     const catOn=(c)=>catFilter[c]!==false;
+    const expPager=totalPages>1?`<div class="row between" style="margin:6px 0;justify-content:center;gap:12px">
+      <button class="btn btn-sm" data-exp-page="-1" ${curPage<=0?"disabled":""} style="${curPage<=0?"opacity:.35;pointer-events:none":""}">◀</button>
+      <span class="tiny" style="color:var(--ink3);line-height:28px">${curPage+1} / ${totalPages}</span>
+      <button class="btn btn-sm" data-exp-page="1" ${curPage>=totalPages-1?"disabled":""} style="${curPage>=totalPages-1?"opacity:.35;pointer-events:none":""}">▶</button>
+    </div>`:"";
     expensesHtml=`
       <div class="card" style="margin-top:12px">
         <div class="row between" style="margin-bottom:4px">
@@ -4932,6 +4937,7 @@ function renderDivCalendar(){
           <button class="chip${catOn("living")?" on":""}" data-exp-cat="living">🏠 ${T("livingExpense")||"生活支出"}</button>
           <button class="chip${catOn("financial")?" on":""}" data-exp-cat="financial">💳 ${T("financialExpense")||"財務支出"}</button>
         </div>
+        ${expPager}
         <div id="expenseList">
           ${pageItems.map(exp=>{
             const idx=exp._idx;
@@ -4951,11 +4957,7 @@ function renderDivCalendar(){
           }).join("")}
           ${!filtered.length?`<div class="tiny" style="text-align:center;color:var(--ink3);padding:12px">${T("noExpenses")||"此分類無支出項目"}</div>`:""}
         </div>
-        ${totalPages>1?`<div class="row between" style="margin-top:8px;justify-content:center;gap:12px">
-          <button class="btn btn-sm" data-exp-page="-1" ${curPage<=0?"disabled":""} style="${curPage<=0?"opacity:.35;pointer-events:none":""}">◀</button>
-          <span class="tiny" style="color:var(--ink3);line-height:28px">${curPage+1} / ${totalPages}</span>
-          <button class="btn btn-sm" data-exp-page="1" ${curPage>=totalPages-1?"disabled":""} style="${curPage>=totalPages-1?"opacity:.35;pointer-events:none":""}">▶</button>
-        </div>`:""}
+        ${expPager}
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
           <div class="row between"><span class="tiny">${T("totalAnnualExpense")||"年度總支出"}</span><span class="num" style="font-weight:600">${fmtMoney(filteredAnnual,base,true)}</span></div>
           <div class="row between" style="margin-top:4px"><span class="tiny">${T("avgMonthlyExpense")||"年度平均月支出"}</span><span class="num" style="font-weight:600">${fmtMoney(filteredAnnual/12,base,true)}</span></div>

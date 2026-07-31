@@ -137,6 +137,9 @@ async function run() {
   let r = await call("/api/auth/register", { email: "u@x.com", pwd: "pass1234" });
   ok(r.j.pending === true && SENT.length === 1, "D1 註冊 → 待驗證 + 寄碼");
   const code = SENT[0].text.match(/\d{6}/)[0];
+  // L-1: 密碼下限提高到 8 碼(<8 應被拒,且不寄碼)
+  const wp = await call("/api/auth/register", { email: "weak@x.com", pwd: "123" });
+  ok(wp.code === 400 && wp.j.error === "weak_pwd" && SENT.length === 1, "L1 密碼<8 → weak_pwd(且未寄碼)");
   r = await call("/api/auth/verify", { email: "u@x.com", code: "000000" });
   ok(r.j.error === "bad_code", "D2 錯誤驗證碼被拒");
   r = await call("/api/auth/verify", { email: "u@x.com", code });

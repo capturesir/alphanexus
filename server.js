@@ -1511,7 +1511,7 @@ const server = http.createServer(async (req, res) => {
       const email = String(b.email || "").trim().toLowerCase();
       const pwd = String(b.pwd || "");
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(req, res, 400, { error: "bad_email" });
-      if (pwd.length < 4) return send(req, res, 400, { error: "weak_pwd" });
+      if (pwd.length < 8) return send(req, res, 400, { error: "weak_pwd" });
       if (Store.exists(email)) return send(req, res, 409, { error: "exists" });
       const salt = crypto.randomBytes(16).toString("hex");
       const rec = { id: crypto.randomUUID(), name: String(b.name || email.split("@")[0]).slice(0, 40), avatar: "🙂", salt, hash: hashPwd(pwd, salt), tokens: [], createdAt: Date.now() };
@@ -1573,7 +1573,7 @@ const server = http.createServer(async (req, res) => {
       if (!a) return send(req, res, 401, { error: "unauthorized" });
       const b = await readBody(req);
       if (hashPwd(String(b.oldPwd || ""), a.u.salt) !== a.u.hash) return send(req, res, 401, { error: "bad_pwd" });
-      if (String(b.newPwd || "").length < 4) return send(req, res, 400, { error: "weak_pwd" });
+      if (String(b.newPwd || "").length < 8) return send(req, res, 400, { error: "weak_pwd" });
       a.u.salt = crypto.randomBytes(16).toString("hex");
       a.u.hash = hashPwd(String(b.newPwd), a.u.salt);
       a.u.tokens = [a.token];

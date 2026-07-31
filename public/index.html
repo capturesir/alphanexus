@@ -2015,8 +2015,8 @@ function openHoldingDetail(sym){
       const desc=isXfer?`⇄ ${(+t.units).toLocaleString()} ${(t.from||T("defaultLoc"))} → ${(t.to||T("defaultLoc"))}`
         :isInc?`＋${fmtMoney(t.amount,t.ccy)}${t.auto?" ⚡":""}`:`${t.side==="buy"?T("buy"):T("sell")} ${(+t.units).toLocaleString()} @ ${fmtMoney(t.price,t.ccy)}${t.fee?` (${T("fee")} ${fmtMoney(t.fee,t.ccy)})`:""}`;
       return `<div class="holding" data-edit="${t.id}" style="cursor:pointer;padding:8px 2px">
-        <div class="grow"><div class="row between"><span class="tiny num ${isInc?"pl-pos":isXfer?"":(t.side==="buy"?"pl-pos":"pl-neg")}">${desc}</span><span class="tiny num">${t.date}</span></div>
-        <div class="tiny">${isXfer?T("transfer"):(t.loc||T("defaultLoc"))+" · "+T(KIND_KEY[t.kind]||"tOther")}</div></div></div>`;
+        <div class="grow"><div class="row between"><span class="tiny num ${isInc?"pl-pos":isXfer?"":(t.side==="buy"?"pl-pos":"pl-neg")}">${desc}</span><span class="tiny num">${escHtml(t.date)}</span></div>
+        <div class="tiny">${isXfer?T("transfer"):(t.loc?escHtml(t.loc):T("defaultLoc"))+" · "+T(KIND_KEY[t.kind]||"tOther")}</div></div></div>`;
     }).join("")||`<div class="tiny">${T("noTxn")}</div>`}</div>`);
   const footer=document.createElement("div");
   footer.className="modal-footer";
@@ -3854,7 +3854,7 @@ function openTxnModal(txn,prefill){
     </div>
     <div id="secFields">
       <label>${T("symbol")}</label>
-      <div class="ac-wrap"><input id="fSym" value="${t.sym||""}" placeholder="VT / 0700.HK / AAPL…" autocapitalize="characters"><div class="ac-list" id="fSymAc" style="display:none"></div></div>
+      <div class="ac-wrap"><input id="fSym" value="${escHtml(t.sym||"")}" placeholder="VT / 0700.HK / AAPL…" autocapitalize="characters"><div class="ac-list" id="fSymAc" style="display:none"></div></div>
       <div class="tiny" id="optHint" style="display:none;margin-top:4px">${T("optHint")}</div>
       <label>${T("assetName")}</label>
       <input id="fName" value="${t.name||""}">
@@ -3884,7 +3884,7 @@ function openTxnModal(txn,prefill){
     <div id="incFields" style="display:none">
       <div id="incSymWrap">
         <label>${T("symbol")}(${T("optional")})</label>
-        <div class="ac-wrap"><input id="fSymI" value="${t.sym||""}" placeholder="VT / 0700.HK…" autocapitalize="characters"><div class="ac-list" id="fSymIAc" style="display:none"></div></div>
+        <div class="ac-wrap"><input id="fSymI" value="${escHtml(t.sym||"")}" placeholder="VT / 0700.HK…" autocapitalize="characters"><div class="ac-list" id="fSymIAc" style="display:none"></div></div>
       </div>
       <div class="field2">
         <div><label>${T("currency")}</label><select id="fCcyI">${CCYS.map(c=>`<option ${t.ccy===c?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -3892,7 +3892,7 @@ function openTxnModal(txn,prefill){
       </div>
       <div class="tiny" id="incHint" style="margin-top:4px">${T("divHint")}</div>
     </div>
-    <div><label>${T("date")}</label><input id="fDate" type="date" value="${t.date}" min="${fmtD(START_DATE)}" max="${fmtD(TODAY)}"></div>
+    <div><label>${T("date")}</label><input id="fDate" type="date" value="${escHtml(t.date)}" min="${fmtD(START_DATE)}" max="${fmtD(TODAY)}"></div>
     <details class="adv-toggle" id="advToggle"><summary>${T("advOptions")}</summary><div class="adv-body">
       <div id="advFeeWrap">
         <label>${T("feeOpt")}</label>
